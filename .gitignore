@@ -1,0 +1,8 @@
+node_modules/
+dist/
+build/
+.gemini/
+.DS_Store
+*.log
+.env
+.directory

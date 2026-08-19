@@ -1,0 +1,353 @@
+{
+  "communities": {
+    "0": [
+      "src_main",
+      "src_main_ambientlight",
+      "src_main_camera",
+      "src_main_clock",
+      "src_main_container",
+      "src_main_controls",
+      "src_main_dirlight",
+      "src_main_flamethrowernative",
+      "src_main_flamethrowerquarks",
+      "src_main_fpsel",
+      "src_main_gasexplosionnative",
+      "src_main_gasexplosionquarks",
+      "src_main_gridhelper",
+      "src_main_lastfpstime",
+      "src_main_mouse",
+      "src_main_options",
+      "src_main_plane",
+      "src_main_raycaster",
+      "src_main_renderer",
+      "src_main_sabvfx",
+      "src_main_scene",
+      "src_main_subemitter2native",
+      "src_main_subemitter2quarks",
+      "src_main_tornadonative",
+      "src_vfx_subemitter2_quarks",
+      "src_vfx_subemitter2_quarks_subemitter2quarksvfx",
+      "src_vfx_subemitter2_quarks_subemitter2quarksvfx_constructor",
+      "src_vfx_subemitter2_quarks_subemitter2quarksvfx_spawn",
+      "src_vfx_subemitter2_quarks_subemitter2quarksvfx_update"
+    ],
+    "1": [
+      "scripts_quarks_to_native",
+      "scripts_quarks_to_native_absinput",
+      "scripts_quarks_to_native_basename",
+      "scripts_quarks_to_native_blendingname",
+      "scripts_quarks_to_native_classname",
+      "scripts_quarks_to_native_collectemitters",
+      "scripts_quarks_to_native_data",
+      "scripts_quarks_to_native_emitterbyuuid",
+      "scripts_quarks_to_native_emitters",
+      "scripts_quarks_to_native_endidx",
+      "scripts_quarks_to_native_fileraw",
+      "scripts_quarks_to_native_fmtalphakeys",
+      "scripts_quarks_to_native_fmtbezier",
+      "scripts_quarks_to_native_fmtcolor",
+      "scripts_quarks_to_native_fmtcolorkeys",
+      "scripts_quarks_to_native_fmtinterval",
+      "scripts_quarks_to_native_fmtpiecewisebezierarray",
+      "scripts_quarks_to_native_geobyuuid",
+      "scripts_quarks_to_native_getintervalmax",
+      "scripts_quarks_to_native_imgbyuuid",
+      "scripts_quarks_to_native_mattoimageindex",
+      "scripts_quarks_to_native_rendermodename",
+      "scripts_quarks_to_native_slug",
+      "scripts_quarks_to_native_startidx",
+      "scripts_quarks_to_native_texbyuuid",
+      "scripts_quarks_to_native_tokebabcase",
+      "scripts_quarks_to_native_topascalcase",
+      "scripts_quarks_to_native_usedtexindices"
+    ],
+    "2": [
+      "gsap",
+      "package",
+      "package_dependencies",
+      "package_dependencies_gsap",
+      "package_dependencies_three",
+      "package_dependencies_three_quarks",
+      "package_dependencies_types_three",
+      "package_devdependencies",
+      "package_devdependencies_typescript",
+      "package_devdependencies_vite",
+      "package_name",
+      "package_private",
+      "package_scripts",
+      "package_scripts_build",
+      "package_scripts_dev",
+      "package_scripts_preview",
+      "package_type",
+      "package_version",
+      "three",
+      "three_quarks",
+      "types_three",
+      "typescript",
+      "vite"
+    ],
+    "3": [
+      "ref_dom",
+      "ref_es2023",
+      "ref_src",
+      "ref_vite_client",
+      "tsconfig",
+      "tsconfig_compileroptions",
+      "tsconfig_compileroptions_allowarbitraryextensions",
+      "tsconfig_compileroptions_allowimportingtsextensions",
+      "tsconfig_compileroptions_erasablesyntaxonly",
+      "tsconfig_compileroptions_lib",
+      "tsconfig_compileroptions_module",
+      "tsconfig_compileroptions_moduledetection",
+      "tsconfig_compileroptions_moduleresolution",
+      "tsconfig_compileroptions_noemit",
+      "tsconfig_compileroptions_nofallthroughcasesinswitch",
+      "tsconfig_compileroptions_nounusedlocals",
+      "tsconfig_compileroptions_nounusedparameters",
+      "tsconfig_compileroptions_skiplibcheck",
+      "tsconfig_compileroptions_target",
+      "tsconfig_compileroptions_types",
+      "tsconfig_compileroptions_verbatimmodulesyntax",
+      "tsconfig_include"
+    ],
+    "4": [
+      "src_native_vfx",
+      "src_native_vfx_addinstmesh",
+      "src_native_vfx_bez",
+      "src_native_vfx_dark_blue_to_gray",
+      "src_native_vfx_evalalpha",
+      "src_native_vfx_evalcolor",
+      "src_native_vfx_flushattribs",
+      "src_native_vfx_glow_color",
+      "src_native_vfx_hide",
+      "src_native_vfx_limitspeed",
+      "src_native_vfx_makeattribs",
+      "src_native_vfx_makeinstmat",
+      "src_native_vfx_nativevfxmanager",
+      "src_native_vfx_nativevfxmanager_constructor",
+      "src_native_vfx_nativevfxmanager_spawnexplosion",
+      "src_native_vfx_nativevfxmanager_update",
+      "src_native_vfx_rng",
+      "src_native_vfx_spark_alpha",
+      "src_native_vfx_white_alpha_peak"
+    ],
+    "5": [
+      "src_vfx_cartoon_blue_flamethrower_native",
+      "src_vfx_cartoon_blue_flamethrower_native_alphakey",
+      "src_vfx_cartoon_blue_flamethrower_native_bezier3",
+      "src_vfx_cartoon_blue_flamethrower_native_cartoonblueflamethrowernativevfx",
+      "src_vfx_cartoon_blue_flamethrower_native_cartoonblueflamethrowernativevfx_constructor",
+      "src_vfx_cartoon_blue_flamethrower_native_cartoonblueflamethrowernativevfx_spawn",
+      "src_vfx_cartoon_blue_flamethrower_native_cartoonblueflamethrowernativevfx_update",
+      "src_vfx_cartoon_blue_flamethrower_native_colorkey",
+      "src_vfx_cartoon_blue_flamethrower_native_evalalpha",
+      "src_vfx_cartoon_blue_flamethrower_native_evalcolor",
+      "src_vfx_cartoon_blue_flamethrower_native_evalpiecewise",
+      "src_vfx_cartoon_blue_flamethrower_native_piecewisecurve",
+      "src_vfx_cartoon_blue_flamethrower_native_rng"
+    ],
+    "6": [
+      "src_vfx_cartoon_blue_gas_explosion_native",
+      "src_vfx_cartoon_blue_gas_explosion_native_alphakey",
+      "src_vfx_cartoon_blue_gas_explosion_native_bezier3",
+      "src_vfx_cartoon_blue_gas_explosion_native_cartoonbluegasexplosionnativevfx",
+      "src_vfx_cartoon_blue_gas_explosion_native_cartoonbluegasexplosionnativevfx_constructor",
+      "src_vfx_cartoon_blue_gas_explosion_native_cartoonbluegasexplosionnativevfx_spawn",
+      "src_vfx_cartoon_blue_gas_explosion_native_cartoonbluegasexplosionnativevfx_update",
+      "src_vfx_cartoon_blue_gas_explosion_native_colorkey",
+      "src_vfx_cartoon_blue_gas_explosion_native_evalalpha",
+      "src_vfx_cartoon_blue_gas_explosion_native_evalcolor",
+      "src_vfx_cartoon_blue_gas_explosion_native_evalpiecewise",
+      "src_vfx_cartoon_blue_gas_explosion_native_piecewisecurve",
+      "src_vfx_cartoon_blue_gas_explosion_native_rng"
+    ],
+    "7": [
+      "src_vfx_subemitter2_native",
+      "src_vfx_subemitter2_native_alphakey",
+      "src_vfx_subemitter2_native_bezier3",
+      "src_vfx_subemitter2_native_colorkey",
+      "src_vfx_subemitter2_native_evalalpha",
+      "src_vfx_subemitter2_native_evalcolor",
+      "src_vfx_subemitter2_native_evalpiecewise",
+      "src_vfx_subemitter2_native_piecewisecurve",
+      "src_vfx_subemitter2_native_rng",
+      "src_vfx_subemitter2_native_subemitter2nativevfx",
+      "src_vfx_subemitter2_native_subemitter2nativevfx_constructor",
+      "src_vfx_subemitter2_native_subemitter2nativevfx_spawn",
+      "src_vfx_subemitter2_native_subemitter2nativevfx_update"
+    ],
+    "8": [
+      "quarks_cartoonbluegasexplosion",
+      "quarks_cartoonbluegasexplosion_cartoonbluegasexplosion",
+      "src_quarks_vfx",
+      "src_quarks_vfx_quarksvfxmanager",
+      "src_quarks_vfx_quarksvfxmanager_constructor",
+      "src_quarks_vfx_quarksvfxmanager_spawnexplosion",
+      "src_quarks_vfx_quarksvfxmanager_update",
+      "src_vfx_cartoon_blue_gas_explosion_quarks",
+      "src_vfx_cartoon_blue_gas_explosion_quarks_cartoonbluegasexplosionquarksvfx",
+      "src_vfx_cartoon_blue_gas_explosion_quarks_cartoonbluegasexplosionquarksvfx_constructor",
+      "src_vfx_cartoon_blue_gas_explosion_quarks_cartoonbluegasexplosionquarksvfx_spawn",
+      "src_vfx_cartoon_blue_gas_explosion_quarks_cartoonbluegasexplosionquarksvfx_update"
+    ],
+    "9": [
+      "quarks_cartoonblueflamethrower",
+      "quarks_cartoonblueflamethrower_cartoonblueflamethrower",
+      "src_main_animate",
+      "src_vfx_cartoon_blue_flamethrower_quarks",
+      "src_vfx_cartoon_blue_flamethrower_quarks_cartoonblueflamethrowerquarksvfx",
+      "src_vfx_cartoon_blue_flamethrower_quarks_cartoonblueflamethrowerquarksvfx_constructor",
+      "src_vfx_cartoon_blue_flamethrower_quarks_cartoonblueflamethrowerquarksvfx_spawn",
+      "src_vfx_cartoon_blue_flamethrower_quarks_cartoonblueflamethrowerquarksvfx_update",
+      "src_vfx_manager_vfxmanager_update"
+    ],
+    "10": [
+      "src_vfx_worker",
+      "src_vfx_worker_lasttime",
+      "src_vfx_worker_spawndata",
+      "src_vfx_worker_spawnparticles",
+      "src_vfx_worker_startsimulationloop",
+      "src_vfx_worker_updatephysics",
+      "src_vfx_worker_workerinitdata",
+      "src_vfx_worker_workermessage"
+    ],
+    "11": [
+      "src_vfx_manager",
+      "src_vfx_manager_vfxmanager",
+      "src_vfx_manager_vfxmanager_constructor",
+      "src_vfx_manager_vfxmanager_initsab",
+      "src_vfx_manager_vfxmanager_initthreegeometry",
+      "src_vfx_manager_vfxmanager_initworker",
+      "src_vfx_manager_vfxmanager_spawn"
+    ],
+    "12": [
+      "src_vfx_tornado_native",
+      "src_vfx_tornado_native_cartoontornadonativevfx",
+      "src_vfx_tornado_native_cartoontornadonativevfx_constructor",
+      "src_vfx_tornado_native_cartoontornadonativevfx_createsmokeparticle",
+      "src_vfx_tornado_native_cartoontornadonativevfx_spawn",
+      "src_vfx_tornado_native_cartoontornadonativevfx_update",
+      "src_vfx_tornado_native_smokeparticle"
+    ],
+    "13": [
+      "scratch_test_clone",
+      "scratch_test_clone_data",
+      "scratch_test_clone_loader",
+      "scratch_test_clone_template"
+    ],
+    "14": [
+      "scripts_convert_quark"
+    ],
+    "15": [
+      "vite_config"
+    ]
+  },
+  "cohesion": {
+    "0": 0.07142857142857142,
+    "1": 0.082010582010582,
+    "2": 0.08695652173913043,
+    "3": 0.09090909090909091,
+    "4": 0.15789473684210525,
+    "5": 0.21794871794871795,
+    "6": 0.21794871794871795,
+    "7": 0.21794871794871795,
+    "8": 0.19696969696969696,
+    "9": 0.25,
+    "10": 0.2857142857142857,
+    "11": 0.42857142857142855,
+    "12": 0.38095238095238093,
+    "13": 0.5,
+    "14": 1.0,
+    "15": 1.0
+  },
+  "gods": [
+    {
+      "id": "tsconfig_compileroptions",
+      "label": "compilerOptions",
+      "degree": 16
+    },
+    {
+      "id": "src_main_animate",
+      "label": "animate()",
+      "degree": 9
+    },
+    {
+      "id": "src_vfx_manager_vfxmanager",
+      "label": "VFXManager",
+      "degree": 8
+    },
+    {
+      "id": "src_vfx_tornado_native_cartoontornadonativevfx",
+      "label": "CartoonTornadoNativeVFX",
+      "degree": 6
+    },
+    {
+      "id": "src_vfx_cartoon_blue_flamethrower_native_cartoonblueflamethrowernativevfx",
+      "label": "CartoonBlueFlamethrowerNativeVFX",
+      "degree": 5
+    },
+    {
+      "id": "src_vfx_cartoon_blue_flamethrower_quarks_cartoonblueflamethrowerquarksvfx",
+      "label": "CartoonBlueFlamethrowerQuarksVFX",
+      "degree": 5
+    },
+    {
+      "id": "src_vfx_cartoon_blue_gas_explosion_native_cartoonbluegasexplosionnativevfx",
+      "label": "CartoonBlueGasExplosionNativeVFX",
+      "degree": 5
+    },
+    {
+      "id": "src_vfx_cartoon_blue_gas_explosion_quarks_cartoonbluegasexplosionquarksvfx",
+      "label": "CartoonBlueGasExplosionQuarksVFX",
+      "degree": 5
+    },
+    {
+      "id": "src_vfx_subemitter2_native_subemitter2nativevfx",
+      "label": "Subemitter2NativeVFX",
+      "degree": 5
+    },
+    {
+      "id": "src_vfx_subemitter2_quarks_subemitter2quarksvfx",
+      "label": "Subemitter2QuarksVFX",
+      "degree": 5
+    }
+  ],
+  "surprises": [],
+  "questions": [
+    {
+      "type": "bridge_node",
+      "question": "Why does `VFXManager` connect `Community 11` to `Community 0`, `Community 9`?",
+      "why": "High betweenness centrality (0.025) - this node is a cross-community bridge."
+    },
+    {
+      "type": "bridge_node",
+      "question": "Why does `animate()` connect `Community 9` to `Community 0`, `Community 5`, `Community 6`, `Community 7`, `Community 8`, `Community 12`?",
+      "why": "High betweenness centrality (0.019) - this node is a cross-community bridge."
+    },
+    {
+      "type": "bridge_node",
+      "question": "Why does `CartoonTornadoNativeVFX` connect `Community 12` to `Community 0`?",
+      "why": "High betweenness centrality (0.015) - this node is a cross-community bridge."
+    },
+    {
+      "type": "isolated_nodes",
+      "question": "What connects `name`, `private`, `version` to the rest of the system?",
+      "why": "90 weakly-connected nodes found - possible documentation gaps or missing edges."
+    },
+    {
+      "type": "low_cohesion",
+      "question": "Should `Community 0` be split into smaller, more focused modules?",
+      "why": "Cohesion score 0.07142857142857142 - nodes in this community are weakly interconnected."
+    },
+    {
+      "type": "low_cohesion",
+      "question": "Should `Community 1` be split into smaller, more focused modules?",
+      "why": "Cohesion score 0.082010582010582 - nodes in this community are weakly interconnected."
+    },
+    {
+      "type": "low_cohesion",
+      "question": "Should `Community 2` be split into smaller, more focused modules?",
+      "why": "Cohesion score 0.08695652173913043 - nodes in this community are weakly interconnected."
+    }
+  ]
+}

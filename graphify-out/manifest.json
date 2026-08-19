@@ -1,0 +1,117 @@
+{
+  "package.json": {
+    "mtime": 1787031501.017433,
+    "ast_hash": "bbb4b6f9293c0dad19ed1d91a218e853",
+    "semantic_hash": "bbb4b6f9293c0dad19ed1d91a218e853"
+  },
+  "quarks/Cartoon Blue Flamethrower.json": {
+    "mtime": 1787025664.7205992,
+    "ast_hash": "6c089c314822c3854602698fc38973a6",
+    "semantic_hash": "6c089c314822c3854602698fc38973a6"
+  },
+  "quarks/Cartoon Blue Gas Explosion.json": {
+    "mtime": 1787022987.4086187,
+    "ast_hash": "4a17450be39cf8b7f35a3fb66df7e062",
+    "semantic_hash": "4a17450be39cf8b7f35a3fb66df7e062"
+  },
+  "quarks/CartoonBlueFlamethrower.ts": {
+    "mtime": 1787026799.8712046,
+    "ast_hash": "d060ecab3d781cd5969e2ae9aea7090d",
+    "semantic_hash": "d060ecab3d781cd5969e2ae9aea7090d"
+  },
+  "quarks/CartoonBlueGasExplosion.ts": {
+    "mtime": 1787023105.5030103,
+    "ast_hash": "887c851fa8261fab92dcd5b41405f5aa",
+    "semantic_hash": "887c851fa8261fab92dcd5b41405f5aa"
+  },
+  "quarks/subEmitter2.json": {
+    "mtime": 1787029279.0107653,
+    "ast_hash": "cf57e32fd94a88db3f8655d1e43738e4",
+    "semantic_hash": "cf57e32fd94a88db3f8655d1e43738e4"
+  },
+  "scratch/test_clone.mjs": {
+    "mtime": 1787029564.8835695,
+    "ast_hash": "dd2d3cacef13d97700f161ac6d8adaaa",
+    "semantic_hash": "dd2d3cacef13d97700f161ac6d8adaaa"
+  },
+  "scripts/convert-quark.mjs": {
+    "mtime": 1787023101.6760926,
+    "ast_hash": "97cbc06cd362c88cd04cd2f6325d784f",
+    "semantic_hash": "97cbc06cd362c88cd04cd2f6325d784f"
+  },
+  "scripts/quarks-to-native.mjs": {
+    "mtime": 1787038355.2528725,
+    "ast_hash": "441fa4832962085fd568b67a6b75ce50",
+    "semantic_hash": "441fa4832962085fd568b67a6b75ce50"
+  },
+  "src/main.ts": {
+    "mtime": 1787041523.6413097,
+    "ast_hash": "b3d7c483341f8d3c80f2dd8392aa091d",
+    "semantic_hash": "b3d7c483341f8d3c80f2dd8392aa091d"
+  },
+  "src/native-vfx.ts": {
+    "mtime": 1787025395.5999835,
+    "ast_hash": "2870f15d4435a68ff8128161abcd5b96",
+    "semantic_hash": "2870f15d4435a68ff8128161abcd5b96"
+  },
+  "src/quarks-vfx.ts": {
+    "mtime": 1787024639.5362353,
+    "ast_hash": "112b128a27787ff9ff56e989c756f1aa",
+    "semantic_hash": "112b128a27787ff9ff56e989c756f1aa"
+  },
+  "src/vfx-manager.ts": {
+    "mtime": 1787030896.447258,
+    "ast_hash": "01f15c8b97048b11be4ddb6f378203e0",
+    "semantic_hash": "01f15c8b97048b11be4ddb6f378203e0"
+  },
+  "src/vfx.worker.ts": {
+    "mtime": 1787022872.3023262,
+    "ast_hash": "04ac7b663fa4305a64f625acc032752f",
+    "semantic_hash": "04ac7b663fa4305a64f625acc032752f"
+  },
+  "src/vfx/cartoon-blue-flamethrower/Native.ts": {
+    "mtime": 1787050281.7501266,
+    "ast_hash": "c1ec7c35a4067b0004159201f8a74c56",
+    "semantic_hash": "c1ec7c35a4067b0004159201f8a74c56"
+  },
+  "src/vfx/cartoon-blue-flamethrower/Quarks.ts": {
+    "mtime": 1787029668.1021914,
+    "ast_hash": "6d596d416268d2c289f3741f97318906",
+    "semantic_hash": "6d596d416268d2c289f3741f97318906"
+  },
+  "src/vfx/cartoon-blue-gas-explosion/Native.ts": {
+    "mtime": 1787038361.0025468,
+    "ast_hash": "e6fe1cbe2100cdf281d785de1d9cfa16",
+    "semantic_hash": "e6fe1cbe2100cdf281d785de1d9cfa16"
+  },
+  "src/vfx/cartoon-blue-gas-explosion/Quarks.ts": {
+    "mtime": 1787029673.3220096,
+    "ast_hash": "bf98cc2e5c3a2bed42e4a79f87e702db",
+    "semantic_hash": "bf98cc2e5c3a2bed42e4a79f87e702db"
+  },
+  "src/vfx/subemitter2/Native.ts": {
+    "mtime": 1787050430.9452004,
+    "ast_hash": "459cd6e3c1e26b86ebbf5c71b6413796",
+    "semantic_hash": "459cd6e3c1e26b86ebbf5c71b6413796"
+  },
+  "src/vfx/subemitter2/Quarks.ts": {
+    "mtime": 1787029661.342432,
+    "ast_hash": "a09cb28a7e98492a8def206cde008772",
+    "semantic_hash": "a09cb28a7e98492a8def206cde008772"
+  },
+  "src/vfx/tornado/Native.ts": {
+    "mtime": 1787045091.6738672,
+    "ast_hash": "c01eafda4f66495279f6911e6a9f747e",
+    "semantic_hash": "c01eafda4f66495279f6911e6a9f747e"
+  },
+  "tsconfig.json": {
+    "mtime": 1787022866.7954607,
+    "ast_hash": "7c5105e8b3843e6ca1817d6c7f592dc6",
+    "semantic_hash": "7c5105e8b3843e6ca1817d6c7f592dc6"
+  },
+  "vite.config.ts": {
+    "mtime": 1787022864.0155287,
+    "ast_hash": "295354383dcbdedcb772ed2a6fceba80",
+    "semantic_hash": "295354383dcbdedcb772ed2a6fceba80"
+  }
+}
