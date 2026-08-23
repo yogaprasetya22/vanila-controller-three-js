@@ -4,7 +4,8 @@ import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 // @ts-ignore
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { getTerrainHeight } from '../simulation/constants';
-import { isHost, setState, getState, RPC } from 'playroomkit';
+import { isHost, setState, getState, RPC, send, getNPCConfig, myPlayer } from '../network/NetworkManager.ts';
+import { damageHUDBatcher } from '../graphics/effects/DamageHUDBatcher.ts';
 
 const gltfLoader = new GLTFLoader();
 gltfLoader.setMeshoptDecoder(MeshoptDecoder);
@@ -17,9 +18,9 @@ export class BossController {
     private scene: THREE.Scene;
 
     public position = new THREE.Vector3(0, 0, 0);
-    public speed = 3.5;
-    public hp = 10000000;
-    public maxHp = 10000000;
+    public speed = 0; // Synced dynamically from Go server
+    public hp = 0;    // Synced dynamically from Go server
+    public maxHp = 0; // Synced dynamically from Go server
 
     private mixer: THREE.AnimationMixer | null = null;
     private actions: { [key: string]: THREE.AnimationAction } = {};
@@ -30,28 +31,30 @@ export class BossController {
     private targetPos = new THREE.Vector3(0, 0, 0);
     private targetRot = 0;
     private targetAction = "idle";
+    public lastDamageTime = 0;
+    private hitTimeout: any = null;
+    private lastDamageCycle = -1;
+    private hasDamagedThisLoop = false;
 
     // Nametag Billboard Properties
     private nameTagCanvas: HTMLCanvasElement | null = null;
     private nameTagTexture: THREE.CanvasTexture | null = null;
     public nameTagSprite: THREE.Sprite | null = null;
 
-    // Collision Properties
-    private environmentMesh: THREE.Mesh | null = null;
-    private tempSegment = new THREE.Line3();
-    private tempBox = new THREE.Box3();
-    private tempTriPoint = new THREE.Vector3();
-    private capsulePoint = new THREE.Vector3();
-    private tempVector2 = new THREE.Vector3();
-    private radius = 1.4; // Giant Boss has larger collision radius
-    private height = 5.0;
-
     constructor(scene: THREE.Scene, skillsSystem: any) {
         this.scene = scene;
         this.playerGroup = new THREE.Group();
 
-        // Spawn at center-back of the map
-        this.position.set(0, getTerrainHeight(0, -15), -15);
+        // Apply authoritative server settings if available
+        const npcCfg = getNPCConfig();
+        if (npcCfg) {
+            this.maxHp = npcCfg.bossMaxHp;
+            this.hp = npcCfg.bossMaxHp;
+            this.speed = npcCfg.bossSpeed;
+            this.position.set(npcCfg.bossX, getTerrainHeight(npcCfg.bossX, npcCfg.bossZ), npcCfg.bossZ);
+        } else {
+            this.position.set(0, getTerrainHeight(0, -15), -15);
+        }
         this.playerGroup.position.copy(this.position);
         this.scene.add(this.playerGroup);
 
@@ -66,7 +69,7 @@ export class BossController {
     }
 
     public setEnvironment(mesh: THREE.Mesh) {
-        this.environmentMesh = mesh;
+        // Server-authoritative collisions: no-op on client
     }
 
     private async loadModel() {
@@ -81,7 +84,7 @@ export class BossController {
                         "/character/animation/Rig_Medium_MovementAdvanced.glb",
                     ),
                     gltfLoader.loadAsync(
-                        "/character/animation/Rig_Medium_CombatRanged.glb",
+                        "/character/animation/Rig_Medium_CombatMelee.glb",
                     ),
                     gltfLoader.loadAsync(
                         "/character/animation/Rig_Medium_MovementBasic.glb",
@@ -134,21 +137,27 @@ export class BossController {
                     const found = allClips.find((c) => c.name === name);
                     if (found) return found;
                 }
-                return allClips[0];
+                return null;
             };
 
             // Select matching animations (like player character controller)
-            const idleClip = pickClip(["Ranged_Bow_Idle", "Idle"]);
-            const walkClip = pickClip([
-                "Running_HoldingBow",
-                "Running_B",
-                "Walk",
-            ]);
+            const idleClip = pickClip(["Idle_A", "Idle_B", "Idle"]);
+            const walkClip = pickClip(["Running_B", "Walk"]);
+            const attackClip = pickClip(["Melee_Unarmed_Attack_Kick", "Melee_2H_Attack_Chop", "Melee_1H_Attack_Chop", "Melee_2H_Attack_Slice", "Melee_1H_Attack_Slice_Horizontal", "Melee_Unarmed_Attack_Punch_A"]);
+            const hitClip = pickClip(["Hit_A", "Hit_B"]);
 
             if (idleClip)
                 this.actions["idle"] = this.mixer.clipAction(idleClip);
             if (walkClip)
                 this.actions["walk"] = this.mixer.clipAction(walkClip);
+            if (attackClip)
+                this.actions["attack"] = this.mixer.clipAction(attackClip);
+            if (hitClip) {
+                const act = this.mixer.clipAction(hitClip);
+                act.setLoop(THREE.LoopOnce, 1);
+                act.clampWhenFinished = true;
+                this.actions["hit"] = act;
+            }
 
             this.playAnimationState("idle");
 
@@ -217,212 +226,120 @@ export class BossController {
         }
     }
 
-    public takeDamage(dmg: number) {
-        if (!isHost()) return;
-        this.hp = Math.max(0, this.hp - dmg);
-        setState("bossHp", this.hp);
-        if (this.hp <= 0) {
-            // Respawn logic
-            setTimeout(() => {
-                this.hp = this.maxHp;
-                setState("bossHp", this.hp);
-                this.position.set(
-                    (Math.random() - 0.5) * 40,
-                    getTerrainHeight(0, 0),
-                    (Math.random() - 0.5) * 40 - 15,
-                );
-                setState("bossPos", {
-                    x: this.position.x,
-                    y: this.position.y,
-                    z: this.position.z,
-                });
-                this.playerGroup.position.copy(this.position);
-            }, 8000);
-        }
+    public takeDamage(dmg: number, x = 0, y = 0, z = 0) {
+        send({
+            type: "boss_hit",
+            value: dmg,
+            x,
+            y,
+            z
+        });
     }
 
-    private resolveCollisions(delta: number) {
-        if (
-            !this.environmentMesh ||
-            !this.environmentMesh.geometry.boundsTree
-        ) {
-            const terrainY = getTerrainHeight(this.position.x, this.position.z);
-            this.position.y = terrainY;
-            this.playerGroup.position.copy(this.position);
-            return;
-        }
+    public playHit() {
+        const hit = this.actions["hit"];
+        const current = this.actions[this.currentActionName];
+        if (hit) {
+            if (current) current.fadeOut(0.1);
+            hit.reset().fadeIn(0.1).play();
 
-        const bvh = this.environmentMesh.geometry.boundsTree;
-        const capsuleStart = this.tempSegment.start;
-        const capsuleEnd = this.tempSegment.end;
-
-        for (let iter = 0; iter < 3; iter++) {
-            capsuleStart
-                .copy(this.position)
-                .addScaledVector(new THREE.Vector3(0, 1, 0), this.radius);
-            capsuleEnd
-                .copy(this.position)
-                .addScaledVector(
-                    new THREE.Vector3(0, 1, 0),
-                    this.height - this.radius,
-                );
-
-            this.tempBox.makeEmpty();
-            this.tempBox.expandByPoint(capsuleStart);
-            this.tempBox.expandByPoint(capsuleEnd);
-            this.tempBox.min.subScalar(this.radius);
-            this.tempBox.max.addScalar(this.radius);
-
-            bvh.shapecast({
-                intersectsBounds: (box) => box.intersectsBox(this.tempBox),
-                intersectsTriangle: (tri) => {
-                    const distance = tri.closestPointToSegment(
-                        this.tempSegment,
-                        this.tempTriPoint,
-                        this.capsulePoint,
-                    );
-                    if (distance < this.radius) {
-                        const depth = this.radius - distance;
-                        const normal = this.tempVector2
-                            .copy(this.capsulePoint)
-                            .sub(this.tempTriPoint)
-                            .normalize();
-                        normal.y = 0; // lock to horizontal plane sliding to prevent vertical scaling glitches
-                        if (normal.lengthSq() > 0.001) {
-                            normal.normalize();
-                            this.position.addScaledVector(normal, depth);
-                        }
+            if (this.hitTimeout) clearTimeout(this.hitTimeout);
+            this.hitTimeout = setTimeout(() => {
+                if (this.hp > 0) {
+                    hit.fadeOut(0.2);
+                    const next = this.actions[this.currentActionName];
+                    if (next) {
+                        next.reset().fadeIn(0.2).play();
                     }
-                },
-            });
+                }
+            }, hit.getClip().duration * 1000);
         }
-
-        // Snap Y height to terrain
-        this.position.y = getTerrainHeight(this.position.x, this.position.z);
-        this.playerGroup.position.copy(this.position);
     }
+
+
 
     public update(delta: number, players: { player: any; controller: any }[]) {
         if (this.mixer) this.mixer.update(delta);
 
-        if (isHost()) {
-            if (this.hp <= 0) {
-                this.playerGroup.visible = false;
-                return;
-            }
-            this.playerGroup.visible = true;
+        // Synchronize damage with kick animation impact (0.9333s total duration, impact around 0.4s to 0.6s)
+        const attackAction = this.actions["attack"];
+        if (attackAction && this.targetAction === "attack" && this.hp > 0) {
+            const time = attackAction.time;
+            const duration = 0.93333;
+            const relativeTime = time % duration;
 
-            // ─── HOST AI & MOVEMENT ────────────────────────────────────────────────
-            let nearestDist = Infinity;
-            let nearestTarget: any = null;
-
-            players.forEach(({ controller }) => {
-                if (controller && controller.position) {
-                    const d = this.position.distanceTo(controller.position);
-                    if (d < nearestDist) {
-                        nearestDist = d;
-                        nearestTarget = controller;
-                    }
-                }
-            });
-
-            if (nearestTarget) {
-                const targetPos = nearestTarget.position;
-                const dir = _dirVec.subVectors(targetPos, this.position);
-                dir.y = 0; // maintain height
-                const dist = dir.length();
-
-                // Rotate to look at player
-                const angle = Math.atan2(dir.x, dir.z);
-                if (this.playerMesh) {
-                    this.playerMesh.rotation.y = angle;
-                }
-
-                if (dist > 4.0) {
-                    dir.normalize();
-
-                    // Walk towards player
-                    this.position.addScaledVector(dir, this.speed * delta);
-
-                    // Apply environment bounds collision resolution!
-                    this.resolveCollisions(delta);
-
-                    this.playAnimationState("walk");
-                } else {
-                    // Idle/Attack distance (Boss does not cast skills anymore per request)
-                    this.playAnimationState("idle");
-                    this.position.y = getTerrainHeight(
-                        this.position.x,
-                        this.position.z,
-                    );
-                    this.playerGroup.position.copy(this.position);
-                }
-            } else {
-                this.playAnimationState("idle");
-                this.position.y = getTerrainHeight(
-                    this.position.x,
-                    this.position.z,
-                );
-                this.playerGroup.position.copy(this.position);
+            // Reset the damage flag when animation resets to the beginning of the loop
+            if (relativeTime < 0.2) {
+                this.hasDamagedThisLoop = false;
             }
 
-            // Broadcast state
-            setState("bossPos", {
-                x: this.position.x,
-                y: this.position.y,
-                z: this.position.z,
-            });
-            setState(
-                "bossRot",
-                this.playerMesh ? this.playerMesh.rotation.y : 0,
-            );
-            setState("bossAction", this.currentActionName);
-            setState("bossHp", this.hp);
-        } else {
-            // ─── CLIENT INTERPOLATION ──────────────────────────────────────────────
-            this.timeSinceLastSync += delta;
-            if (this.timeSinceLastSync >= 0.05) {
-                this.timeSinceLastSync = 0;
-
-                const pos = getState("bossPos");
-                if (pos) {
-                    this.targetPos.set(pos.x, pos.y, pos.z);
-                }
-
-                const rot = getState("bossRot");
-                if (rot !== undefined) {
-                    this.targetRot = rot;
-                }
-
-                const action = getState("bossAction");
-                if (action) {
-                    this.targetAction = action;
-                }
-
-                const syncedHp = getState("bossHp");
-                if (syncedHp !== undefined) {
-                    this.hp = syncedHp;
+            if (relativeTime >= 0.4 && relativeTime <= 0.6) {
+                if (!this.hasDamagedThisLoop) {
+                    this.hasDamagedThisLoop = true;
+                    players.forEach(p => {
+                        if (p.player.id === myPlayer().id) {
+                            const dist = p.controller.playerGroup.position.distanceTo(this.playerGroup.position);
+                            if (dist < 4.5) {
+                                damageHUDBatcher.spawn({
+                                    skill: 'boss',
+                                    value: 20,
+                                    position: [p.controller.playerGroup.position.x, p.controller.playerGroup.position.y + 1, p.controller.playerGroup.position.z],
+                                    isCrit: Math.random() > 0.8,
+                                    isMagic: false
+                                });
+                                const localHp = myPlayer().getState('hp') ?? 100;
+                                const nextHp = Math.max(0, localHp - 20);
+                                myPlayer().setState('hp', nextHp === 0 ? 100 : nextHp);
+                            }
+                        }
+                    });
                 }
             }
-
-            if (this.hp <= 0) {
-                this.playerGroup.visible = false;
-                return;
-            }
-            this.playerGroup.visible = true;
-
-            // Smoothly interpolate towards cached values
-            this.position.lerp(this.targetPos, 0.2);
-            this.playerGroup.position.copy(this.position);
-
-            if (this.playerMesh) {
-                let diff = this.targetRot - this.playerMesh.rotation.y;
-                diff = Math.atan2(Math.sin(diff), Math.cos(diff));
-                this.playerMesh.rotation.y += diff * 0.2;
-            }
-
-            this.playAnimationState(this.targetAction);
         }
+
+        // ─── CLIENT INTERPOLATION ──────────────────────────────────────────────
+        this.timeSinceLastSync += delta;
+        if (this.timeSinceLastSync >= 0.05) {
+            this.timeSinceLastSync = 0;
+
+            const pos = getState("bossPos");
+            if (pos) {
+                this.targetPos.set(pos.x, pos.y, pos.z);
+            }
+
+            const rot = getState("bossRot");
+            if (rot !== undefined) {
+                this.targetRot = rot;
+            }
+
+            const action = getState("bossAction");
+            if (action) {
+                this.targetAction = action;
+            }
+
+            const syncedHp = getState("bossHp");
+            if (syncedHp !== undefined) {
+                this.hp = syncedHp;
+            }
+        }
+
+        if (this.hp <= 0) {
+            this.playerGroup.visible = false;
+            return;
+        }
+        this.playerGroup.visible = true;
+
+        // Smoothly interpolate towards cached values
+        this.position.lerp(this.targetPos, 0.2);
+        this.playerGroup.position.copy(this.position);
+
+        if (this.playerMesh) {
+            let diff = this.targetRot - this.playerMesh.rotation.y;
+            diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+            this.playerMesh.rotation.y += diff * 0.2;
+        }
+
+        this.playAnimationState(this.targetAction);
 
         // Render/update billboard nametag health
         this.updateNameTag(this.hp / this.maxHp);

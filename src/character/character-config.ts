@@ -9,16 +9,13 @@ export const CHARACTER_CONFIG = {
     dodgeCooldown: 0.5,          // Cooldown between dodges (seconds)
   },
 
-  // Combat stats
+  // Combat stats (Authoritative, synced dynamically from Go server on handshake)
   combat: {
-    baseAttackSpeed: 195,         // Target MMORPG Attack Speed rating (195 Max ASPD)
-    rateOfFire: 0.05,            // Cooldown between basic attacks (seconds, 20 attacks/sec)
-    autoAimRange: 30.0,          // Auto-aim dummy search range limit (meters)
-    attackAnimScale: 12.0,       // Speed multiplier for basic attack animation clip
-    attackLockDuration: 0.03,    // Animation lock duration for basic attacks (seconds)
-    damage: 12000,                 // Damage for basic attack arrow
-    critChance: 0.90,            // Hero critical strike chance (90%)
-    critDamage: 2.0,             // Hero critical strike multiplier (2.0x)
+    baseAttackSpeed: 0,
+    rateOfFire: 0,
+    autoAimRange: 0,
+    attackAnimScale: 0,
+    attackLockDuration: 0,
   },
 
   // Projectile system parameters

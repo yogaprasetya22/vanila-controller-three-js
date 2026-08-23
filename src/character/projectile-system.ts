@@ -1,11 +1,11 @@
 import * as THREE from 'three';
 import { CHARACTER_CONFIG } from './character-config';
 import { getTerrainHeight } from '../simulation/constants';
+import { myPlayer } from '../network/NetworkManager.ts';
 
 function getUnits(): any[] {
   return [];
 }
-
 
 interface Projectile {
   mesh: THREE.Mesh;
@@ -13,6 +13,7 @@ interface Projectile {
   age: number;
   maxAge: number;
   target: THREE.Object3D | null;
+  ownerId?: string;
   ownerTeam?: number;
 }
 
@@ -23,17 +24,16 @@ const _toTarget = new THREE.Vector3();
 const _movementVec = new THREE.Vector3();
 const _targetLook = new THREE.Vector3();
 const _tPos = new THREE.Vector3();
-const _rayOrigin = new THREE.Vector3(); // pre-alloc: was `new THREE.Vector3(oldX,...)` per frame
-const _raycaster = new THREE.Raycaster(); // pre-alloc: was `new THREE.Raycaster(...)` per frame
+const _rayOrigin = new THREE.Vector3();
+const _raycaster = new THREE.Raycaster();
 const _targetLookAt = new THREE.Vector3();
 
 export class ProjectileSystem {
   private scene: THREE.Scene;
-  public projectiles: any[] = [];
+  public projectiles: Projectile[] = [];
   private arrowGeometry: THREE.CylinderGeometry;
   private arrowMaterial: THREE.Material;
-  private meshPool: THREE.Mesh[] = []; // ponytail: object pool to prevent dynamic THREE.Mesh allocation & GC pauses
-  public isLocal = false; // ponytail: only local/owned projectile systems report hits to the damage pipeline
+  private meshPool: THREE.Mesh[] = [];
 
   public getActiveCount(): number {
     return this.projectiles.length;
@@ -46,7 +46,7 @@ export class ProjectileSystem {
     this.arrowGeometry = new THREE.CylinderGeometry(0.01, 0.04, 1.2, 8);
     this.arrowGeometry.rotateX(Math.PI / 2);
 
-    // 2. Custom glowing GLSL ShaderMaterial (additive blended)
+    // 2. Custom glowing GLSL ShaderMaterial
     this.arrowMaterial = new THREE.MeshBasicMaterial({
       color: new THREE.Color(CHARACTER_CONFIG.projectiles.glowColor),
       transparent: false,
@@ -55,7 +55,7 @@ export class ProjectileSystem {
     });
   }
 
-  public spawn(startPosition: THREE.Vector3, direction: THREE.Vector3, speed = CHARACTER_CONFIG.projectiles.speed, target: THREE.Object3D | null = null, ownerTeam = -1) {
+  public spawn(startPosition: THREE.Vector3, direction: THREE.Vector3, speed = CHARACTER_CONFIG.projectiles.speed, target: THREE.Object3D | null = null, ownerTeam = -1, ownerId?: string) {
     let arrowMesh: THREE.Mesh;
     if (this.meshPool.length > 0) {
       arrowMesh = this.meshPool.pop()!;
@@ -82,11 +82,14 @@ export class ProjectileSystem {
       age: 0,
       maxAge: CHARACTER_CONFIG.projectiles.maxDistance / speed,
       target: target,
+      ownerId: ownerId,
       ownerTeam: ownerTeam
     });
   }
 
-  public update(delta: number, environmentMesh: THREE.Mesh | null, spawnVFXCallback?: (pos: THREE.Vector3) => void) {
+  public update(delta: number, environmentMesh: THREE.Mesh | null, spawnVFXCallback?: (pos: THREE.Vector3, target: THREE.Object3D | null) => void) {
+    const localPlayerId = myPlayer().id;
+
     for (let i = this.projectiles.length - 1; i >= 0; i--) {
       const p = this.projectiles[i];
       p.age += delta;
@@ -98,11 +101,11 @@ export class ProjectileSystem {
       _targetLook.copy(p.mesh.position).add(p.velocity);
       p.mesh.lookAt(_targetLook);
 
-      // ─── REMOTE projectile fast path ─────────────────────────────────────────
-      // Host handles hit registration — remote arrows are visual only.
-      // We apply simple homing steering (lerp velocity to target) so they visually track targets, 
-      // but skip ALL expensive collision scanning and raycasts.
-      if (!this.isLocal) {
+      // Verify if projectile was shot by local player
+      const isLocal = p.ownerId === localPlayerId;
+
+      // ─── REMOTE projectile path (or visual-only helper path) ─────────────────────────────────────────
+      if (!isLocal) {
         let remoteCollided = false;
         if (p.target) {
           _targetPos.copy(p.target.position);
@@ -112,16 +115,15 @@ export class ProjectileSystem {
           _toTarget.multiplyScalar(speed);
           p.velocity.lerp(_toTarget, CHARACTER_CONFIG.projectiles.homingSteerForce * delta);
 
-          // Explode if close to target center (0.7m radius = 0.49 distance squared)
+          // Explode if close to target center
           _tPos.copy(p.target.position);
           _tPos.y += 0.5;
-          if (p.mesh.position.distanceToSquared(_tPos) < 0.81) { // 0.9m tolerance
+          if (p.mesh.position.distanceToSquared(_tPos) < 0.81) {
             remoteCollided = true;
           }
         }
         if (remoteCollided || p.age >= p.maxAge) {
-          // Trigger visual hit VFX at final position before recycling
-          if (spawnVFXCallback) spawnVFXCallback(p.mesh.position);
+          if (spawnVFXCallback) spawnVFXCallback(p.mesh.position, p.target);
           p.mesh.visible = false;
           this.meshPool.push(p.mesh);
           this.projectiles[i] = this.projectiles[this.projectiles.length - 1];
@@ -130,62 +132,34 @@ export class ProjectileSystem {
         continue;
       }
 
-      // ─── LOCAL projectile full path ───────────────────────────────────────────
-      // Homing / Target Seeking steering
+      // ─── LOCAL projectile path (Check collisions & trigger hit callbacks) ───────────────────────────────────────────
       if (p.target) {
-        _targetPos.copy(p.target.position);
-        _targetPos.y += 1.0;
-        _toTarget.copy(_targetPos).sub(p.mesh.position).normalize();
-        _toTarget.multiplyScalar(p.velocity.length());
-        p.velocity.lerp(_toTarget, CHARACTER_CONFIG.projectiles.homingSteerForce * delta);
+        // Homing: check only against pinned target — O(1)
+        _tPos.copy(p.target.position);
+        _tPos.y += 0.5;
+        let collided = false;
+        if (p.mesh.position.distanceToSquared(_tPos) < 0.81) { // 0.9m tolerance
+          collided = true;
+          if (spawnVFXCallback) spawnVFXCallback(p.mesh.position, p.target);
+        }
+
+        if (collided || p.age >= p.maxAge) {
+          p.mesh.visible = false;
+          this.meshPool.push(p.mesh);
+          this.projectiles[i] = this.projectiles[this.projectiles.length - 1];
+          this.projectiles.length--;
+          continue;
+        }
       } else {
+        // Fallback blind fire (optional)
         p.velocity.addScaledVector(_gravity, delta);
       }
 
       const oldX = p.mesh.position.x, oldY = p.mesh.position.y, oldZ = p.mesh.position.z;
       let collided = false;
 
-      if (p.target) {
-        // Homing: check only against pinned target — O(1)
-        _tPos.copy(p.target.position);
-        _tPos.y += 0.5;
-        if (p.mesh.position.distanceToSquared(_tPos) < 0.49) { // 0.7m radius
-          collided = true;
-          if (spawnVFXCallback) spawnVFXCallback(p.mesh.position);
-          const targetIndexAttr = p.target.userData.unitIndex ?? p.target.name;
-          const targetIdx = parseInt(targetIndexAttr);
-          if (!isNaN(targetIdx)) {
-            window.dispatchEvent(new CustomEvent('projectile_hit', {
-              detail: { targetIdx, damage: CHARACTER_CONFIG.combat.damage }
-            }));
-          }
-        }
-      } else {
-        // Blind fire: scan units — O(n) but only for local projectiles
-        const units = getUnits();
-        const ownerTeam = p.ownerTeam !== undefined ? p.ownerTeam : -1;
-        for (let j = 0; j < units.length; j++) {
-          const u = units[j];
-          if (!u || !u.root) continue;
-          if (ownerTeam !== -1 && u.team === ownerTeam) continue;
-          _tPos.copy(u.root.position);
-          _tPos.y += 0.5;
-          if (p.mesh.position.distanceToSquared(_tPos) < 0.64) { // 0.8m radius
-            collided = true;
-            if (spawnVFXCallback) spawnVFXCallback(p.mesh.position);
-            const targetIdx = u.root.userData.unitIndex;
-            if (targetIdx !== undefined && !isNaN(targetIdx)) {
-              window.dispatchEvent(new CustomEvent('projectile_hit', {
-                detail: { targetIdx, damage: CHARACTER_CONFIG.combat.damage }
-              }));
-            }
-            break;
-          }
-        }
-      }
-
       // Environment BVH raycast
-      if (!collided && environmentMesh && environmentMesh.geometry.boundsTree) {
+      if (environmentMesh && environmentMesh.geometry.boundsTree) {
         _movementVec.set(
           p.mesh.position.x - oldX,
           p.mesh.position.y - oldY,
@@ -201,7 +175,7 @@ export class ProjectileSystem {
           if (intersects.length > 0) {
             collided = true;
             p.mesh.position.copy(intersects[0].point);
-            if (spawnVFXCallback) spawnVFXCallback(intersects[0].point);
+            if (spawnVFXCallback) spawnVFXCallback(intersects[0].point, null);
           }
         }
       }
@@ -211,10 +185,9 @@ export class ProjectileSystem {
       if (p.mesh.position.y < floorY + 0.05) {
         collided = true;
         p.mesh.position.y = floorY + 0.05;
-        if (spawnVFXCallback) spawnVFXCallback(p.mesh.position);
+        if (spawnVFXCallback) spawnVFXCallback(p.mesh.position, null);
       }
 
-      // Swap-pop O(1) removal
       if (collided || p.age >= p.maxAge) {
         p.mesh.visible = false;
         this.meshPool.push(p.mesh);

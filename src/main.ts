@@ -3,29 +3,28 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { CharacterController } from './character/character-controller.ts';
-import { CHARACTER_CONFIG } from './character/character-config.ts';
+import { BossController } from './character/BossController.ts';
 import { DayCycleManager } from './day-cycle-manager.ts';
-import { onPlayerJoin, insertCoin, isHost, myPlayer, RPC, setState, getState } from "playroomkit";
+import { onPlayerJoin, insertCoin, isHost, myPlayer, RPC, setState, getState, onBossDamaged } from './network/NetworkManager.ts';
+import { ProjectileSystem } from './character/projectile-system.ts';
+import { SkillsSystem } from './character/skills-system.ts';
 
-// Add three-mesh-bvh extension functions to prototypes
-(THREE.BufferGeometry.prototype as any).computeBoundsTree = computeBoundsTree;
-(THREE.BufferGeometry.prototype as any).disposeBoundsTree = disposeBoundsTree;
-(THREE.Mesh.prototype as any).raycast = acceleratedRaycast;
-
-// Folder-structured imports
 import { CartoonBlueGasExplosionNativeVFX } from './vfx/cartoon-blue-gas-explosion/Native.ts';
 import { CartoonBlueFlamethrowerNativeVFX } from './vfx/cartoon-blue-flamethrower/Native.ts';
 import { Subemitter2NativeVFX } from './vfx/subemitter2/Native.ts';
 import { CartoonTornadoNativeVFX } from './vfx/tornado/Native.ts';
-
 import { updateFX } from './graphics/effects/FXCore';
 import { dispatchSkillFX } from './graphics/effects/FXRouter';
 import { WindEffectManager } from './graphics/effects/WindLines.ts';
 import { SceneryWindLines } from './graphics/effects/SceneryWindLines.ts';
 import { damageHUDBatcher } from './graphics/effects/DamageHUDBatcher.ts';
 
+// Extend THREE prototypes with BVH acceleration
+(THREE.BufferGeometry.prototype as any).computeBoundsTree = computeBoundsTree;
+(THREE.BufferGeometry.prototype as any).disposeBoundsTree = disposeBoundsTree;
+(THREE.Mesh.prototype as any).raycast = acceleratedRaycast;
 
-// On-screen error overlay to quickly diagnose WebGL/Runtime issues
+// ── Error Overlays ────────────────────────────────────────────────────────────
 window.addEventListener('error', (e) => {
   const el = document.createElement('div');
   el.style.cssText = 'position:absolute;bottom:100px;left:20px;background:rgba(255,0,0,0.85);color:white;padding:15px;border-radius:5px;font-family:monospace;font-size:12px;z-index:9999;max-width:80%';
@@ -36,17 +35,16 @@ window.addEventListener('error', (e) => {
 window.addEventListener('unhandledrejection', (e) => {
   const el = document.createElement('div');
   el.style.cssText = 'position:absolute;bottom:200px;left:20px;background:rgba(255,100,0,0.85);color:white;padding:15px;border-radius:5px;font-family:monospace;font-size:12px;z-index:9999;max-width:80%';
-  el.innerText = `Promise Error: ${e.reason ? (e.reason.message || e.reason) : 'Unknown Reason'}`;
+  el.innerText = `Promise Error: ${e.reason?.message ?? e.reason ?? 'Unknown Reason'}`;
   document.body.appendChild(el);
 });
 
 import { setScene, setCamera } from './graphics/core/scene';
 
-// ── Scene ────────────────────────────────────────────────────────────────────
+// ── Scene ─────────────────────────────────────────────────────────────────────
 const container = document.getElementById('canvas-container') as HTMLDivElement;
 const scene = new THREE.Scene();
 setScene(scene);
-// Switch to THREE.Fog to support linear fog distance pushing/pulling in DayCycleManager
 scene.fog = new THREE.Fog(0x050505, 50, 200);
 
 const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -54,21 +52,19 @@ setCamera(camera);
 camera.position.set(0, 15, 30);
 
 const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
-const renderer = new THREE.WebGLRenderer({ antialias: !isMobile, powerPreference: "high-performance" });
+const renderer = new THREE.WebGLRenderer({ antialias: !isMobile, powerPreference: 'high-performance' });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(isMobile ? 1.0 : Math.min(window.devicePixelRatio, 2));
 renderer.setClearColor(scene.fog.color);
 container.appendChild(renderer.domElement);
 
-// ── Controls & Lighting ──────────────────────────────────────────────────────
+// ── Controls & Lighting ───────────────────────────────────────────────────────
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.05;
 controls.maxPolarAngle = Math.PI / 2 - 0.05;
-// Disable left-click rotation. Right-click to rotate, Middle-click to zoom/dolly.
 controls.mouseButtons = { LEFT: -1 as any, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE };
 
-// Disable OrbitControls camera updates when in Player mode
 let controllerMode: 'player' | 'orbit' = 'player';
 controls.enabled = false;
 
@@ -78,439 +74,327 @@ const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
 dirLight.position.set(10, 20, 10);
 scene.add(dirLight);
 
-// ── Day Cycle Manager Setup (60s cycle duration) ──
 const dayCycle = new DayCycleManager(scene, 60);
 dayCycle.setDirectionalLight(dirLight);
 dayCycle.setAmbientLight(ambientLight);
 
-// Time of Day HUD Overlay Label
+// Time of Day HUD
 const timeLabel = document.createElement('div');
 timeLabel.style.cssText = 'position:absolute;top:20px;left:450px;background:rgba(10,10,15,0.75);color:#00ffaa;border:1px solid rgba(0,255,170,0.3);padding:10px 15px;border-radius:5px;font-family:sans-serif;font-weight:bold;z-index:9999;backdrop-filter:blur(5px);pointer-events:none;transition:all 0.3s;';
 timeLabel.innerText = 'Waktu: Pagi';
 document.body.appendChild(timeLabel);
 
-// ── Environment & BVH Level Setup ───────────────────────────────────────────
+// ── Environment & BVH Collider ────────────────────────────────────────────────
 const environmentGeometries: THREE.BufferGeometry[] = [];
 
-// Ground plane
 const groundGeo = new THREE.BoxGeometry(100, 2, 100);
 const groundMesh = new THREE.Mesh(groundGeo);
 groundMesh.position.y = -1;
 groundMesh.updateMatrixWorld();
 environmentGeometries.push(groundGeo.clone().applyMatrix4(groundMesh.matrixWorld));
-
-// Add visual ground mesh
 const visualGround = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.8 }));
 visualGround.position.copy(groundMesh.position);
 scene.add(visualGround);
 
-// Add custom obstacles
 const obstacleConfigs = [
-  { size: [6, 4, 6], pos: [10, 2, 10], color: 0x374151 },
-  { size: [12, 2, 8], pos: [-12, 1, 5], color: 0x4b5563 },
-  { size: [4, 6, 4], pos: [0, 3, -12], color: 0x1f2937 },
-  // Sloped block to test slope sliding / climbing
-  { size: [8, 0.5, 8], pos: [15, 0.25, -10], color: 0x4b5563 },
-  // Steps/stairs obstacles
+  { size: [6, 4, 6],   pos: [10, 2, 10],   color: 0x374151 },
+  { size: [12, 2, 8],  pos: [-12, 1, 5],   color: 0x4b5563 },
+  { size: [4, 6, 4],   pos: [0, 3, -12],   color: 0x1f2937 },
+  { size: [8, 0.5, 8], pos: [15, 0.25, -10],color: 0x4b5563 },
   { size: [3, 0.5, 3], pos: [-2, 0.25, -2], color: 0x374151 },
-  { size: [3, 1.0, 3], pos: [-2, 0.5, -5], color: 0x374151 },
-  { size: [3, 1.5, 3], pos: [-2, 0.75, -8], color: 0x374151 }
+  { size: [3, 1.0, 3], pos: [-2, 0.5, -5],  color: 0x374151 },
+  { size: [3, 1.5, 3], pos: [-2, 0.75, -8], color: 0x374151 },
 ];
 
-obstacleConfigs.forEach(cfg => {
+for (const cfg of obstacleConfigs) {
   const geo = new THREE.BoxGeometry(cfg.size[0], cfg.size[1], cfg.size[2]);
   const mesh = new THREE.Mesh(geo);
   mesh.position.set(cfg.pos[0], cfg.pos[1], cfg.pos[2]);
   mesh.updateMatrixWorld();
   environmentGeometries.push(geo.clone().applyMatrix4(mesh.matrixWorld));
+  const vis = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: cfg.color, roughness: 0.6 }));
+  vis.position.copy(mesh.position);
+  scene.add(vis);
+}
 
-  // Visual mesh representation
-  const visualMesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: cfg.color, roughness: 0.6 }));
-  visualMesh.position.copy(mesh.position);
-  scene.add(visualMesh);
-});
+scene.add(new THREE.GridHelper(100, 50, 0x374151, 0x1f2937));
 
-// Grid helper overlay
-const gridHelper = new THREE.GridHelper(100, 50, 0x374151, 0x1f2937);
-gridHelper.position.y = 0.01;
-scene.add(gridHelper);
-
-// ── Training Dummy (Samsak) ──
+// Training Dummy
 const dummyGeo = new THREE.CylinderGeometry(0.5, 0.5, 2.0, 16);
-const dummyMat = new THREE.MeshStandardMaterial({ color: 0x991b1b, roughness: 0.5 }); // Dark Red padded post
+const dummyMat = new THREE.MeshStandardMaterial({ color: 0x991b1b, roughness: 0.5 });
 const dummyMesh = new THREE.Mesh(dummyGeo, dummyMat);
-dummyMesh.position.set(0, 1.0, -8); // 8 meters in front of center
+dummyMesh.position.set(0, 1.0, -8);
 scene.add(dummyMesh);
-
-// Add to environment geometries for arrow collision detection
 dummyMesh.updateMatrixWorld();
 environmentGeometries.push(dummyGeo.clone().applyMatrix4(dummyMesh.matrixWorld));
 
-// Merge geometries to create a single static collider geometry for three-mesh-bvh
 const mergedGeometry = BufferGeometryUtils.mergeGeometries(environmentGeometries);
 (mergedGeometry as any).computeBoundsTree();
 const colliderMesh = new THREE.Mesh(mergedGeometry);
 
-// ── Character Controller & Systems ───────────────────────────────────────────
-import { ProjectileSystem } from './character/projectile-system.ts';
-import { SkillsSystem } from './character/skills-system.ts';
-
+// ── Systems ───────────────────────────────────────────────────────────────────
 let character: CharacterController | null = null;
-// No bossController variable
+let bossController: BossController | null = null;
 const playersAndControllers: { player: any; controller: CharacterController }[] = [];
+// Pre-built Set of player groups for O(1) friendly-fire check — updated on join/quit
+const playerGroupSet = new Set<THREE.Object3D>();
 
 const projectileSystem = new ProjectileSystem(scene);
-
-// ── VFX Managers ─────────────────────────────────────────────────────────────
-const gasExplosionNative  = new CartoonBlueGasExplosionNativeVFX(scene, camera);
-const flamethrowerNative  = new CartoonBlueFlamethrowerNativeVFX(scene, camera);
-const subemitter2Native   = new Subemitter2NativeVFX(scene, camera);
-const tornadoNative       = new CartoonTornadoNativeVFX(scene, camera);
-
-// Initialize Skills System with native VFX models
+const gasExplosionNative = new CartoonBlueGasExplosionNativeVFX(scene, camera);
+const flamethrowerNative = new CartoonBlueFlamethrowerNativeVFX(scene, camera);
+const subemitter2Native  = new Subemitter2NativeVFX(scene, camera);
+const tornadoNative      = new CartoonTornadoNativeVFX(scene, camera);
 const skillsSystem = new SkillsSystem(subemitter2Native, flamethrowerNative, tornadoNative);
-
-const windEffect = new WindEffectManager(scene);
-if (!isMobile) {
-  windEffect.start();
-}
-
+const windEffect   = new WindEffectManager(scene);
+if (!isMobile) windEffect.start();
 const sceneryWindLines = new SceneryWindLines(scene);
 
-// ── VFX Selection UI Hook ────────────────────────────────────────────────────
+// ── VFX Selection UI ──────────────────────────────────────────────────────────
 let activeVFX = 'gas-native';
-const options = document.querySelectorAll('.vfx-option');
-
-options.forEach(opt => {
+document.querySelectorAll('.vfx-option').forEach(opt => {
   opt.addEventListener('click', () => {
-    options.forEach(o => o.classList.remove('active'));
+    document.querySelectorAll('.vfx-option').forEach(o => o.classList.remove('active'));
     opt.classList.add('active');
     activeVFX = opt.getAttribute('data-vfx') || 'gas-native';
   });
 });
 
-// ── Mode Selector UI (Orbit vs Player) ───────────────────────────────────────
+// ── Mode Toggle ───────────────────────────────────────────────────────────────
 const modeButton = document.createElement('button');
 modeButton.innerText = 'Toggle Mode: Player (Active)';
 modeButton.style.cssText = 'position:absolute;top:20px;left:250px;background:rgba(59,130,246,0.85);color:white;border:none;padding:10px 15px;border-radius:5px;font-family:sans-serif;font-weight:bold;cursor:pointer;z-index:9999;transition:background 0.2s';
 modeButton.addEventListener('mouseover', () => modeButton.style.background = '#2563eb');
-modeButton.addEventListener('mouseout', () => modeButton.style.background = 'rgba(59,130,246,0.85)');
+modeButton.addEventListener('mouseout',  () => modeButton.style.background = 'rgba(59,130,246,0.85)');
 document.body.appendChild(modeButton);
 
 const vfxSelectorPanel = document.getElementById('vfx-selector');
-const playerGuide = document.getElementById('player-guide');
-const orbitGuide = document.getElementById('orbit-guide');
+const playerGuide      = document.getElementById('player-guide');
+const orbitGuide       = document.getElementById('orbit-guide');
 
 function applyModeLayout() {
-  if (controllerMode === 'player') {
-    // Show player elements
-    if (playerGuide) playerGuide.style.display = 'block';
-    skillsSystem.setVisible(true);
-    if (character) character.playerGroup.visible = true;
-    dummyMesh.visible = true;
-
-    // Hide orbit elements
-    if (vfxSelectorPanel) vfxSelectorPanel.style.display = 'none';
-    if (orbitGuide) orbitGuide.style.display = 'none';
-  } else {
-    // Show orbit elements
-    if (vfxSelectorPanel) vfxSelectorPanel.style.display = 'block';
-    if (orbitGuide) orbitGuide.style.display = 'block';
-
-    // Hide player elements
-    if (playerGuide) playerGuide.style.display = 'none';
-    skillsSystem.setVisible(false);
-    if (character) character.playerGroup.visible = false;
-    dummyMesh.visible = false;
-  }
+  const isPlayer = controllerMode === 'player';
+  if (playerGuide)      playerGuide.style.display      = isPlayer ? 'block' : 'none';
+  if (orbitGuide)       orbitGuide.style.display        = isPlayer ? 'none' : 'block';
+  if (vfxSelectorPanel) vfxSelectorPanel.style.display  = isPlayer ? 'none' : 'block';
+  skillsSystem.setVisible(isPlayer);
+  if (character) character.playerGroup.visible = isPlayer;
+  dummyMesh.visible = isPlayer;
 }
-
-// Initial layout setup
 applyModeLayout();
 
 modeButton.addEventListener('click', () => {
   if (controllerMode === 'player') {
     controllerMode = 'orbit';
     controls.enabled = true;
-    if (character) {
-      character.enabled = false;
-      character.resetInputs(); // Reset WASD states & velocity
-    }
-    isShooting = false;      // Reset shooting state
+    character?.resetInputs();
+    if (character) character.enabled = false;
+    isShooting = false;
     modeButton.innerText = 'Toggle Mode: Orbit Camera';
     modeButton.style.background = 'rgba(107,114,128,0.85)';
   } else {
     controllerMode = 'player';
     controls.enabled = false;
-    if (character) {
-      character.enabled = true;
-      character.resetInputs();
-    }
+    if (character) { character.enabled = true; character.resetInputs(); }
     modeButton.innerText = 'Toggle Mode: Player (Active)';
     modeButton.style.background = 'rgba(59,130,246,0.85)';
   }
   applyModeLayout();
 });
 
-// ── Interaction ──────────────────────────────────────────────────────────────
+// ── Input ─────────────────────────────────────────────────────────────────────
 const raycaster = new THREE.Raycaster();
-const mouse = new THREE.Vector2();
-let isShooting = false;
+const mouse     = new THREE.Vector2();
+let isShooting  = false;
 
 renderer.domElement.addEventListener('pointerdown', (e) => {
-  // Only register pointer down on left-clicks
   if (e.button !== 0) return;
-
-  // Basic Attack in Player Mode: enable continuous shooting flag
-  if (controllerMode === 'player') {
-    isShooting = true;
-    return;
-  }
-
+  if (controllerMode === 'player') { isShooting = true; return; }
   mouse.x =  (e.clientX / window.innerWidth)  * 2 - 1;
   mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
   raycaster.setFromCamera(mouse, camera);
-  
-  // Raycast against environment static collider
-  const intersects = raycaster.intersectObject(colliderMesh);
-  if (intersects.length > 0) {
-    const hit = intersects[0].point;
-    spawnActiveVFX(hit);
-  }
+  const hit = raycaster.intersectObject(colliderMesh)[0];
+  if (hit) spawnActiveVFX(hit.point);
 });
-
-window.addEventListener('pointerup', (e) => {
-  if (e.button === 0) {
-    isShooting = false;
-  }
-});
+window.addEventListener('pointerup', (e) => { if (e.button === 0) isShooting = false; });
+window.addEventListener('contextmenu', (e) => e.preventDefault());
 
 function spawnActiveVFX(hit: THREE.Vector3) {
+  const x = hit.x, y = hit.y, z = hit.z;
   switch (activeVFX) {
-    case 'gas-native':
-      gasExplosionNative.spawn(hit.x, hit.y, hit.z);
-      break;
-    case 'flamethrower-native':
-      flamethrowerNative.spawn(hit.x, hit.y, hit.z);
-      break;
-    case 'subemitter2-native':
-      subemitter2Native.spawn(hit.x, hit.y, hit.z);
-      break;
-    case 'tornado-native':
-      tornadoNative.spawn(hit.x, hit.y, hit.z);
-      break;
-
-    case 'skill-ironFortitude':
-      dispatchSkillFX(scene, { skill: 'ironFortitude', x: hit.x, y: hit.y, z: hit.z, team: 1 });
-      break;
-    case 'skill-frostNova':
-      dispatchSkillFX(scene, { skill: 'frostNova', x: hit.x, y: hit.y, z: hit.z, team: 1 });
-      break;
-    case 'skill-divineShield':
-      dispatchSkillFX(scene, { skill: 'divineShield', tx: hit.x, ty: hit.y, tz: hit.z, team: 1 });
-      break;
-    case 'skill-holySanctuary':
-      dispatchSkillFX(scene, { skill: 'holySanctuary', x: hit.x, y: hit.y, z: hit.z, team: 1 });
-      break;
-    case 'skill-taunt':
-      dispatchSkillFX(scene, { skill: 'taunt', x: hit.x - 2, y: hit.y, z: hit.z - 2, tx: hit.x, ty: hit.y, tz: hit.z, team: 1 });
-      break;
-    case 'skill-shieldBash':
-      dispatchSkillFX(scene, { skill: 'shieldBash', x: hit.x - 2, y: hit.y, z: hit.z - 2, tx: hit.x, ty: hit.y, tz: hit.z, team: 1 });
-      break;
-    case 'skill-chainLightning': {
-      const positions = [
-        hit.x, hit.y + 4, hit.z,
-        hit.x + 1.5, hit.y + 1, hit.z + 1.5,
-        hit.x - 1.5, hit.y + 1, hit.z - 1.5,
-        hit.x + 3, hit.y, hit.z + 3
-      ];
-      dispatchSkillFX(scene, { skill: 'chainLightning', positions, team: 1 });
-      break;
-    }
-    case 'skill-arrowVolley':
-      dispatchSkillFX(scene, { skill: 'arrowVolley', x: hit.x, z: hit.z, team: 1 });
-      break;
-    case 'skill-fireball':
-      dispatchSkillFX(scene, { skill: 'fireball', fx: hit.x, fy: hit.y + 3, fz: hit.z, tx: hit.x, ty: hit.y, tz: hit.z, team: 1 });
-      break;
-    case 'skill-doubleShot':
-      dispatchSkillFX(scene, { skill: 'doubleShot', fx: hit.x - 5, fy: hit.y + 2, fz: hit.z - 5, tx: hit.x, ty: hit.y, tz: hit.z, team: 1 });
-      break;
+    case 'gas-native':          gasExplosionNative.spawn(x, y, z); break;
+    case 'flamethrower-native': flamethrowerNative.spawn(x, y, z); break;
+    case 'subemitter2-native':  subemitter2Native.spawn(x, y, z);  break;
+    case 'tornado-native':      tornadoNative.spawn(x, y, z);      break;
+    case 'skill-ironFortitude':  dispatchSkillFX(scene, { skill: 'ironFortitude',  x, y, z, team: 1 }); break;
+    case 'skill-frostNova':      dispatchSkillFX(scene, { skill: 'frostNova',      x, y, z, team: 1 }); break;
+    case 'skill-divineShield':   dispatchSkillFX(scene, { skill: 'divineShield',   tx: x, ty: y, tz: z, team: 1 }); break;
+    case 'skill-holySanctuary':  dispatchSkillFX(scene, { skill: 'holySanctuary',  x, y, z, team: 1 }); break;
+    case 'skill-taunt':          dispatchSkillFX(scene, { skill: 'taunt',          x: x-2, y, z: z-2, tx: x, ty: y, tz: z, team: 1 }); break;
+    case 'skill-shieldBash':     dispatchSkillFX(scene, { skill: 'shieldBash',     x: x-2, y, z: z-2, tx: x, ty: y, tz: z, team: 1 }); break;
+    case 'skill-chainLightning': dispatchSkillFX(scene, { skill: 'chainLightning', positions: [x, y+4, z, x+1.5, y+1, z+1.5, x-1.5, y+1, z-1.5, x+3, y, z+3], team: 1 }); break;
+    case 'skill-arrowVolley':    dispatchSkillFX(scene, { skill: 'arrowVolley',    x, z, team: 1 }); break;
+    case 'skill-fireball':       dispatchSkillFX(scene, { skill: 'fireball',       fx: x, fy: y+3, fz: z, tx: x, ty: y, tz: z, team: 1 }); break;
+    case 'skill-doubleShot':     dispatchSkillFX(scene, { skill: 'doubleShot',     fx: x-5, fy: y+2, fz: z-5, tx: x, ty: y, tz: z, team: 1 }); break;
   }
 }
 
-window.addEventListener('contextmenu', (e) => e.preventDefault());
-
-// ── Stats ────────────────────────────────────────────────────────────────────
-const fpsEl = document.getElementById('fps') as HTMLSpanElement;
-let frameCount = 0;
-let lastFpsTime = performance.now();
-const clock = new THREE.Clock();
-let lastHitVfxTime = 0;
-
-// Create Boss Health Bar UI at top center of screen
+// ── Boss HP Bar UI ────────────────────────────────────────────────────────────
 const bossUiContainer = document.createElement('div');
 bossUiContainer.id = 'boss-ui-container';
 bossUiContainer.style.cssText = `
-  position: absolute;
-  top: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 320px;
-  background: rgba(15, 15, 15, 0.85);
-  backdrop-filter: blur(6px);
-  border: 1.5px solid rgba(239, 68, 68, 0.5);
-  border-radius: 8px;
-  padding: 8px 12px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
-  color: white;
-  font-family: sans-serif;
-  z-index: 9999;
-  display: none;
+  position: absolute; top: 24px; left: 50%; transform: translateX(-50%);
+  width: 420px; background: rgba(10, 5, 5, 0.65);
+  backdrop-filter: blur(12px) saturate(180%); border: 1px solid rgba(239, 68, 68, 0.45);
+  border-radius: 12px; padding: 10px 16px;
+  box-shadow: 0 8px 32px rgba(239, 68, 68, 0.15), 0 0 16px rgba(0, 0, 0, 0.8);
+  color: white; font-family: 'Outfit', sans-serif; z-index: 9999; display: none;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 `;
 bossUiContainer.innerHTML = `
-  <div style="font-weight: bold; font-size: 13px; text-transform: uppercase; color: #ef4444; letter-spacing: 1px; text-shadow: 0 0 6px rgba(239, 68, 68, 0.6); margin-bottom: 4px; text-align: center;">Giant Chief Barbarian</div>
-  <div style="position: relative; width: 100%; height: 14px; background: rgba(40, 10, 10, 0.9); border-radius: 4px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.15);">
-    <div id="boss-hp-bar-fg" style="width: 100%; height: 100%; background: linear-gradient(90deg, #ef4444, #991b1b); transition: width 0.1s ease-out;"></div>
-    <div id="boss-hp-bar-text" style="position: absolute; width: 100%; height: 100%; top: 0; left: 0; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: bold; text-shadow: 1px 1px 1px black;">10000 / 10000</div>
+  <div style="font-weight:800;font-size:14px;text-transform:uppercase;color:#ef4444;letter-spacing:2px;text-shadow:0 0 8px rgba(239,68,68,0.8);margin-bottom:6px;text-align:center;font-family:'Press Start 2P',monospace;">Giant Chief Barbarian</div>
+  <div style="position:relative;width:100%;height:18px;background:rgba(30,5,5,0.9);border-radius:6px;overflow:hidden;border:1.5px solid rgba(255,255,255,0.12);">
+    <div id="boss-hp-bar-fg" style="width:100%;height:100%;background:linear-gradient(90deg,#b91c1c,#ef4444,#f87171);box-shadow:0 0 8px #ef4444;transition:width 0.1s ease-out;"></div>
+    <div id="boss-hp-bar-text" style="position:absolute;width:100%;height:100%;top:0;left:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;text-shadow:1px 1px 2px black;font-family:monospace;letter-spacing:1px;">10000000 / 10000000</div>
   </div>
 `;
 document.body.appendChild(bossUiContainer);
 
+// Cache Boss HP bar DOM refs — queried once, never again in the hot loop
+const bossHpBarFg   = document.getElementById('boss-hp-bar-fg')   as HTMLDivElement;
+const bossHpBarText = document.getElementById('boss-hp-bar-text') as HTMLDivElement;
+
+// ── FPS Counter ───────────────────────────────────────────────────────────────
+const fpsEl = document.getElementById('fps') as HTMLSpanElement;
+let frameCount = 0;
+let lastFpsTime = performance.now();
+const clock = new THREE.Clock();
+
+// ── Scratch vectors for remote lerp — zero alloc ──────────────────────────────
+const _remotePos = new THREE.Vector3();
+const _spawnDir  = new THREE.Vector3();
+const _tgtPos    = new THREE.Vector3();
+
+// ── Animate Loop ──────────────────────────────────────────────────────────────
 function animate() {
   requestAnimationFrame(animate);
   const delta = clock.getDelta();
 
   if (character && controllerMode === 'player') {
     character.update(delta);
-    
-    // Update local name tag and HP
+
+    // Update local nametag HP
     const localHp = myPlayer().getState('hp') ?? 100;
     character.updateNameTag(localHp / 100);
 
-    // Collision detection: Check if any active projectile hits local player
+    // Boss projectile damage scan (player-owned projectiles already filtered by ownerId)
     for (let i = projectileSystem.projectiles.length - 1; i >= 0; i--) {
       const p = projectileSystem.projectiles[i];
-      if (p.age > 0.15) { // Prevent self-collision immediately on spawn
-        const dist = p.mesh.position.distanceTo(character.position);
-        if (dist < 1.2) {
-          // Spawn hit VFX
-          gasExplosionNative.spawn(p.mesh.position.x, p.mesh.position.y, p.mesh.position.z);
-          
-          // Spawn damage HUD
-          damageHUDBatcher.spawn({
-            skill: "normal",
-            value: 10,
-            position: [character.position.x, character.position.y, character.position.z],
-            isCrit: false,
-            isMagic: false,
-          });
+      if (p.age <= 0.15) continue;                         // Prevent spawn self-collision
+      if (p.ownerId !== undefined) continue;                // Friendly Fire: skip all player projectiles
 
-          // Apply damage to self
-          const nextHp = Math.max(0, localHp - 10);
-          myPlayer().setState('hp', nextHp === 0 ? 100 : nextHp); // auto-respawn to 100
-          
-          // Remove projectile
-          scene.remove(p.mesh);
-          projectileSystem.projectiles.splice(i, 1);
-        }
+      if (p.mesh.position.distanceTo(character.position) < 1.2) {
+        gasExplosionNative.spawn(p.mesh.position.x, p.mesh.position.y, p.mesh.position.z);
+        damageHUDBatcher.spawn({ skill: 'normal', value: 10, position: [character.position.x, character.position.y, character.position.z], isCrit: false, isMagic: false });
+        const nextHp = Math.max(0, localHp - 10);
+        myPlayer().setState('hp', nextHp === 0 ? 100 : nextHp);
+        p.mesh.visible = false;
+        // Swap-pop O(1) removal (consistent with projectileSystem internals)
+        projectileSystem.projectiles[i] = projectileSystem.projectiles[projectileSystem.projectiles.length - 1];
+        projectileSystem.projectiles.length--;
       }
     }
 
-    // Continuous attack trigger at 193 ASPD when Left-Click is held down
-    if (isShooting) {
-      if (character.triggerAttack()) {
-        // Query exact left hand (bow) bone position for spawning, fallback to chest height (1.0m offset)
-        const spawnPos = character.getWeaponWorldPosition('hand_l', 1.0);
-        const target = character.getNearestTarget();
-
-        // If there's a target, aim directly at its center regardless of Y height difference
-        let dir = character.getForwardVector();
-        if (target) {
-          const targetWorldPos = new THREE.Vector3();
-          target.getWorldPosition(targetWorldPos);
-          targetWorldPos.y += 0.5; // aim at body center
-          dir = targetWorldPos.sub(spawnPos).normalize();
-        }
-
-        projectileSystem.spawn(spawnPos, dir, 40, target);
+    // Local attack
+    if (isShooting && character.triggerAttack()) {
+      const spawnPos = character.getWeaponWorldPosition('hand_l', 1.0);
+      const target   = character.getNearestTarget();
+      let dir        = character.getForwardVector();
+      if (target) {
+        target.getWorldPosition(_tgtPos);
+        _tgtPos.y += 0.5;
+        dir = _tgtPos.sub(spawnPos).normalize();
       }
+      projectileSystem.spawn(spawnPos, dir, 40, target, -1, myPlayer().id);
     }
   } else {
     controls.update();
   }
 
-  // Update remote players
-  playersAndControllers.forEach(({ player, controller }) => {
-    if (player.id === myPlayer().id) return; // Skip local
+  // Remote players
+  for (const { player, controller } of playersAndControllers) {
+    if (player.id === myPlayer().id) continue;
+
     const pos = player.getState('pos');
     if (pos) {
-      controller.position.lerp(new THREE.Vector3(pos.x, pos.y, pos.z), 0.2);
+      _remotePos.set(pos.x, pos.y, pos.z);
+      controller.position.lerp(_remotePos, 0.2);
     }
+
     const rot = player.getState('rot');
     if (rot !== undefined && controller.playerMesh) {
+      // Shortest-angle lerp for rotation without Math.sin/cos allocation
       let diff = rot - controller.playerMesh.rotation.y;
-      diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+      diff -= Math.round(diff / (Math.PI * 2)) * (Math.PI * 2); // wrap to [-π, π]
       controller.playerMesh.rotation.y += diff * 0.2;
     }
+
     const action = player.getState('action');
-    if (action) {
-      controller.playAnimationState(action);
-    }
+    if (action) controller.playAnimationState(action);
     controller.update(delta);
+    controller.updateNameTag((player.getState('hp') ?? 100) / 100);
 
-    // Update remote player's nametag & HP
-    const remoteHp = player.getState('hp') ?? 100;
-    controller.updateNameTag(remoteHp / 100);
-
-    // Continuous attack local generation for remote players
-    const remoteShooting = player.getState('isShooting');
-    if (remoteShooting) {
-      if (controller.triggerAttack()) {
-        const spawnPos = controller.getWeaponWorldPosition('hand_l', 1.0);
-        const target = controller.getNearestTarget();
-        let dir = controller.getForwardVector();
-        if (target) {
-          const targetWorldPos = new THREE.Vector3();
-          target.getWorldPosition(targetWorldPos);
-          targetWorldPos.y += 0.5;
-          dir = targetWorldPos.sub(spawnPos).normalize();
-        }
-        projectileSystem.spawn(spawnPos, dir, 40, target);
+    // Remote player attack visual
+    if (player.getState('isShooting') && controller.triggerAttack()) {
+      const spawnPos = controller.getWeaponWorldPosition('hand_l', 1.0);
+      const target   = controller.getNearestTarget();
+      let dir        = controller.getForwardVector();
+      if (target) {
+        target.getWorldPosition(_tgtPos);
+        _tgtPos.y += 0.5;
+        dir = _tgtPos.sub(spawnPos).normalize();
       }
+      projectileSystem.spawn(spawnPos, dir, 40, target, -1, player.id);
+    }
+  }
+
+  // Send local state to server
+  if (character) {
+    const me = myPlayer(); // cache — avoids 4 fn calls per frame
+    me.setState('pos', { x: character.position.x, y: character.position.y, z: character.position.z });
+    me.setState('rot', character.playerMesh?.rotation.y ?? 0);
+    me.setState('action', character.currentActionName);
+    me.setState('isShooting', isShooting);
+  }
+
+  // Projectile update + hit callback
+  projectileSystem.update(delta, colliderMesh, (hitPoint, target) => {
+    if (target && playerGroupSet.has(target)) return; // O(1) friendly-fire check
+    const isBoss = bossController !== null && target === bossController.playerGroup;
+    if (isBoss) {
+      bossController!.takeDamage(12000, hitPoint.x, hitPoint.y, hitPoint.z);
+    } else {
+      damageHUDBatcher.spawn({ skill: 'normal', value: 100, position: [hitPoint.x, hitPoint.y, hitPoint.z], isCrit: Math.random() > 0.8 });
     }
   });
 
-  // Local state update & send to PlayroomKit
-  if (character) {
-    myPlayer().setState('pos', { x: character.position.x, y: character.position.y, z: character.position.z });
-    myPlayer().setState('rot', character.playerMesh ? character.playerMesh.rotation.y : 0);
-    myPlayer().setState('action', character.currentActionName);
-    myPlayer().setState('isShooting', isShooting);
+  // Boss update + HP bar sync
+  if (bossController) {
+    bossController.update(delta, playersAndControllers);
+    bossUiContainer.style.display = bossController.hp > 0 ? 'block' : 'none';
+    const ratio = Math.max(0, bossController.hp / bossController.maxHp);
+    bossHpBarFg.style.width    = `${ratio * 100}%`;
+    bossHpBarText.innerText    = `${bossController.hp} / ${bossController.maxHp}`;
   }
 
-  projectileSystem.update(delta, colliderMesh, (hitPoint) => {
-    // No floor hit VFX to save mobile CPU/GPU
-  });
-  
-  // Boss logic removed completely
-  
-  if (character) {
-    skillsSystem.update(delta, character);
-  } else {
-    skillsSystem.update(delta);
-  }
+  skillsSystem.update(delta, character ?? undefined);
 
-  // Update Day Cycle variables (Morning -> Noon -> Afternoon -> Night)
+  // Day cycle
   if (isHost()) {
     dayCycle.update();
     setState('dayCycleStartTime', (dayCycle as any).startTime);
   } else {
     const hostTime = getState('dayCycleStartTime');
-    if (hostTime !== undefined) {
-      (dayCycle as any).startTime = hostTime;
-    }
+    if (hostTime !== undefined) (dayCycle as any).startTime = hostTime;
     dayCycle.update();
   }
   timeLabel.innerText = `Waktu: ${dayCycle.getCurrentPeriod()}`;
@@ -537,36 +421,82 @@ function animate() {
   }
 }
 
-// Allow spawning VFX at character position when walking around and pressing 'E'
-// Also route 1, 2, 3 skills keys
+// ── Skill Hotkeys ─────────────────────────────────────────────────────────────
 window.addEventListener('keydown', (e) => {
-  if (character && controllerMode === 'player') {
-    const playerPos = character.position;
-    const forward = character.getForwardVector();
-    const triggered = skillsSystem.handleInput(e.code, playerPos, forward, character);
-    if (triggered) {
-      RPC.call("cast_skill", {
-        skillCode: e.code,
-        playerPos: { x: playerPos.x, y: playerPos.y, z: playerPos.z },
-        forward: { x: forward.x, y: forward.y, z: forward.z },
-        playerId: myPlayer().id
-      }, RPC.Mode.OTHERS);
-    }
+  if (!character || controllerMode !== 'player') return;
+  const playerPos = character.position;
+  const forward   = character.getForwardVector();
+  if (skillsSystem.handleInput(e.code, playerPos, forward, character)) {
+    RPC.call('cast_skill', {
+      skillCode: e.code,
+      playerPos: { x: playerPos.x, y: playerPos.y, z: playerPos.z },
+      forward:   { x: forward.x,   y: forward.y,   z: forward.z   },
+      playerId:  myPlayer().id,
+    }, RPC.Mode.OTHERS);
   }
 });
 
+// ── Bootstrap ─────────────────────────────────────────────────────────────────
+const loadingOverlay = document.createElement('div');
+loadingOverlay.id = 'loading-overlay';
+loadingOverlay.style.cssText = `
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: radial-gradient(circle, #0f0505 0%, #050202 100%);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  z-index: 100000;
+  transition: opacity 0.5s ease-out;
+  color: white;
+  font-family: 'Outfit', sans-serif;
+`;
+loadingOverlay.innerHTML = `
+  <div style="font-weight: 800; font-size: 24px; text-transform: uppercase; color: #ef4444; letter-spacing: 4px; text-shadow: 0 0 12px rgba(239, 68, 68, 0.6); margin-bottom: 15px; font-family: 'Press Start 2P', monospace;">Loading Game</div>
+  <div style="font-size: 14px; color: rgba(255,255,255,0.7); letter-spacing: 2px; font-family: monospace;" id="loading-status">Sinkronisasi data game dengan server...</div>
+  <div style="width: 160px; height: 3px; background: rgba(255,255,255,0.1); border-radius: 2px; margin-top: 20px; overflow: hidden; position: relative;">
+    <div style="position: absolute; width: 60px; height: 100%; background: #ef4444; box-shadow: 0 0 8px #ef4444; animation: slideLoading 1.2s infinite ease-in-out;"></div>
+  </div>
+  <style>
+    @keyframes slideLoading {
+      0% { left: -60px; }
+      100% { left: 160px; }
+    }
+  </style>
+`;
+document.body.appendChild(loadingOverlay);
+
 insertCoin().then(() => {
-  // Register RPC handlers for syncing skills
-  RPC.register("boss_cast_skill", (data: any) => {
+  const status = document.getElementById('loading-status');
+  if (status) status.innerText = 'Sinkronisasi Selesai! Memulai Game...';
+
+  loadingOverlay.style.opacity = '0';
+  setTimeout(() => {
+    loadingOverlay.remove();
+  }, 500);
+
+  bossController = new BossController(scene, skillsSystem);
+  bossController.setEnvironment(colliderMesh);
+
+  // Sync damage HUD for everyone (server-authoritative damage broadcast)
+  onBossDamaged((data: any) => {
+    damageHUDBatcher.spawn({
+      skill: data.isCrit ? 'boss' : 'normal',
+      value: data.damage,
+      position: [data.x, data.y + 0.8, data.z],
+      isCrit: data.isCrit,
+    });
+    if (bossController && bossController.hp > 0) {
+      bossController.playHit();
+    }
+  });
+
+  RPC.register('boss_cast_skill', (data: any) => {
     skillsSystem.triggerNetworkVFX(data.skillType, data.targetPos.x, data.targetPos.z);
     return Promise.resolve();
   });
 
-  RPC.register("cast_skill", (data: any) => {
-    const pos = new THREE.Vector3(data.playerPos.x, data.playerPos.y, data.playerPos.z);
-    const casterObj = playersAndControllers.find(p => p.player.id === data.playerId);
-    const caster = casterObj ? casterObj.controller : undefined;
-    skillsSystem.triggerNetworkVFX(data.skillCode, pos.x, pos.z, caster?.playerMesh || undefined);
+  RPC.register('cast_skill', (data: any) => {
+    const caster = playersAndControllers.find(p => p.player.id === data.playerId)?.controller;
+    skillsSystem.triggerNetworkVFX(data.skillCode, data.playerPos.x, data.playerPos.z, caster?.playerMesh ?? undefined);
     return Promise.resolve();
   });
 
@@ -574,10 +504,12 @@ insertCoin().then(() => {
     const isLocal = player.id === myPlayer().id;
     const charCtrl = new CharacterController(scene, camera, isLocal);
     charCtrl.setEnvironment(colliderMesh);
-    charCtrl.setTargets([dummyMesh]);
 
-    const profile = player.getProfile();
-    const username = profile?.name || (isLocal ? "You" : "Player");
+    const targets: THREE.Object3D[] = [dummyMesh];
+    if (bossController?.playerGroup) targets.push(bossController.playerGroup);
+    charCtrl.setTargets(targets);
+
+    const username = player.getProfile()?.name || (isLocal ? 'You' : 'Player');
     charCtrl.initNameTag(username);
 
     if (isLocal) {
@@ -586,8 +518,11 @@ insertCoin().then(() => {
       applyModeLayout();
     }
 
+    playerGroupSet.add(charCtrl.playerGroup); // Register in O(1) friendly-fire set
+
     player.onQuit(() => {
       scene.remove(charCtrl.playerGroup);
+      playerGroupSet.delete(charCtrl.playerGroup);
       const idx = playersAndControllers.findIndex(p => p.player.id === player.id);
       if (idx !== -1) playersAndControllers.splice(idx, 1);
     });
@@ -603,4 +538,3 @@ window.addEventListener('resize', () => {
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
-
