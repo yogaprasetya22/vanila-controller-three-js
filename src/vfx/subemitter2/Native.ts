@@ -90,7 +90,7 @@ export class Subemitter2NativeVFX {
     // Emitter: SmokeCloudsUpEmitter  (count=40, life=[0.6, 2], speed=[2, 55])
     // Texture: tex_0.png  Grid: 2x2
     // ══════════════════════════════════════════════════════════
-    const cnt_SmokeCloudsUpEmitter = 40;
+    const cnt_SmokeCloudsUpEmitter = 15;
     const geo_SmokeCloudsUpEmitter = new THREE.PlaneGeometry(1, 1);
     const mat_SmokeCloudsUpEmitter = new THREE.ShaderMaterial({
       uniforms: { uMap: { value: this.tex0 } },
@@ -278,7 +278,7 @@ export class Subemitter2NativeVFX {
     // Emitter: SmokeCloudsEmitter  (count=30, life=[0.6, 2], speed=[9, 12])
     // Texture: tex_0.png  Grid: 2x2
     // ══════════════════════════════════════════════════════════
-    const cnt_SmokeCloudsEmitter = 30;
+    const cnt_SmokeCloudsEmitter = 10;
     const geo_SmokeCloudsEmitter = new THREE.PlaneGeometry(1, 1);
     const mat_SmokeCloudsEmitter = new THREE.ShaderMaterial({
       uniforms: { uMap: { value: this.tex0 } },
@@ -457,7 +457,7 @@ export class Subemitter2NativeVFX {
     // Emitter: SparksEmitter  (count=35, life=[0.25, 1.2], speed=[11, 31])
     // Texture: tex_1.png  Grid: 1x1
     // ══════════════════════════════════════════════════════════
-    const cnt_SparksEmitter = 35;
+    const cnt_SparksEmitter = 15;
     const geo_SparksEmitter = new THREE.PlaneGeometry(1, 1);
     const mat_SparksEmitter = new THREE.ShaderMaterial({
       uniforms: { uMap: { value: this.tex1 }, speedFactor: { value: 0.0100 } },
@@ -657,7 +657,7 @@ export class Subemitter2NativeVFX {
     // Emitter: FireBallEmitter  (count=25, life=[0.15, 0.6], speed=[6.000001, 18])
     // Texture: tex_1.png  Grid: 1x1
     // ══════════════════════════════════════════════════════════
-    const cnt_FireBallEmitter = 25;
+    const cnt_FireBallEmitter = 10;
     const geo_FireBallEmitter = new THREE.PlaneGeometry(1, 1);
     const mat_FireBallEmitter = new THREE.ShaderMaterial({
       uniforms: { uMap: { value: this.tex1 } },
@@ -835,7 +835,7 @@ export class Subemitter2NativeVFX {
     // Emitter: SphereEmitter  (count=11, life=[0.5, 0.5], speed=[0, 0])
     // Texture: tex_-1.png  Grid: 1x1
     // ══════════════════════════════════════════════════════════
-    const cnt_SphereEmitter = 11;
+    const cnt_SphereEmitter = 5;
     const geo_SphereEmitter = new THREE.SphereGeometry(0.5, 16, 8);
     const mat_SphereEmitter = new THREE.ShaderMaterial({
       uniforms: {},
@@ -1001,7 +1001,7 @@ export class Subemitter2NativeVFX {
     // Emitter: NovaEmitter  (count=11, life=[0.5, 0.5], speed=[0, 0])
     // Texture: tex_2.png  Grid: 6x3
     // ══════════════════════════════════════════════════════════
-    const cnt_NovaEmitter = 11;
+    const cnt_NovaEmitter = 5;
     const geo_NovaEmitter = new THREE.PlaneGeometry(1, 1);
     const mat_NovaEmitter = new THREE.ShaderMaterial({
       uniforms: { uMap: { value: this.tex2 } },
@@ -1176,7 +1176,7 @@ export class Subemitter2NativeVFX {
     // Emitter: TrailEmitter  (count=300, life=[0.4, 0.8], speed=[0, 0])
     // Texture: tex_0.png  Grid: 2x2
     // ══════════════════════════════════════════════════════════
-    const cnt_TrailEmitter = 300;
+    const cnt_TrailEmitter = 60;
     const geo_TrailEmitter = new THREE.PlaneGeometry(1, 1);
     const mat_TrailEmitter = new THREE.ShaderMaterial({
       uniforms: { uMap: { value: this.tex0 } },
@@ -1355,7 +1355,7 @@ export class Subemitter2NativeVFX {
     // Emitter: SmokeTrailEmitter  (count=14, life=[1, 1.3], speed=[25, 30])
     // Texture: tex_1.png  Grid: 1x1
     // ══════════════════════════════════════════════════════════
-    const cnt_SmokeTrailEmitter = 14;
+    const cnt_SmokeTrailEmitter = 6;
     const geo_SmokeTrailEmitter = new THREE.PlaneGeometry(1, 1);
     const mat_SmokeTrailEmitter = new THREE.ShaderMaterial({
       uniforms: { uMap: { value: this.tex1 } },
@@ -1554,7 +1554,7 @@ export class Subemitter2NativeVFX {
     // Emitter: NukeConeExplosionBlueEmitter  (count=11, life=[0.5, 0.5], speed=[0, 0])
     // Texture: tex_3.png  Grid: 1x1
     // ══════════════════════════════════════════════════════════
-    const cnt_NukeConeExplosionBlueEmitter = 11;
+    const cnt_NukeConeExplosionBlueEmitter = 5;
     const geo_NukeConeExplosionBlueEmitter = new THREE.PlaneGeometry(1, 1);
     const mat_NukeConeExplosionBlueEmitter = new THREE.ShaderMaterial({
       uniforms: { uMap: { value: this.tex3 } },

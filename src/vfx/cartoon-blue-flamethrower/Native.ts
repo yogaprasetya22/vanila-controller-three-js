@@ -108,7 +108,7 @@ export class CartoonBlueFlamethrowerNativeVFX {
     // Emitter: GlowEmitter  (count=22, life=[0.4, 0.4], speed=[21, 21])
     // Texture: tex_0.png  Grid: 1x1
     // ══════════════════════════════════════════════════════════
-    const cnt_GlowEmitter = 60;
+    const cnt_GlowEmitter = 25;
     const geo_GlowEmitter = new THREE.IcosahedronGeometry(0.35, 1);
     const mat_GlowEmitter = new THREE.ShaderMaterial({
       uniforms: { uMap: { value: this.tex0 } },
@@ -215,7 +215,7 @@ export class CartoonBlueFlamethrowerNativeVFX {
     // Update closure captured for this emitter
     const update_GlowEmitter = (dt: number) => {
       // Spawn particles continuously over time
-      const rate = 25;
+      const rate = 12;
       if (rate > 0) {
         spawnTimer_GlowEmitter += dt;
         const interval = 1.0 / rate;
@@ -297,7 +297,7 @@ export class CartoonBlueFlamethrowerNativeVFX {
     // Emitter: SmokeEmitter  (count=87, life=[0.5, 1.1], speed=[30, 35])
     // Texture: tex_1.png  Grid: 2x2
     // ══════════════════════════════════════════════════════════
-    const cnt_SmokeEmitter = 250;
+    const cnt_SmokeEmitter = 80;
     const geo_SmokeEmitter = new THREE.IcosahedronGeometry(0.4, 1);
     const mat_SmokeEmitter = new THREE.ShaderMaterial({
       uniforms: { uMap: { value: this.tex1 } },
@@ -405,7 +405,7 @@ export class CartoonBlueFlamethrowerNativeVFX {
     // Update closure captured for this emitter
     const update_SmokeEmitter = (dt: number) => {
       // Spawn particles continuously over time
-      const rate = 80;
+      const rate = 25;
       if (rate > 0) {
         spawnTimer_SmokeEmitter += dt;
         const interval = 1.0 / rate;
@@ -490,7 +490,7 @@ export class CartoonBlueFlamethrowerNativeVFX {
     // Emitter: EmbersEmitter  (count=68, life=[0.4, 1.2], speed=[16, 17])
     // Texture: tex_2.png  Grid: 1x1
     // ══════════════════════════════════════════════════════════
-    const cnt_EmbersEmitter = 200;
+    const cnt_EmbersEmitter = 50;
     const geo_EmbersEmitter = new THREE.BoxGeometry(0.12, 0.12, 0.12);
     const mat_EmbersEmitter = new THREE.ShaderMaterial({
       uniforms: { uMap: { value: this.tex2 }, speedFactor: { value: 0.0100 } },
@@ -609,7 +609,7 @@ export class CartoonBlueFlamethrowerNativeVFX {
     // Update closure captured for this emitter
     const update_EmbersEmitter = (dt: number) => {
       // Spawn particles continuously over time
-      const rate = 60;
+      const rate = 15;
       if (rate > 0) {
         spawnTimer_EmbersEmitter += dt;
         const interval = 1.0 / rate;
@@ -695,7 +695,7 @@ export class CartoonBlueFlamethrowerNativeVFX {
     // Emitter: FlamethrowerSharpBlueEmitter  (count=35, life=[0.5, 0.5], speed=[21.6, 21.6])
     // Texture: tex_3.png  Grid: 3x6
     // ══════════════════════════════════════════════════════════
-    const cnt_FlamethrowerSharpBlueEmitter = 100;
+    const cnt_FlamethrowerSharpBlueEmitter = 40;
     const geo_FlamethrowerSharpBlueEmitter = new THREE.IcosahedronGeometry(0.3, 1);
     const mat_FlamethrowerSharpBlueEmitter = new THREE.ShaderMaterial({
       uniforms: { uMap: { value: this.tex3 } },
@@ -803,7 +803,7 @@ export class CartoonBlueFlamethrowerNativeVFX {
     // Update closure captured for this emitter
     const update_FlamethrowerSharpBlueEmitter = (dt: number) => {
       // Spawn particles continuously over time
-      const rate = 60;
+      const rate = 25;
       if (rate > 0) {
         spawnTimer_FlamethrowerSharpBlueEmitter += dt;
         const interval = 1.0 / rate;

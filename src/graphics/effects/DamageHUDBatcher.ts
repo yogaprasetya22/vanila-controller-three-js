@@ -341,9 +341,6 @@ export class DamageHUDBatcher {
         this.starMesh.geometry.setAttribute("aOpacity", new THREE.InstancedBufferAttribute(this.sOpacity, 1));
         this.starMesh.instanceMatrix.needsUpdate = true;
 
-        scene.add(this.starMesh);
-        scene.add(this.digitMesh);
-
         // Update atlas if web fonts are loaded later
         if (typeof document !== "undefined" && document.fonts) {
             document.fonts.ready.then(() => {
@@ -356,8 +353,18 @@ export class DamageHUDBatcher {
         }
     }
 
+    private addedToScene = false;
+    private ensureAddedToScene() {
+        if (this.addedToScene) return;
+        if (scene) {
+            scene.add(this.starMesh);
+            scene.add(this.digitMesh);
+            this.addedToScene = true;
+        }
+    }
+
     public spawn(event: { skill: string; value?: number; position: number[]; isCrit?: boolean; isMagic?: boolean; isTurret?: boolean }) {
-        // return
+        this.ensureAddedToScene();
         if (!event || !Array.isArray(event.position) || !Number.isFinite(event.position[0])) return;
 
         const isMiss   = event.skill === "miss";
@@ -506,6 +513,7 @@ export class DamageHUDBatcher {
     }
 
     public update(delta: number) {
+        this.ensureAddedToScene();
         this.elapsedTime += delta;
         this.uTime.value = this.elapsedTime;
 

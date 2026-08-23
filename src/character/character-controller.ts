@@ -4,7 +4,33 @@ import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 // @ts-ignore
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { CHARACTER_CONFIG } from './character-config';
-import { activeFX } from '../graphics/effects/FXCore';
+import { ProjectileSystem } from './projectile-system';
+import { getTerrainHeight } from '../simulation/constants';
+
+const gltfLoader = new GLTFLoader();
+gltfLoader.setMeshoptDecoder(MeshoptDecoder);
+
+const gltfCache = new Map<string, Promise<any>>();
+function loadGLTFWithCache(url: string): Promise<any> {
+  let p = gltfCache.get(url);
+  if (!p) {
+    p = gltfLoader.loadAsync(url);
+    gltfCache.set(url, p);
+  }
+  return p;
+}
+
+
+// Module-level scratch vectors — zero heap allocation in hot attack/targeting paths
+const _scratchTargetPos = new THREE.Vector3();
+const _scratchSpawnPos = new THREE.Vector3();
+const _scratchDir = new THREE.Vector3();
+const _upVec = new THREE.Vector3(0, 1, 0);
+const _weaponPos = new THREE.Vector3();
+const _fallbackOffset = new THREE.Vector3();
+const _forwardVec = new THREE.Vector3();
+const _upAxis = new THREE.Vector3(0, 1, 0);
+
 
 export class CharacterController {
   // THREE.js elements
@@ -13,17 +39,25 @@ export class CharacterController {
   private camera: THREE.PerspectiveCamera;
   private scene: THREE.Scene;
   private environmentMesh: THREE.Mesh | null = null;
+  private projectileSystem: ProjectileSystem | null = null;
+  public teamId: number = 0;
+
+  public setProjectileSystem(ps: ProjectileSystem): void {
+    this.projectileSystem = ps;
+  }
 
   // Animation system
   private mixer: THREE.AnimationMixer | null = null;
   private actions: { [key: string]: THREE.AnimationAction } = {};
-  private currentActionName = '';
+  public currentActionName = '';
+  private bowMesh: THREE.Group | null = null;
+  private quiverMesh: THREE.Group | null = null;
 
   // Controller parameters
   public radius = 0.5;
   public height = 1.6;
   public velocity = new THREE.Vector3();
-  public position = new THREE.Vector3(0, 5, 0);
+  public position = new THREE.Vector3(0, getTerrainHeight(0, 0), 0);
   public isGrounded = false;
 
   // Movement parameters (Ecctrl inspired)
@@ -34,17 +68,10 @@ export class CharacterController {
 
   // Camera Settings (Spring arm / Orbit style)
   public cameraOffset = new THREE.Vector3(0, 2.5, 5);
+  public cameraDistance = 11.0; // Comfort follow range (zoom default)
   private cameraTargetRotation = new THREE.Euler(0, 0, 0, 'YXZ');
   private mouseSensitivity = 0.002;
   private smoothedLookAt = new THREE.Vector3();
-
-  // Dash Dodge parameters
-  private isDodging = false;
-  private dodgeTimeLeft = 0;
-  private dodgeCooldownLeft = 0;
-  private dodgeDirection = new THREE.Vector3();
-  private lastTapTimes: { [key: string]: number } = { KeyW: 0, KeyA: 0, KeyS: 0, KeyD: 0 };
-  private ghostSpawnTimer = 0;
 
   // Input states
   private keys: { [key: string]: boolean } = {
@@ -56,6 +83,23 @@ export class CharacterController {
     ShiftLeft: false,
   };
 
+  private lastTapTimes: { [key: string]: number } = {
+    KeyW: 0,
+    KeyA: 0,
+    KeyS: 0,
+    KeyD: 0,
+  };
+  private isDodging = false;
+  private dodgeDirection = new THREE.Vector3();
+  private dodgeTimeLeft = 0;
+  private activeGhosts: Array<{
+    ghost: THREE.Object3D;
+    materials: THREE.Material[];
+    update: (delta: number) => boolean;
+  }> = [];
+  private ghostSpawnTimer = 0;
+  private dodgeCooldownLeft = 0;
+
   // Temp variables for math to avoid garbage collection
   private tempSegment = new THREE.Line3();
   private tempVector = new THREE.Vector3();
@@ -64,12 +108,20 @@ export class CharacterController {
   private tempTriPoint = new THREE.Vector3();
   private capsulePoint = new THREE.Vector3();
 
+  // Smooth terrain-Y tracking: lerped toward getTerrainHeight each frame
+  // Eliminates 0.5-unit grid quantization micro-jitter from height cache
+  private _smoothTerrainY = 0;
+
   // Placeholder mesh (shown while loading GLTF assets)
   private placeholderMesh: THREE.Mesh;
+  public isLocal: boolean;
+  private bowSound: HTMLAudioElement | null = null;
+  private lastAttackTime = 0;
 
-  constructor(scene: THREE.Scene, camera: THREE.PerspectiveCamera) {
+  constructor(scene: THREE.Scene, camera: THREE.PerspectiveCamera, isLocal: boolean = true) {
     this.scene = scene;
     this.camera = camera;
+    this.isLocal = isLocal;
 
     // Create player representation group
     this.playerGroup = new THREE.Group();
@@ -84,8 +136,11 @@ export class CharacterController {
     this.playerGroup.add(this.placeholderMesh);
 
     // Setup input listeners
-    this.initInputs();
-    this.initMouseLook();
+    if (this.isLocal) {
+      this.initInputs();
+      this.initMouseLook();
+      this.bowSound = new Audio('/sounds/bow_1.mp3');
+    }
 
     // Start loading GLTF Assets asynchronously
     this.loadAssets();
@@ -103,18 +158,7 @@ export class CharacterController {
       if (e.code === 'KeyA' || e.code === 'ArrowLeft') this.keys.KeyA = true;
       if (e.code === 'KeyS' || e.code === 'ArrowDown') this.keys.KeyS = true;
       if (e.code === 'KeyD' || e.code === 'ArrowRight') this.keys.KeyD = true;
-
-      if (['KeyW', 'KeyA', 'KeyS', 'KeyD'].includes(e.code)) {
-        const now = performance.now();
-        if (now - this.lastTapTimes[e.code] < 260) {
-          this.triggerDodge(e.code);
-        }
-        this.lastTapTimes[e.code] = now;
-      }
-
-      if (e.code === 'KeyE') {
-        this.triggerDodgeByKey();
-      }
+      // E key dodge removed per request (now Right-Click triggers dodge)
 
       if (e.code === 'Space') {
         this.keys.Space = true;
@@ -147,11 +191,27 @@ export class CharacterController {
   }
 
   private initMouseLook() {
-    // Lock pointer only on canvas click in Player Mode
-    window.addEventListener('click', (e) => {
+    // Lock pointer only on right-click (button === 2) on canvas in Player Mode
+    window.addEventListener('mousedown', (e) => {
+      if (e.button !== 2) return;
+      
+      if (this.isLocal) {
+        this.triggerDodgeByKey();
+      }
+
       const canvas = document.querySelector('canvas');
       if (this.enabled && e.target === canvas) {
-        canvas?.requestPointerLock?.();
+        (canvas as any)?.requestPointerLock?.()?.catch?.((err: any) => {
+          console.warn("Pointer lock request throttled/prevented:", err);
+        });
+      }
+    });
+
+    // Prevent default context menu on right-click on the canvas
+    window.addEventListener('contextmenu', (e) => {
+      const canvas = document.querySelector('canvas');
+      if (this.enabled && e.target === canvas) {
+        e.preventDefault();
       }
     });
 
@@ -164,23 +224,29 @@ export class CharacterController {
         this.cameraTargetRotation.x = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, this.cameraTargetRotation.x));
       }
     });
+
+    window.addEventListener('wheel', (e) => {
+      if (this.enabled) {
+        // Zoom in/out based on scroll delta
+        this.cameraDistance += e.deltaY * 0.007;
+        // Apply boundaries (min 3.0m, max 20.0m)
+        this.cameraDistance = Math.max(3.0, Math.min(20.0, this.cameraDistance));
+      }
+    }, { passive: true });
   }
 
   private async loadAssets() {
-    const loader = new GLTFLoader();
-    loader.setMeshoptDecoder(MeshoptDecoder);
-
     try {
       // 1. Load character model, animations and weapons in parallel
       const [charGLTF, generalAnim, advancedAnim, combatAnim, basicAnim, flipAnim, bowGLTF, quiverGLTF] = await Promise.all([
-        loader.loadAsync('/character/characters/Ranger.glb'),
-        loader.loadAsync('/character/animation/Rig_Medium_General.glb'),
-        loader.loadAsync('/character/animation/Rig_Medium_MovementAdvanced.glb'),
-        loader.loadAsync('/character/animation/Rig_Medium_CombatRanged.glb'),
-        loader.loadAsync('/character/animation/Rig_Medium_MovementBasic.glb'),
-        loader.loadAsync('/character/animation/Running_Forward_Flip.glb'),
-        loader.loadAsync('/character/weapons/bow_withString.glb'),
-        loader.loadAsync('/character/weapons/quiver.glb')
+        loadGLTFWithCache('/character/characters/Ranger.glb'),
+        loadGLTFWithCache('/character/animation/Rig_Medium_General.glb'),
+        loadGLTFWithCache('/character/animation/Rig_Medium_MovementAdvanced.glb'),
+        loadGLTFWithCache('/character/animation/Rig_Medium_CombatRanged.glb'),
+        loadGLTFWithCache('/character/animation/Rig_Medium_MovementBasic.glb'),
+        loadGLTFWithCache('/character/animation/Running_Forward_Flip.glb'),
+        loadGLTFWithCache('/character/weapons/bow_withString.glb'),
+        loadGLTFWithCache('/character/weapons/quiver.glb')
       ]);
 
       // Remove placeholder mesh
@@ -200,20 +266,20 @@ export class CharacterController {
       // Enable casting/receiving shadows and set hero layer for player meshes
       this.playerMesh.traverse((child) => {
         if ((child as THREE.Mesh).isMesh) {
-          child.castShadow = true;
-          child.receiveShadow = true;
+          child.castShadow = false;
+          child.receiveShadow = false;
           child.layers.enable(1); // Enable hero lighting layer
         }
       });
 
       // 3. Attach Weapons to character bones (bow_withString -> hand_l, quiver -> spine)
-      this.attachWeaponToBone(this.playerMesh, bowGLTF.scene, 'hand_l', {
+      this.bowMesh = this.attachWeaponToBone(this.playerMesh, bowGLTF.scene, 'hand_l', {
         pos: [0.01, 0.15, 0.0],
         rot: [0.0, -0.112, 1.458],
         scale: [1.0, 1.0, 1.0]
       });
 
-      this.attachWeaponToBone(this.playerMesh, quiverGLTF.scene, 'spine', {
+      this.quiverMesh = this.attachWeaponToBone(this.playerMesh, quiverGLTF.scene, 'spine', {
         pos: [0.0, 0.15, -0.1],
         rot: [0, 0, 0],
         scale: [0.8, 0.8, 0.8]
@@ -233,7 +299,7 @@ export class CharacterController {
       
       // Filter out root node animation tracks to prevent overriding playerMesh position/rotation/orientation
       allClips.forEach((clip) => {
-        clip.tracks = clip.tracks.filter((track) => {
+        clip.tracks = clip.tracks.filter((track: any) => {
           const name = track.name;
           const isRootTrack = name.startsWith('.position') || 
                               name.startsWith('.rotation') || 
@@ -257,7 +323,7 @@ export class CharacterController {
       // Select bow-specific animations and multi-phase jump clips
       const idleClip = pickClip(["Ranged_Bow_Idle"]);
       const walkClip = pickClip(["Running_HoldingBow"]);
-      const runClip = pickClip(["Running_HoldingRifle", "Running_HoldingBow"]);
+      const runClip = pickClip(["Running_HoldingBow"]);
       const jumpStartClip = pickClip(["Jump_Start"]);
       const jumpIdleClip = pickClip(["Jump_Idle"]);
       const jumpLandClip = pickClip(["Jump_Land"]);
@@ -266,7 +332,7 @@ export class CharacterController {
       // Automatically retarget/rename doubleJumpClip track names to match target bone names
       if (doubleJumpClip && allClips.length > 0) {
         let targetPrefix = "";
-        const targetTrackSample = allClips[0].tracks.find(t => t.name.toLowerCase().includes('hips'));
+        const targetTrackSample = allClips[0].tracks.find((t: any) => t.name.toLowerCase().includes('hips'));
         if (targetTrackSample) {
           const parts = targetTrackSample.name.split('.');
           const bonePath = parts[0];
@@ -277,7 +343,7 @@ export class CharacterController {
         }
 
         let sourcePrefix = "";
-        const sourceTrackSample = doubleJumpClip.tracks.find(t => t.name.toLowerCase().includes('hips'));
+        const sourceTrackSample = doubleJumpClip.tracks.find((t: any) => t.name.toLowerCase().includes('hips'));
         if (sourceTrackSample) {
           const parts = sourceTrackSample.name.split('.');
           const bonePath = parts[0];
@@ -288,7 +354,7 @@ export class CharacterController {
         }
 
         if (sourcePrefix !== targetPrefix) {
-          doubleJumpClip.tracks.forEach(track => {
+          doubleJumpClip.tracks.forEach((track: any) => {
             const parts = track.name.split('.');
             let bonePath = parts[0];
             const property = parts[1];
@@ -300,7 +366,7 @@ export class CharacterController {
         }
       }
 
-      const attackClip = pickClip(["Ranged_Bow_Release"]);
+      const attackClip = pickClip(["Ranged_Bow_Aiming_Idle", "Ranged_Bow_Release"]);
 
       if (idleClip) this.actions['idle'] = this.mixer.clipAction(idleClip);
       if (walkClip) this.actions['walk'] = this.mixer.clipAction(walkClip);
@@ -323,37 +389,29 @@ export class CharacterController {
       }
       if (attackClip) {
         this.actions['attack'] = this.mixer.clipAction(attackClip);
-        this.actions['attack'].setLoop(THREE.LoopOnce, 1);
-        this.actions['attack'].clampWhenFinished = true;
-        this.actions['attack'].timeScale = CHARACTER_CONFIG.combat.attackAnimScale; // Configured speed scale for 193 ASPD
+        this.actions['attack'].setLoop(THREE.LoopRepeat, Infinity);
+        this.actions['attack'].clampWhenFinished = false;
+        this.actions['attack'].timeScale = 1.0; // Steady timescale for aiming pose
       }
 
-      // Dodge animations
-      const dodgeBackwardClip = pickClip(["Dodge_Backward"]);
       const dodgeForwardClip = pickClip(["Dodge_Forward"]);
+      const dodgeBackwardClip = pickClip(["Dodge_Backward"]);
       const dodgeLeftClip = pickClip(["Dodge_Left"]);
       const dodgeRightClip = pickClip(["Dodge_Right"]);
 
-      if (dodgeBackwardClip) {
-        this.actions['dodge_backward'] = this.mixer.clipAction(dodgeBackwardClip);
-        this.actions['dodge_backward'].setLoop(THREE.LoopOnce, 1);
-        this.actions['dodge_backward'].clampWhenFinished = true;
-      }
-      if (dodgeForwardClip) {
-        this.actions['dodge_forward'] = this.mixer.clipAction(dodgeForwardClip);
-        this.actions['dodge_forward'].setLoop(THREE.LoopOnce, 1);
-        this.actions['dodge_forward'].clampWhenFinished = true;
-      }
-      if (dodgeLeftClip) {
-        this.actions['dodge_left'] = this.mixer.clipAction(dodgeLeftClip);
-        this.actions['dodge_left'].setLoop(THREE.LoopOnce, 1);
-        this.actions['dodge_left'].clampWhenFinished = true;
-      }
-      if (dodgeRightClip) {
-        this.actions['dodge_right'] = this.mixer.clipAction(dodgeRightClip);
-        this.actions['dodge_right'].setLoop(THREE.LoopOnce, 1);
-        this.actions['dodge_right'].clampWhenFinished = true;
-      }
+      const setDodgeAction = (actionName: string, clip: THREE.AnimationClip) => {
+        if (!this.mixer) return;
+        const act = this.mixer.clipAction(clip);
+        act.setLoop(THREE.LoopOnce, 1);
+        act.clampWhenFinished = true;
+        act.timeScale = 1.35;
+        this.actions[actionName] = act;
+      };
+
+      if (dodgeForwardClip) setDodgeAction('dodge_forward', dodgeForwardClip);
+      if (dodgeBackwardClip) setDodgeAction('dodge_backward', dodgeBackwardClip);
+      if (dodgeLeftClip) setDodgeAction('dodge_left', dodgeLeftClip);
+      if (dodgeRightClip) setDodgeAction('dodge_right', dodgeRightClip);
 
       // Start by playing idle animation
       this.playAnimationState('idle');
@@ -395,11 +453,11 @@ export class CharacterController {
     weaponScene: THREE.Group,
     handPattern: string,
     transform: { pos: number[]; rot: number[]; scale: number[] }
-  ) {
+  ): THREE.Group | null {
     const bone = this.findBone(characterRoot, handPattern);
     if (!bone) {
       console.warn(`Bone matching hand pattern: ${handPattern} not found on character.`);
-      return;
+      return null;
     }
 
     const weaponClone = SkeletonUtils.clone(weaponScene) as THREE.Group;
@@ -409,17 +467,23 @@ export class CharacterController {
 
     weaponClone.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
-        child.castShadow = true;
-        child.receiveShadow = true;
+        child.castShadow = false;
+        child.receiveShadow = false;
         child.layers.enable(1); // Enable hero lighting layer for weapons
       }
     });
 
     bone.add(weaponClone);
+    return weaponClone;
   }
 
-  private playAnimationState(name: string) {
-    if (this.currentActionName === name) return;
+  public playAnimationState(name: string, crossfadeDuration = 0.15, timeScale = 1.0) {
+    if (this.currentActionName === name) {
+      // Still allow timeScale updates even when already in this state
+      const action = this.actions[name];
+      if (action) action.setEffectiveTimeScale(timeScale);
+      return;
+    }
 
     const currentAction = this.actions[this.currentActionName];
     const targetAction = this.actions[name];
@@ -427,13 +491,135 @@ export class CharacterController {
     if (!targetAction) return;
 
     targetAction.reset();
+    targetAction.setEffectiveTimeScale(timeScale);
     targetAction.play();
 
     if (currentAction) {
-      currentAction.crossFadeTo(targetAction, 0.15, true);
+      currentAction.crossFadeTo(targetAction, crossfadeDuration, true);
     }
 
     this.currentActionName = name;
+  }
+
+  private triggerDodgeByKey() {
+    if (this.isDodging || this.dodgeCooldownLeft > 0) return;
+
+    let animName = 'dodge_backward'; // Default if no key is pressed
+    let localDir = new THREE.Vector3(0, 0, 1); // Default backward
+
+    const moveX = (this.keys.KeyD ? 1 : 0) - (this.keys.KeyA ? 1 : 0);
+    const moveZ = (this.keys.KeyS ? 1 : 0) - (this.keys.KeyW ? 1 : 0);
+
+    if (moveX !== 0 || moveZ !== 0) {
+      localDir.set(moveX, 0, moveZ).normalize();
+      
+      // Determine dominant animation based on current active movement input keys
+      if (Math.abs(moveX) >= Math.abs(moveZ)) {
+        animName = moveX > 0 ? 'dodge_right' : 'dodge_left';
+      } else {
+        animName = moveZ > 0 ? 'dodge_backward' : 'dodge_forward';
+      }
+    }
+
+    const camRotationY = this.cameraTargetRotation.y;
+    this.dodgeDirection.copy(localDir).normalize().applyAxisAngle(new THREE.Vector3(0, 1, 0), camRotationY);
+
+    this.isDodging = true;
+    this.dodgeTimeLeft = 0.45;
+    this.animationLockTime = 0.45;
+    this.dodgeCooldownLeft = CHARACTER_CONFIG.physics.dodgeCooldown ?? 0.5;
+
+    if (this.playerMesh) {
+      this.playerMesh.rotation.y = Math.atan2(this.dodgeDirection.x, this.dodgeDirection.z);
+    }
+
+    this.playAnimationState(animName);
+
+    this.ghostSpawnTimer = 0.05;
+    this.spawnGhostTrail();
+  }
+
+  private triggerDodge(key: string) {
+    if (this.isDodging || this.dodgeCooldownLeft > 0) return;
+
+    let animName = 'dodge_forward';
+    let localDir = new THREE.Vector3(0, 0, -1); // W
+
+    if (key === 'KeyS') {
+      animName = 'dodge_backward';
+      localDir.set(0, 0, 1);
+    } else if (key === 'KeyA') {
+      animName = 'dodge_left';
+      localDir.set(-1, 0, 0);
+    } else if (key === 'KeyD') {
+      animName = 'dodge_right';
+      localDir.set(1, 0, 0);
+    }
+
+    const camRotationY = this.cameraTargetRotation.y;
+    this.dodgeDirection.copy(localDir).normalize().applyAxisAngle(new THREE.Vector3(0, 1, 0), camRotationY);
+
+    this.isDodging = true;
+    this.dodgeTimeLeft = 0.45;
+    this.animationLockTime = 0.45;
+    this.dodgeCooldownLeft = CHARACTER_CONFIG.physics.dodgeCooldown || 1.0;
+
+    if (this.playerMesh) {
+      this.playerMesh.rotation.y = Math.atan2(this.dodgeDirection.x, this.dodgeDirection.z);
+    }
+
+    this.playAnimationState(animName);
+
+    this.ghostSpawnTimer = 0.05;
+    this.spawnGhostTrail();
+  }
+
+  private spawnGhostTrail() {
+    if (!this.playerMesh) return;
+    const ghost = SkeletonUtils.clone(this.playerMesh);
+    ghost.position.copy(this.position);
+    ghost.rotation.copy(this.playerMesh.rotation);
+    this.scene.add(ghost);
+
+    const materials: THREE.Material[] = [];
+    ghost.traverse((child) => {
+      if ((child as THREE.Mesh).isMesh) {
+        const mesh = child as THREE.Mesh;
+        const ghostMat = new THREE.MeshBasicMaterial({
+          color: 0x00dfff,
+          transparent: true,
+          opacity: 0.35,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+        });
+        mesh.material = ghostMat;
+        materials.push(ghostMat);
+      }
+    });
+
+    let age = 0;
+    const duration = 0.38;
+    const scene = this.scene;
+    this.activeGhosts.push({
+      ghost,
+      materials,
+      update(delta: number) {
+        age += delta;
+        const t = age / duration;
+        if (t >= 1) {
+          scene.remove(ghost);
+          materials.forEach(m => m.dispose());
+          ghost.traverse(c => {
+            if ((c as THREE.Mesh).isMesh) (c as THREE.Mesh).geometry.dispose();
+          });
+          return false;
+        }
+        materials.forEach(m => {
+          m.opacity = 0.35 * (1.0 - t);
+        });
+        return true;
+      }
+    });
   }
 
   private airTime = 0;
@@ -482,25 +668,38 @@ export class CharacterController {
   public update(delta: number) {
     if (delta > 0.1) delta = 0.1;
 
-    // 1. Apply Gravity
-    if (!this.isGrounded) {
-      this.velocity.y += this.gravity * delta;
-      this.airTime += delta;
-    } else {
-      this.airTime = 0;
-      this.jumpCount = 0; // Reset jumps when touching ground
-      if (this.velocity.y < 0) {
-        this.velocity.y = -1;
+    if (!this.isLocal) {
+      if (this.mixer) this.mixer.update(delta);
+      this.playerGroup.position.copy(this.position);
+      if (this.attackCooldown > 0) {
+        this.attackCooldown -= delta;
       }
+      
+      // Spawn dodge ghost trail for remote players based on synced animation state
+      if (this.currentActionName && this.currentActionName.startsWith('dodge_')) {
+        this.ghostSpawnTimer -= delta;
+        if (this.ghostSpawnTimer <= 0) {
+          this.ghostSpawnTimer = 0.07;
+          this.spawnGhostTrail();
+        }
+      } else {
+        this.ghostSpawnTimer = 0; // Reset so next dodge starts spawning trails instantly
+      }
+
+      // Update active ghost afterimages
+      for (let i = this.activeGhosts.length - 1; i >= 0; i--) {
+        if (!this.activeGhosts[i].update(delta)) {
+          this.activeGhosts.splice(i, 1);
+        }
+      }
+      return;
     }
 
-    // 2. Handle Jumping (handled by keydown listener in onSpacePressed)
 
-    // Tick down speed buff duration
-    if (this.speedBuffDuration > 0) {
-      this.speedBuffDuration -= delta;
-      if (this.speedBuffDuration <= 0) {
-        this.speedBuff = 1.0;
+    // Update active ghost afterimages
+    for (let i = this.activeGhosts.length - 1; i >= 0; i--) {
+      if (!this.activeGhosts[i].update(delta)) {
+        this.activeGhosts.splice(i, 1);
       }
     }
 
@@ -509,25 +708,38 @@ export class CharacterController {
       this.dodgeCooldownLeft -= delta;
     }
 
-    // 3. Calculate Movement direction relative to Camera Horizontal angle
+    // Tick down speed buff duration
+    if (this.speedBuffDuration > 0) {
+      this.speedBuffDuration -= delta;
+      if (this.speedBuffDuration <= 0) this.speedBuff = 1.0;
+    }
+
+    // 1. Horizontal input — always applied
     const camRotationY = this.cameraTargetRotation.y;
     const moveX = (this.keys.KeyD ? 1 : 0) - (this.keys.KeyA ? 1 : 0);
     const moveZ = (this.keys.KeyS ? 1 : 0) - (this.keys.KeyW ? 1 : 0);
-
     const inputDirection = this.tempVector.set(moveX, 0, moveZ).normalize();
-    inputDirection.applyAxisAngle(new THREE.Vector3(0, 1, 0), camRotationY);
+    inputDirection.applyAxisAngle(_upVec, camRotationY);
 
     if (this.isDodging) {
       this.dodgeTimeLeft -= delta;
-
-      // Spawn afterimage ghosts
       this.ghostSpawnTimer -= delta;
       if (this.ghostSpawnTimer <= 0) {
         this.ghostSpawnTimer = 0.07;
-        this.spawnDodgeGhost();
+        this.spawnGhostTrail();
       }
 
-      const dodgeSpeed = this.speed * 2.8;
+      // 1. Allow moderate steer control during dodge for high fluid responsiveness
+      if (inputDirection.lengthSq() > 0.01) {
+        this.dodgeDirection.lerp(inputDirection, delta * 5.0);
+        this.dodgeDirection.normalize();
+      }
+
+      // 2. Snappy start with quadratic speed decay to prevent sticky sliding near walls
+      const t = Math.max(0, Math.min(1, (0.45 - this.dodgeTimeLeft) / 0.45));
+      const speedFactor = Math.pow(1 - t, 2.0); // 1.0 down to 0.0 quadratically
+      const dodgeSpeed = this.speed * 5.5 * speedFactor;
+
       this.velocity.x = this.dodgeDirection.x * dodgeSpeed;
       this.velocity.z = this.dodgeDirection.z * dodgeSpeed;
 
@@ -540,29 +752,63 @@ export class CharacterController {
       this.velocity.z = inputDirection.z * currentSpeed;
     }
 
-    // 4. Move player position by velocity
-    this.position.addScaledVector(this.velocity, delta);
-    this.playerGroup.position.copy(this.position);
+    // 2. Vertical — only integrate when airborne to avoid ping-pong jitter
+    if (this.isGrounded) {
+      // Grounded: reset air state, do NOT touch position.y here (terrain snap handles it)
+      this.airTime = 0;
+      this.jumpCount = 0;
+      this.velocity.y = 0;
+    } else {
+      // Airborne: gravity accumulates, integrate Y
+      this.velocity.y += this.gravity * delta;
+      this.airTime += delta;
+      this.position.y += this.velocity.y * delta;
+    }
 
-    // 5. Rotate Character Mesh towards movement direction
+    // 3. Integrate horizontal position
+    this.position.x += this.velocity.x * delta;
+    this.position.z += this.velocity.z * delta;
+    this.playerGroup.position.copy(this.position);
+    // 4. Rotate Character Mesh towards movement direction
     if (this.isDodging) {
       if (this.playerMesh) {
         this.playerMesh.rotation.y = Math.atan2(this.dodgeDirection.x, this.dodgeDirection.z);
       }
-    } else if (this.playerMesh && inputDirection.lengthSq() > 0.01) {
-      const targetAngle = Math.atan2(inputDirection.x, inputDirection.z);
-      const currentAngle = this.playerMesh.rotation.y;
-      let diff = targetAngle - currentAngle;
-      diff = Math.atan2(Math.sin(diff), Math.cos(diff));
-      this.playerMesh.rotation.y += diff * 12 * delta;
+    } else if (this.playerMesh) {
+      const nowSec = performance.now() / 1000;
+      const isShootingState = (nowSec - this.lastAttackTime < 0.8);
+      
+      if (isShootingState) {
+        // Face the target or camera direction (strafing)
+        const target = this.getNearestTarget();
+        let targetAngle = 0;
+        if (target) {
+          _scratchTargetPos.copy(target.position);
+          const dx = _scratchTargetPos.x - this.position.x;
+          const dz = _scratchTargetPos.z - this.position.z;
+          targetAngle = Math.atan2(dx, dz);
+        } else {
+          targetAngle = this.cameraTargetRotation.y;
+        }
+        const currentAngle = this.playerMesh.rotation.y;
+        let diff = targetAngle - currentAngle;
+        diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+        this.playerMesh.rotation.y += diff * 15 * delta;
+      } else if (inputDirection.lengthSq() > 0.01) {
+        const targetAngle = Math.atan2(inputDirection.x, inputDirection.z);
+        const currentAngle = this.playerMesh.rotation.y;
+        let diff = targetAngle - currentAngle;
+        diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+        this.playerMesh.rotation.y += diff * 12 * delta;
+      }
     }
 
     // Record air-state for landing check
     const wasGrounded = this.isGrounded;
     const wasInAir = !wasGrounded && this.airTime > 0.15;
 
-    // 6. Resolve Collisions using three-mesh-bvh
-    this.resolveCollisions();
+    // 5. Resolve Collisions (terrain snap + BVH)
+    this.resolveCollisions(delta);
 
     // Trigger land animation if player just hit the ground from mid-air
     if (this.isGrounded && wasInAir) {
@@ -607,12 +853,22 @@ export class CharacterController {
         this.playerMesh.rotation.x = 0;
       }
 
+      // Weapon (bow) is always visible
+      if (this.bowMesh) {
+        this.bowMesh.visible = true;
+      }
+
       this.mixer.update(delta);
     }
 
     // Tick attack cooldown down
     if (this.attackCooldown > 0) {
       this.attackCooldown -= delta;
+    }
+
+    // Update projectiles (gerak + expire + collision)
+    if (this.projectileSystem) {
+      this.projectileSystem.update(delta, this.environmentMesh);
     }
 
     // 8. Update Camera
@@ -631,73 +887,98 @@ export class CharacterController {
     let nearest: THREE.Object3D | null = null;
     let minDist = Infinity;
     const playerPos = this.position;
+    const range = CHARACTER_CONFIG.combat.autoAimRange;
+    const rangeSq = range * range;
 
-    this.targets.forEach((target) => {
-      const targetPos = new THREE.Vector3();
-      target.getWorldPosition(targetPos);
-      const dist = playerPos.distanceTo(targetPos);
-      // Auto aim range cap from config
-      if (dist < CHARACTER_CONFIG.combat.autoAimRange && dist < minDist) {
-        minDist = dist;
+    for (let i = 0; i < this.targets.length; i++) {
+      const target = this.targets[i];
+      _scratchTargetPos.copy(target.position);
+      const distSq = playerPos.distanceToSquared(_scratchTargetPos);
+      if (distSq < rangeSq && distSq < minDist) {
+        minDist = distSq;
         nearest = target;
       }
-    });
-
+    }
     return nearest;
   }
 
   public triggerAttack(): boolean {
-    // Prevent basic attacks from cutting off the double jump (flip) animation while active
+    if (this.isDodging) return false; // Dodge has absolute priority over attacks
     if (this.currentActionName === 'double_jump' && this.animationLockTime > 0) {
       return false;
     }
-
     if (this.attackCooldown > 0 || !this.actions['attack']) return false;
 
-    // Auto-Aim orientation adjustment (face the target dummy when firing)
+    // Get target once — reused for projectile aim
     const target = this.getNearestTarget();
-    if (target && this.playerMesh) {
-      const targetPos = new THREE.Vector3();
-      target.getWorldPosition(targetPos);
-      const dx = targetPos.x - this.position.x;
-      const dz = targetPos.z - this.position.z;
-      this.playerMesh.rotation.y = Math.atan2(dx, dz);
+
+    this.lastAttackTime = performance.now() / 1000;
+
+    this.playAnimationState('attack', 0.08, 1.0);
+    this.animationLockTime = 0.18; // Keep locked in attack state during rapid firing to avoid jitter
+    this.attackCooldown = CHARACTER_CONFIG.combat.rateOfFire;
+
+    if (this.bowSound) {
+      this.bowSound.currentTime = 0.11;
+      this.bowSound.play().catch(() => { });
     }
 
-    this.playAnimationState('attack');
-    this.animationLockTime = CHARACTER_CONFIG.combat.attackLockDuration; // Lock duration to let the fast attack animation play out fully
-    this.attackCooldown = CHARACTER_CONFIG.combat.rateOfFire;    // Configured rate of fire
+    if (this.projectileSystem) {
+      const spawnPos = this.getWeaponWorldPosition('hand_l', 1.0); // uses scratch internally
+      let dx = 0, dy = 0, dz = 1;
+      if (target) {
+        _scratchTargetPos.copy(target.position);
+        _scratchTargetPos.y += 0.5;
+        _scratchDir.copy(_scratchTargetPos).sub(spawnPos).normalize();
+        dx = _scratchDir.x; dy = _scratchDir.y; dz = _scratchDir.z;
+      } else {
+        _scratchDir.copy(this.getForwardVector());
+        dx = _scratchDir.x; dy = _scratchDir.y; dz = _scratchDir.z;
+      }
+      this.projectileSystem.spawn(spawnPos, _scratchDir, CHARACTER_CONFIG.projectiles.speed, target ?? null, this.teamId);
+    }
     return true;
   }
 
   public getForwardVector(): THREE.Vector3 {
-    const forward = new THREE.Vector3();
+    const forward = _forwardVec;
     if (this.playerMesh) {
       this.playerMesh.getWorldDirection(forward);
     } else {
-      forward.set(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), this.cameraTargetRotation.y);
+      forward.set(0, 0, -1).applyAxisAngle(_upAxis, this.cameraTargetRotation.y);
     }
     return forward.normalize();
   }
 
   public getWeaponWorldPosition(handPattern: string, fallbackOffset = 1.1): THREE.Vector3 {
-    const pos = new THREE.Vector3();
+    const pos = _weaponPos;
     const bone = this.playerMesh ? this.findBone(this.playerMesh, handPattern) : null;
     if (bone) {
       bone.getWorldPosition(pos);
     } else {
-      pos.copy(this.position).add(new THREE.Vector3(0, fallbackOffset, 0));
+      _fallbackOffset.set(0, fallbackOffset, 0);
+      pos.copy(this.position).add(_fallbackOffset);
     }
     return pos;
   }
 
-  private resolveCollisions() {
+  private resolveCollisions(delta = 0.016) {
     if (!this.environmentMesh || !this.environmentMesh.geometry.boundsTree) {
-      if (this.position.y < 0) {
-        this.position.y = 0;
+      const rawTerrainY = getTerrainHeight(this.position.x, this.position.z);
+
+      // Lerp smoothTerrainY toward actual terrain height — removes 0.5m grid step artifacts
+      // Factor 20 = tracks terrain in ~50ms (imperceptible lag, zero jitter)
+      const t = Math.min(1, delta * 20);
+      this._smoothTerrainY = this._smoothTerrainY + (rawTerrainY - this._smoothTerrainY) * t;
+
+      if (this.position.y <= this._smoothTerrainY + 0.01) {
+        this.position.y = this._smoothTerrainY;
         this.velocity.y = 0;
         this.isGrounded = true;
+      } else {
+        this.isGrounded = false;
       }
+      this.playerGroup.position.copy(this.position);
       return;
     }
 
@@ -794,7 +1075,7 @@ export class CharacterController {
     // Calculate spherical coordinates based on cameraTargetRotation angles (Yaw/Pitch)
     const theta = this.cameraTargetRotation.y;
     const phi = Math.PI / 2 - this.cameraTargetRotation.x;
-    const distance = 8.0; // Comfort follow range (same as spirit vale)
+    const distance = this.cameraDistance;
 
     const relativeOffset = new THREE.Vector3(
       distance * Math.sin(phi) * Math.sin(theta),
@@ -822,116 +1103,51 @@ export class CharacterController {
     this.camera.lookAt(this.smoothedLookAt);
   }
 
-  private triggerDodgeByKey() {
-    if (this.isDodging || !this.isGrounded || this.dodgeCooldownLeft > 0) return;
+  private nameTagCanvas: HTMLCanvasElement | null = null;
+  private nameTagTexture: THREE.CanvasTexture | null = null;
+  public nameTagSprite: THREE.Sprite | null = null;
+  public username = "Player";
+  public hp = 100;
 
-    let animName = 'dodge_backward'; // Default if no key is pressed
-    let localDir = new THREE.Vector3(0, 0, 1); // Default backward
-
-    const moveX = (this.keys.KeyD ? 1 : 0) - (this.keys.KeyA ? 1 : 0);
-    const moveZ = (this.keys.KeyS ? 1 : 0) - (this.keys.KeyW ? 1 : 0);
-
-    if (moveX !== 0 || moveZ !== 0) {
-      localDir.set(moveX, 0, moveZ).normalize();
-      
-      // Determine dominant animation based on current active movement input keys
-      if (Math.abs(moveX) >= Math.abs(moveZ)) {
-        animName = moveX > 0 ? 'dodge_right' : 'dodge_left';
-      } else {
-        animName = moveZ > 0 ? 'dodge_backward' : 'dodge_forward';
-      }
-    }
-
-    const camRotationY = this.cameraTargetRotation.y;
-    this.dodgeDirection.copy(localDir).normalize().applyAxisAngle(new THREE.Vector3(0, 1, 0), camRotationY);
-
-    this.isDodging = true;
-    this.dodgeTimeLeft = 0.45;
-    this.animationLockTime = 0.45;
-    this.dodgeCooldownLeft = CHARACTER_CONFIG.physics.dodgeCooldown || 1.0;
-
-    if (this.playerMesh) {
-      this.playerMesh.rotation.y = Math.atan2(this.dodgeDirection.x, this.dodgeDirection.z);
-    }
-
-    this.playAnimationState(animName);
-
-    this.ghostSpawnTimer = 0.05;
-    this.spawnDodgeGhost();
+  public initNameTag(username: string) {
+    this.username = username;
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 64;
+    
+    this.nameTagCanvas = canvas;
+    this.nameTagTexture = new THREE.CanvasTexture(canvas);
+    
+    const material = new THREE.SpriteMaterial({ map: this.nameTagTexture, depthTest: true, depthWrite: false });
+    this.nameTagSprite = new THREE.Sprite(material);
+    this.nameTagSprite.scale.set(1.8, 0.45, 1);
+    this.nameTagSprite.position.set(0, this.height + 0.35, 0);
+    this.playerGroup.add(this.nameTagSprite);
+    
+    this.updateNameTag(1.0);
   }
 
-  private triggerDodge(key: string) {
-    if (this.isDodging || !this.isGrounded || this.dodgeCooldownLeft > 0) return;
-
-    let animName = 'dodge_forward';
-    let localDir = new THREE.Vector3(0, 0, -1); // W
-
-    if (key === 'KeyS') {
-      animName = 'dodge_backward';
-      localDir.set(0, 0, 1);
-    } else if (key === 'KeyA') {
-      animName = 'dodge_left';
-      localDir.set(-1, 0, 0);
-    } else if (key === 'KeyD') {
-      animName = 'dodge_right';
-      localDir.set(1, 0, 0);
-    }
-
-    const camRotationY = this.cameraTargetRotation.y;
-    this.dodgeDirection.copy(localDir).normalize().applyAxisAngle(new THREE.Vector3(0, 1, 0), camRotationY);
-
-    this.isDodging = true;
-    this.dodgeTimeLeft = 0.45;
-    this.animationLockTime = 0.45;
-    this.dodgeCooldownLeft = CHARACTER_CONFIG.physics.dodgeCooldown || 1.0;
-
-    if (this.playerMesh) {
-      this.playerMesh.rotation.y = Math.atan2(this.dodgeDirection.x, this.dodgeDirection.z);
-    }
-
-    this.playAnimationState(animName);
-
-    this.ghostSpawnTimer = 0.05;
-    this.spawnDodgeGhost();
-  }
-
-  private spawnDodgeGhost() {
-    if (!this.playerMesh) return;
-
-    const ghost = SkeletonUtils.clone(this.playerMesh);
-    ghost.position.copy(this.position);
-    ghost.rotation.copy(this.playerMesh.rotation);
-
-    const ghostMat = new THREE.MeshBasicMaterial({
-      color: 0x00dfff,
-      transparent: true,
-      opacity: 0.7,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending,
-    });
-
-    ghost.traverse((child) => {
-      if ((child as THREE.Mesh).isMesh) {
-        (child as THREE.Mesh).material = ghostMat;
-      }
-    });
-
-    this.scene.add(ghost);
-
-    let age = 0;
-    const sceneRef = this.scene;
-    activeFX.push({
-      update(delta) {
-        age += delta;
-        const t = age / 0.35;
-        if (t >= 1) {
-          sceneRef.remove(ghost);
-          ghostMat.dispose();
-          return false;
-        }
-        ghostMat.opacity = 0.7 * (1.0 - t);
-        return true;
-      }
-    });
+  public updateNameTag(hpRatio: number) {
+    if (!this.nameTagCanvas || !this.nameTagTexture) return;
+    const ctx = this.nameTagCanvas.getContext('2d')!;
+    ctx.clearRect(0, 0, 256, 64);
+    
+    // Draw Username
+    ctx.font = 'Bold 20px Arial';
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+    ctx.shadowBlur = 4;
+    ctx.fillText(this.username, 128, 26);
+    
+    // Draw HP Bar BG
+    ctx.fillStyle = 'rgba(20, 20, 20, 0.85)';
+    ctx.fillRect(28, 38, 200, 12);
+    
+    // Draw HP Bar FG
+    ctx.fillStyle = '#22c55e'; // Green
+    ctx.fillRect(28, 38, 200 * Math.max(0, Math.min(1, hpRatio)), 12);
+    
+    this.nameTagTexture.needsUpdate = true;
   }
 }

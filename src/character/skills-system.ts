@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { CHARACTER_CONFIG } from './character-config';
+import { getTerrainHeight } from '../simulation/constants';
 
 export interface VFXInterface {
   spawn: (x: number, y: number, z: number, anchor?: THREE.Object3D, duration?: number) => void;
@@ -18,6 +19,19 @@ export class SkillsSystem {
 
   // UI overlay representation
   private cdIndicator: HTMLDivElement;
+  private skillElements: Array<{
+    key: string;
+    itemEl: HTMLDivElement;
+    overlayEl: HTMLDivElement;
+    cdTextEl: HTMLSpanElement;
+    activeColor: string;
+  }> = [];
+
+  private passiveElement: {
+    itemEl: HTMLDivElement;
+    overlayEl: HTMLDivElement;
+    cdTextEl: HTMLSpanElement;
+  } | null = null;
 
   constructor(
     gasVFX: VFXInterface,
@@ -35,11 +49,14 @@ export class SkillsSystem {
         const target = character ? character.getNearestTarget() : null;
         if (target) {
           const targetPos = new THREE.Vector3();
-          target.getWorldPosition(targetPos);
-          gasVFX.spawn(targetPos.x, targetPos.y + 0.1, targetPos.z);
+          targetPos.copy(target.position);
+          // Clamp Y to terrain surface so explosion never spawns underground
+          const floorY = getTerrainHeight(targetPos.x, targetPos.z);
+          gasVFX.spawn(targetPos.x, Math.max(targetPos.y, floorY) + 0.1, targetPos.z);
         } else {
           const spawnPos = playerPos.clone().addScaledVector(forward, gasConf.forwardOffset);
-          gasVFX.spawn(spawnPos.x, spawnPos.y + 0.5, spawnPos.z);
+          const floorY = getTerrainHeight(spawnPos.x, spawnPos.z);
+          gasVFX.spawn(spawnPos.x, Math.max(spawnPos.y, floorY) + 0.1, spawnPos.z);
         }
       }
     };
@@ -81,84 +98,57 @@ export class SkillsSystem {
         const target = character ? character.getNearestTarget() : null;
         if (target) {
           const targetPos = new THREE.Vector3();
-          target.getWorldPosition(targetPos);
-          tornadoVFX.spawn(targetPos.x, targetPos.y + 0.1, targetPos.z);
+          targetPos.copy(target.position);
+          // Clamp Y to terrain surface
+          const floorY = getTerrainHeight(targetPos.x, targetPos.z);
+          tornadoVFX.spawn(targetPos.x, Math.max(targetPos.y, floorY) + 0.1, targetPos.z, target);
         } else {
-          tornadoVFX.spawn(playerPos.x, playerPos.y, playerPos.z);
+          const floorY = getTerrainHeight(playerPos.x, playerPos.z);
+          tornadoVFX.spawn(playerPos.x, Math.max(playerPos.y, floorY), playerPos.z);
         }
       }
     };
 
-    // Create a beautiful, subtle overlay for cooldowns on the HUD (Spirit Vale style, centered horizontally)
+    // Skill HUD — di atas #controls bar (fixed bottom: 1.25rem)
     this.cdIndicator = document.createElement('div');
+    this.cdIndicator.id = 'skill-hud';
     this.cdIndicator.style.cssText = `
-      position: absolute;
-      bottom: 25px;
+      position: fixed;
+      bottom: 1.25rem;
       left: 50%;
       transform: translateX(-50%);
       display: flex;
-      gap: 10px;
-      z-index: 9999;
+      gap: 6px;
+      z-index: 11;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       pointer-events: none;
-      background: rgba(15, 15, 20, 0.75);
-      padding: 8px 12px;
-      border-radius: 10px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      backdrop-filter: blur(10px);
+      background: rgba(15, 23, 42, 0.3);
+      padding: 6px 10px;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
     `;
     document.body.appendChild(this.cdIndicator);
-    this.updateUI();
 
-    // Key listener
-    window.addEventListener('keydown', (e) => {
-      if (this.skills[e.code]) {
-        // Find player position and direction from active character controller globally or passed via triggers
-      }
-    });
-  }
+    // Label "SKILLS" di atas container
+    const label = document.createElement('div');
+    label.style.cssText = `
+      position: absolute;
+      top: -20px;
+      left: 0; right: 0;
+      text-align: center;
+      font-size: 9px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+      color: rgba(255,255,255,0.35);
+    `;
+    label.innerText = 'SKILLS';
+    this.cdIndicator.style.position = 'fixed';
+    this.cdIndicator.appendChild(label);
 
-  public setVisible(visible: boolean) {
-    this.cdIndicator.style.display = visible ? 'flex' : 'none';
-  }
-
-  public handleInput(code: string, playerPos: THREE.Vector3, forward: THREE.Vector3, character?: any) {
-    const skill = this.skills[code];
-    if (skill && skill.currentCD <= 0) {
-      // Auto-Aim: Force character to face target dummy before casting any skill
-      if (character) {
-        character.faceNearestTarget();
-        // Fetch fresh vectors pointing towards the newly auto-aimed target
-        forward = character.getForwardVector();
-        playerPos = character.position;
-      }
-
-      skill.trigger(playerPos, forward, character);
-      skill.currentCD = skill.cooldown;
-      this.updateUI();
-    }
-  }
-
-  public update(delta: number) {
-    let cdUpdated = false;
-    for (const key in this.skills) {
-      const s = this.skills[key];
-      if (s.currentCD > 0) {
-        s.currentCD -= delta;
-        if (s.currentCD < 0) s.currentCD = 0;
-        cdUpdated = true;
-      }
-    }
-    if (cdUpdated) {
-      this.updateUI();
-    }
-  }
-
-  private updateUI() {
-    this.cdIndicator.innerHTML = '';
-    
-    // Bind mappings for human-readable key guides dynamically from config keys
     const keys = [
       CHARACTER_CONFIG.skills.gasExplosion.key,
       CHARACTER_CONFIG.skills.flamethrower.key,
@@ -181,73 +171,261 @@ export class SkillsSystem {
     };
 
     keys.forEach((key, idx) => {
-      const s = this.skills[key];
       const iconUrl = skillIcons[key] || '/assets-image-skills/PNG/1.png';
       const activeColor = skillColors[key] || '#ffffff';
-      
+
       const item = document.createElement('div');
       item.style.cssText = `
-        width: 48px;
-        height: 48px;
+        width: 44px;
+        height: 44px;
         background-image: url('${iconUrl}');
         background-size: cover;
         background-position: center;
-        border: 2px solid ${s.currentCD > 0 ? 'rgba(239, 68, 68, 0.7)' : activeColor};
+        border: 2px solid ${activeColor};
         border-radius: 8px;
         position: relative;
-        box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.8), 0 2px 4px rgba(0,0,0,0.5);
-        transition: border-color 0.15s ease;
+        box-shadow: inset 0 0 10px rgba(0,0,0,0.6), 0 3px 8px rgba(0,0,0,0.3);
+        transition: border-color 0.2s ease, opacity 0.2s ease;
+        opacity: 1;
       `;
 
-      // Hotkey Badge in top-right corner
+      // Hotkey Badge
       const keyLabel = document.createElement('div');
       keyLabel.innerText = keyLabels[idx];
       keyLabel.style.cssText = `
         position: absolute;
-        top: -6px;
-        right: -6px;
-        background: rgba(10, 10, 15, 0.95);
-        color: #ffffff;
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        border-radius: 4px;
-        padding: 1px 4px;
+        top: -7px;
+        right: -7px;
+        background: rgba(10, 12, 20, 0.92);
+        color: #e2e8f0;
+        border: 1px solid rgba(255,255,255,0.25);
+        border-radius: 5px;
+        padding: 1px 5px;
         font-size: 9px;
-        font-weight: 800;
+        font-weight: 900;
         z-index: 5;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+        font-family: 'Inter', monospace;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.5);
       `;
       item.appendChild(keyLabel);
 
-      // Cooldown Overlay (Spirit Vale style)
-      if (s.currentCD > 0) {
-        const overlay = document.createElement('div');
-        overlay.style.cssText = `
-          position: absolute;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          background: rgba(0, 0, 0, 0.65);
-          border-radius: 6px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 2;
-        `;
-        
-        const cdText = document.createElement('span');
-        cdText.innerText = s.currentCD.toFixed(1);
-        cdText.style.cssText = `
-          color: #ffffff;
-          font-size: 13px;
-          font-weight: 900;
-          text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
-        `;
-        overlay.appendChild(cdText);
-        item.appendChild(overlay);
-      }
+      // Cooldown Overlay (Hidden by default)
+      const overlay = document.createElement('div');
+      overlay.style.cssText = `
+        position: absolute;
+        inset: 0;
+        background: rgba(0,0,0,0.62);
+        border-radius: 8px;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 2;
+      `;
+      const cdText = document.createElement('span');
+      cdText.style.cssText = `
+        color: #f87171;
+        font-size: 14px;
+        font-weight: 900;
+        text-shadow: 0 1px 6px rgba(0,0,0,0.95);
+        font-family: 'Inter', monospace;
+      `;
+      overlay.appendChild(cdText);
+      item.appendChild(overlay);
 
       this.cdIndicator.appendChild(item);
+
+      this.skillElements.push({
+        key,
+        itemEl: item,
+        overlayEl: overlay,
+        cdTextEl: cdText,
+        activeColor
+      });
     });
+
+    // Create Passive Dodge Cooldown indicator once
+    const passiveItem = document.createElement('div');
+    passiveItem.style.cssText = `
+      width: 44px;
+      height: 44px;
+      background-image: url('/assets-image-skills/PNG/1.png');
+      background-size: cover;
+      background-position: center;
+      border: 2px solid #a855f7;
+      border-radius: 8px;
+      position: relative;
+      box-shadow: inset 0 0 10px rgba(0,0,0,0.6), 0 3px 8px rgba(0,0,0,0.3);
+      transition: border-color 0.2s ease, opacity 0.2s ease;
+      opacity: 1;
+    `;
+
+    // Passive label badge
+    const passiveLabel = document.createElement('div');
+    passiveLabel.innerText = 'PASSIVE';
+    passiveLabel.style.cssText = `
+      position: absolute;
+      bottom: -7px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(10, 12, 20, 0.95);
+      color: #e9d5ff;
+      border: 1px solid rgba(168, 85, 247, 0.4);
+      border-radius: 4px;
+      padding: 0px 4px;
+      font-size: 7px;
+      font-weight: 900;
+      z-index: 5;
+      font-family: 'Segoe UI', monospace;
+      letter-spacing: 0.05em;
+      white-space: nowrap;
+    `;
+    passiveItem.appendChild(passiveLabel);
+
+    // Key badge (E)
+    const keyLabel = document.createElement('div');
+    keyLabel.innerText = 'E';
+    keyLabel.style.cssText = `
+      position: absolute;
+      top: -7px;
+      right: -7px;
+      background: rgba(10, 12, 20, 0.92);
+      color: #e2e8f0;
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 5px;
+      padding: 1px 5px;
+      font-size: 9px;
+      font-weight: 900;
+      z-index: 5;
+      font-family: 'Inter', monospace;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.5);
+    `;
+    passiveItem.appendChild(keyLabel);
+
+    // Cooldown Overlay (Hidden by default)
+    const passiveOverlay = document.createElement('div');
+    passiveOverlay.style.cssText = `
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.62);
+      border-radius: 8px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 2;
+    `;
+    const passiveCdText = document.createElement('span');
+    passiveCdText.style.cssText = `
+      color: #f87171;
+      font-size: 14px;
+      font-weight: 900;
+      text-shadow: 0 1px 6px rgba(0,0,0,0.95);
+      font-family: 'Inter', monospace;
+    `;
+    passiveOverlay.appendChild(passiveCdText);
+    passiveItem.appendChild(passiveOverlay);
+
+    this.cdIndicator.appendChild(passiveItem);
+
+    this.passiveElement = {
+      itemEl: passiveItem,
+      overlayEl: passiveOverlay,
+      cdTextEl: passiveCdText
+    };
+
+    this.updateUI();
+  }
+
+  public setVisible(visible: boolean) {
+    this.cdIndicator.style.display = visible ? 'flex' : 'none';
+  }
+
+  public triggerNetworkVFX(skillId: string, x: number, z: number, targetMesh?: THREE.Object3D) {
+    const skill = this.skills[skillId];
+    if (skill) {
+      const floorY = getTerrainHeight(x, z);
+      const spawnY = Math.max(0, floorY) + 0.1;
+      
+      if (skillId === CHARACTER_CONFIG.skills.flamethrower.key) {
+        skill.vfx.spawn(x, spawnY + 1.0, z, targetMesh, CHARACTER_CONFIG.skills.flamethrower.activeDuration);
+      } else if (skillId === CHARACTER_CONFIG.skills.tornado.key) {
+        // Tornado spawns at coordinates, do not anchor to caster (targetMesh)
+        skill.vfx.spawn(x, spawnY, z, undefined);
+      } else {
+        skill.vfx.spawn(x, spawnY, z);
+      }
+    }
+  }
+
+  public handleInput(code: string, playerPos: THREE.Vector3, forward: THREE.Vector3, character?: any): boolean {
+    const skill = this.skills[code];
+    if (skill && skill.currentCD <= 0) {
+      // Auto-Aim: Force character to face target dummy before casting any skill
+      if (character) {
+        character.faceNearestTarget();
+        // Fetch fresh vectors pointing towards the newly auto-aimed target
+        forward = character.getForwardVector();
+        playerPos = character.position;
+      }
+
+      skill.trigger(playerPos, forward, character);
+      skill.currentCD = skill.cooldown;
+      this.updateUI();
+      return true;
+    }
+    return false;
+  }
+
+  public update(delta: number, character?: any) {
+    let cdUpdated = false;
+    for (const key in this.skills) {
+      const s = this.skills[key];
+      if (s.currentCD > 0) {
+        s.currentCD -= delta;
+        if (s.currentCD < 0) s.currentCD = 0;
+        cdUpdated = true;
+      }
+    }
+    // Track dynamic character stats (dodge cooldown) for UI updates
+    if (character && (character.dodgeCooldownLeft !== undefined || character.dodgeCooldownLeft >= 0)) {
+      cdUpdated = true;
+    }
+    if (cdUpdated) {
+      this.updateUI(character);
+    }
+  }
+
+  private updateUI(character?: any) {
+    // Update active skills UI state without rebuilding DOM
+    this.skillElements.forEach((el) => {
+      const s = this.skills[el.key];
+      if (!s) return;
+      
+      const isReady = s.currentCD <= 0;
+      el.itemEl.style.borderColor = isReady ? el.activeColor : 'rgba(239, 68, 68, 0.5)';
+      el.itemEl.style.opacity = isReady ? '1' : '0.65';
+      
+      if (s.currentCD > 0) {
+        el.overlayEl.style.display = 'flex';
+        el.cdTextEl.innerText = s.currentCD.toFixed(1);
+      } else {
+        el.overlayEl.style.display = 'none';
+      }
+    });
+
+    // Update passive dodge UI state
+    if (this.passiveElement) {
+      const dodgeCD = character ? (character.dodgeCooldownLeft ?? 0) : 0;
+      const isReady = dodgeCD <= 0;
+      
+      this.passiveElement.itemEl.style.borderColor = isReady ? '#a855f7' : 'rgba(239, 68, 68, 0.5)';
+      this.passiveElement.itemEl.style.opacity = isReady ? '1' : '0.65';
+      
+      if (dodgeCD > 0) {
+        this.passiveElement.overlayEl.style.display = 'flex';
+        this.passiveElement.cdTextEl.innerText = dodgeCD.toFixed(1);
+      } else {
+        this.passiveElement.overlayEl.style.display = 'none';
+      }
+    }
   }
 }

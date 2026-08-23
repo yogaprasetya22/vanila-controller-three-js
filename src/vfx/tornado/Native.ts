@@ -88,7 +88,7 @@ export class CartoonTornadoNativeVFX {
   }
 
   public spawn(x: number, y: number, z: number) {
-    const maxParticles = 100;
+    const maxParticles = 35;
 
     // Shader Factory for the layered wind/flame meshes
     const createWindShader = (twistSpeed: number, twistTension: number, stepThreshold: number, colorShift: number, textureFlowSpeed: number, colorVal: THREE.Color, map0Tex: THREE.Texture) => {

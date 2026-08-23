@@ -90,7 +90,7 @@ export class CartoonBlueGasExplosionNativeVFX {
     // Emitter: SparksEmitter  (count=23, life=[0.25, 0.35], speed=[12, 28])
     // Texture: tex_0.png  Grid: 1x1
     // ══════════════════════════════════════════════════════════
-    const cnt_SparksEmitter = 23;
+    const cnt_SparksEmitter = 6;
     const geo_SparksEmitter = new THREE.PlaneGeometry(1, 1);
     const mat_SparksEmitter = new THREE.ShaderMaterial({
       uniforms: { uMap: { value: this.tex0 }, speedFactor: { value: 0.0100 } },
@@ -169,7 +169,7 @@ export class CartoonBlueGasExplosionNativeVFX {
       
       const theta = Math.random() * Math.PI * 2;
       const phi = Math.acos(rng(-1, 1));
-      const speed = rng(12, 28) * 2.0;
+      const speed = rng(3.0, 6.0);
       const srad = 0.25 * 2.0;
       pos_SparksEmitter[i].set(
         x + Math.sin(phi) * Math.cos(theta) * srad,
@@ -281,7 +281,7 @@ export class CartoonBlueGasExplosionNativeVFX {
     // Emitter: GlowEmitter  (count=11, life=[0.3, 0.3], speed=[0, 0])
     // Texture: tex_1.png  Grid: 1x1
     // ══════════════════════════════════════════════════════════
-    const cnt_GlowEmitter = 11;
+    const cnt_GlowEmitter = 2;
     const geo_GlowEmitter = new THREE.PlaneGeometry(1, 1);
     const mat_GlowEmitter = new THREE.ShaderMaterial({
       uniforms: { uMap: { value: this.tex1 } },
@@ -456,7 +456,7 @@ export class CartoonBlueGasExplosionNativeVFX {
     // Emitter: CloudBurstEmitter  (count=24, life=[0.6, 0.7], speed=[1, 8])
     // Texture: tex_2.png  Grid: 2x2
     // ══════════════════════════════════════════════════════════
-    const cnt_CloudBurstEmitter = 24;
+    const cnt_CloudBurstEmitter = 4;
     const geo_CloudBurstEmitter = new THREE.PlaneGeometry(1, 1);
     const mat_CloudBurstEmitter = new THREE.ShaderMaterial({
       uniforms: { uMap: { value: this.tex2 } },
@@ -524,7 +524,7 @@ export class CartoonBlueGasExplosionNativeVFX {
       
       const theta = Math.random() * Math.PI * 2;
       const phi = Math.acos(rng(-1, 1));
-      const speed = rng(1, 8) * 2.0;
+      const speed = rng(0.5, 2.0);
       const srad = 0.2 * 2.0;
       pos_CloudBurstEmitter[i].set(
         x + Math.sin(phi) * Math.cos(theta) * srad,
@@ -635,7 +635,7 @@ export class CartoonBlueGasExplosionNativeVFX {
     // Emitter: TrailEmitter  (count=300, life=[0.25, 0.6], speed=[0, 0])
     // Texture: tex_2.png  Grid: 2x2
     // ══════════════════════════════════════════════════════════
-    const cnt_TrailEmitter = 300;
+    const cnt_TrailEmitter = 20;
     const geo_TrailEmitter = new THREE.PlaneGeometry(1, 1);
     const mat_TrailEmitter = new THREE.ShaderMaterial({
       uniforms: { uMap: { value: this.tex2 } },
@@ -814,7 +814,7 @@ export class CartoonBlueGasExplosionNativeVFX {
     // Emitter: SmokeTrailEmitter  (count=17, life=[0.3, 0.55], speed=[25, 40])
     // Texture: tex_0.png  Grid: 1x1
     // ══════════════════════════════════════════════════════════
-    const cnt_SmokeTrailEmitter = 17;
+    const cnt_SmokeTrailEmitter = 4;
     const geo_SmokeTrailEmitter = new THREE.PlaneGeometry(1, 1);
     const mat_SmokeTrailEmitter = new THREE.ShaderMaterial({
       uniforms: { uMap: { value: this.tex0 } },
@@ -881,7 +881,7 @@ export class CartoonBlueGasExplosionNativeVFX {
       accumulatedDist_SmokeTrailEmitter[i] = 0;
       const theta = Math.random() * Math.PI * 2;
       const phi = Math.acos(rng(-1, 1));
-      const speed = rng(25, 40) * 2.0;
+      const speed = rng(4.0, 8.0);
       const srad = 0.01 * 2.0;
       pos_SmokeTrailEmitter[i].set(
         x + Math.sin(phi) * Math.cos(theta) * srad,
@@ -1004,7 +1004,7 @@ export class CartoonBlueGasExplosionNativeVFX {
     // Emitter: GasExplosionBlueEmitter  (count=14, life=[0.17, 0.3], speed=[0.1, 0.1])
     // Texture: tex_3.png  Grid: 3x3
     // ══════════════════════════════════════════════════════════
-    const cnt_GasExplosionBlueEmitter = 14;
+    const cnt_GasExplosionBlueEmitter = 3;
     const geo_GasExplosionBlueEmitter = new THREE.PlaneGeometry(1, 1);
     const mat_GasExplosionBlueEmitter = new THREE.ShaderMaterial({
       uniforms: { uMap: { value: this.tex3 }, speedFactor: { value: 1.0000 } },

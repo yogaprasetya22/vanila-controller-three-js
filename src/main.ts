@@ -2,9 +2,10 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
-import { VFXManager } from './vfx-manager.ts';
 import { CharacterController } from './character/character-controller.ts';
+import { CHARACTER_CONFIG } from './character/character-config.ts';
 import { DayCycleManager } from './day-cycle-manager.ts';
+import { onPlayerJoin, insertCoin, isHost, myPlayer, RPC, setState, getState } from "playroomkit";
 
 // Add three-mesh-bvh extension functions to prototypes
 (THREE.BufferGeometry.prototype as any).computeBoundsTree = computeBoundsTree;
@@ -13,15 +14,16 @@ import { DayCycleManager } from './day-cycle-manager.ts';
 
 // Folder-structured imports
 import { CartoonBlueGasExplosionNativeVFX } from './vfx/cartoon-blue-gas-explosion/Native.ts';
-import { CartoonBlueGasExplosionQuarksVFX } from './vfx/cartoon-blue-gas-explosion/Quarks.ts';
 import { CartoonBlueFlamethrowerNativeVFX } from './vfx/cartoon-blue-flamethrower/Native.ts';
-import { CartoonBlueFlamethrowerQuarksVFX } from './vfx/cartoon-blue-flamethrower/Quarks.ts';
 import { Subemitter2NativeVFX } from './vfx/subemitter2/Native.ts';
-import { Subemitter2QuarksVFX } from './vfx/subemitter2/Quarks.ts';
 import { CartoonTornadoNativeVFX } from './vfx/tornado/Native.ts';
 
 import { updateFX } from './graphics/effects/FXCore';
 import { dispatchSkillFX } from './graphics/effects/FXRouter';
+import { WindEffectManager } from './graphics/effects/WindLines.ts';
+import { SceneryWindLines } from './graphics/effects/SceneryWindLines.ts';
+import { damageHUDBatcher } from './graphics/effects/DamageHUDBatcher.ts';
+
 
 // On-screen error overlay to quickly diagnose WebGL/Runtime issues
 window.addEventListener('error', (e) => {
@@ -51,9 +53,10 @@ const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerH
 setCamera(camera);
 camera.position.set(0, 15, 30);
 
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+const renderer = new THREE.WebGLRenderer({ antialias: !isMobile, powerPreference: "high-performance" });
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setPixelRatio(isMobile ? 1.0 : Math.min(window.devicePixelRatio, 2));
 renderer.setClearColor(scene.fog.color);
 container.appendChild(renderer.domElement);
 
@@ -152,26 +155,27 @@ const colliderMesh = new THREE.Mesh(mergedGeometry);
 import { ProjectileSystem } from './character/projectile-system.ts';
 import { SkillsSystem } from './character/skills-system.ts';
 
-const character = new CharacterController(scene, camera);
-character.setEnvironment(colliderMesh);
-character.setTargets([dummyMesh]); // Register Samsak as seekable target
+let character: CharacterController | null = null;
+// No bossController variable
+const playersAndControllers: { player: any; controller: CharacterController }[] = [];
 
 const projectileSystem = new ProjectileSystem(scene);
 
 // ── VFX Managers ─────────────────────────────────────────────────────────────
-const sabVfx              = new VFXManager(50000);
-scene.add(sabVfx.pointsMesh);
-
 const gasExplosionNative  = new CartoonBlueGasExplosionNativeVFX(scene, camera);
-const gasExplosionQuarks  = new CartoonBlueGasExplosionQuarksVFX(scene);
 const flamethrowerNative  = new CartoonBlueFlamethrowerNativeVFX(scene, camera);
-const flamethrowerQuarks  = new CartoonBlueFlamethrowerQuarksVFX(scene);
 const subemitter2Native   = new Subemitter2NativeVFX(scene, camera);
-const subemitter2Quarks   = new Subemitter2QuarksVFX(scene);
 const tornadoNative       = new CartoonTornadoNativeVFX(scene, camera);
 
 // Initialize Skills System with native VFX models
 const skillsSystem = new SkillsSystem(subemitter2Native, flamethrowerNative, tornadoNative);
+
+const windEffect = new WindEffectManager(scene);
+if (!isMobile) {
+  windEffect.start();
+}
+
+const sceneryWindLines = new SceneryWindLines(scene);
 
 // ── VFX Selection UI Hook ────────────────────────────────────────────────────
 let activeVFX = 'gas-native';
@@ -202,7 +206,7 @@ function applyModeLayout() {
     // Show player elements
     if (playerGuide) playerGuide.style.display = 'block';
     skillsSystem.setVisible(true);
-    character.playerGroup.visible = true;
+    if (character) character.playerGroup.visible = true;
     dummyMesh.visible = true;
 
     // Hide orbit elements
@@ -216,7 +220,7 @@ function applyModeLayout() {
     // Hide player elements
     if (playerGuide) playerGuide.style.display = 'none';
     skillsSystem.setVisible(false);
-    character.playerGroup.visible = false;
+    if (character) character.playerGroup.visible = false;
     dummyMesh.visible = false;
   }
 }
@@ -228,16 +232,20 @@ modeButton.addEventListener('click', () => {
   if (controllerMode === 'player') {
     controllerMode = 'orbit';
     controls.enabled = true;
-    character.enabled = false;
-    character.resetInputs(); // Reset WASD states & velocity
+    if (character) {
+      character.enabled = false;
+      character.resetInputs(); // Reset WASD states & velocity
+    }
     isShooting = false;      // Reset shooting state
     modeButton.innerText = 'Toggle Mode: Orbit Camera';
     modeButton.style.background = 'rgba(107,114,128,0.85)';
   } else {
     controllerMode = 'player';
     controls.enabled = false;
-    character.enabled = true;
-    character.resetInputs();
+    if (character) {
+      character.enabled = true;
+      character.resetInputs();
+    }
     modeButton.innerText = 'Toggle Mode: Player (Active)';
     modeButton.style.background = 'rgba(59,130,246,0.85)';
   }
@@ -282,30 +290,16 @@ function spawnActiveVFX(hit: THREE.Vector3) {
     case 'gas-native':
       gasExplosionNative.spawn(hit.x, hit.y, hit.z);
       break;
-    case 'gas-quarks':
-      gasExplosionQuarks.spawn(hit.x, hit.y, hit.z);
-      break;
     case 'flamethrower-native':
       flamethrowerNative.spawn(hit.x, hit.y, hit.z);
-      break;
-    case 'flamethrower-quarks':
-      flamethrowerQuarks.spawn(hit.x, hit.y, hit.z);
       break;
     case 'subemitter2-native':
       subemitter2Native.spawn(hit.x, hit.y, hit.z);
       break;
-    case 'subemitter2-quarks':
-      subemitter2Quarks.spawn(hit.x, hit.y, hit.z);
-      break;
     case 'tornado-native':
       tornadoNative.spawn(hit.x, hit.y, hit.z);
       break;
-    case 'sab-worker':
-      const r = 0.5 + Math.random() * 0.5;
-      const g = 0.2 + Math.random() * 0.8;
-      const b = 0.8 + Math.random() * 0.2;
-      sabVfx.spawn(hit.x, hit.y, hit.z, 1000, [r, g, b]);
-      break;
+
     case 'skill-ironFortitude':
       dispatchSkillFX(scene, { skill: 'ironFortitude', x: hit.x, y: hit.y, z: hit.z, team: 1 });
       break;
@@ -353,14 +347,77 @@ const fpsEl = document.getElementById('fps') as HTMLSpanElement;
 let frameCount = 0;
 let lastFpsTime = performance.now();
 const clock = new THREE.Clock();
+let lastHitVfxTime = 0;
+
+// Create Boss Health Bar UI at top center of screen
+const bossUiContainer = document.createElement('div');
+bossUiContainer.id = 'boss-ui-container';
+bossUiContainer.style.cssText = `
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 320px;
+  background: rgba(15, 15, 15, 0.85);
+  backdrop-filter: blur(6px);
+  border: 1.5px solid rgba(239, 68, 68, 0.5);
+  border-radius: 8px;
+  padding: 8px 12px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
+  color: white;
+  font-family: sans-serif;
+  z-index: 9999;
+  display: none;
+`;
+bossUiContainer.innerHTML = `
+  <div style="font-weight: bold; font-size: 13px; text-transform: uppercase; color: #ef4444; letter-spacing: 1px; text-shadow: 0 0 6px rgba(239, 68, 68, 0.6); margin-bottom: 4px; text-align: center;">Giant Chief Barbarian</div>
+  <div style="position: relative; width: 100%; height: 14px; background: rgba(40, 10, 10, 0.9); border-radius: 4px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.15);">
+    <div id="boss-hp-bar-fg" style="width: 100%; height: 100%; background: linear-gradient(90deg, #ef4444, #991b1b); transition: width 0.1s ease-out;"></div>
+    <div id="boss-hp-bar-text" style="position: absolute; width: 100%; height: 100%; top: 0; left: 0; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: bold; text-shadow: 1px 1px 1px black;">10000 / 10000</div>
+  </div>
+`;
+document.body.appendChild(bossUiContainer);
 
 function animate() {
   requestAnimationFrame(animate);
   const delta = clock.getDelta();
 
-  if (controllerMode === 'player') {
+  if (character && controllerMode === 'player') {
     character.update(delta);
     
+    // Update local name tag and HP
+    const localHp = myPlayer().getState('hp') ?? 100;
+    character.updateNameTag(localHp / 100);
+
+    // Collision detection: Check if any active projectile hits local player
+    for (let i = projectileSystem.projectiles.length - 1; i >= 0; i--) {
+      const p = projectileSystem.projectiles[i];
+      if (p.age > 0.15) { // Prevent self-collision immediately on spawn
+        const dist = p.mesh.position.distanceTo(character.position);
+        if (dist < 1.2) {
+          // Spawn hit VFX
+          gasExplosionNative.spawn(p.mesh.position.x, p.mesh.position.y, p.mesh.position.z);
+          
+          // Spawn damage HUD
+          damageHUDBatcher.spawn({
+            skill: "normal",
+            value: 10,
+            position: [character.position.x, character.position.y, character.position.z],
+            isCrit: false,
+            isMagic: false,
+          });
+
+          // Apply damage to self
+          const nextHp = Math.max(0, localHp - 10);
+          myPlayer().setState('hp', nextHp === 0 ? 100 : nextHp); // auto-respawn to 100
+          
+          // Remove projectile
+          scene.remove(p.mesh);
+          projectileSystem.projectiles.splice(i, 1);
+        }
+      }
+    }
+
     // Continuous attack trigger at 193 ASPD when Left-Click is held down
     if (isShooting) {
       if (character.triggerAttack()) {
@@ -380,29 +437,94 @@ function animate() {
         projectileSystem.spawn(spawnPos, dir, 40, target);
       }
     }
-
-    projectileSystem.update(delta, colliderMesh, (hitPoint) => {
-      // Spawn hit impact explosion
-      gasExplosionNative.spawn(hitPoint.x, hitPoint.y, hitPoint.z);
-    });
-    skillsSystem.update(delta);
   } else {
     controls.update();
   }
 
+  // Update remote players
+  playersAndControllers.forEach(({ player, controller }) => {
+    if (player.id === myPlayer().id) return; // Skip local
+    const pos = player.getState('pos');
+    if (pos) {
+      controller.position.lerp(new THREE.Vector3(pos.x, pos.y, pos.z), 0.2);
+    }
+    const rot = player.getState('rot');
+    if (rot !== undefined && controller.playerMesh) {
+      let diff = rot - controller.playerMesh.rotation.y;
+      diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+      controller.playerMesh.rotation.y += diff * 0.2;
+    }
+    const action = player.getState('action');
+    if (action) {
+      controller.playAnimationState(action);
+    }
+    controller.update(delta);
+
+    // Update remote player's nametag & HP
+    const remoteHp = player.getState('hp') ?? 100;
+    controller.updateNameTag(remoteHp / 100);
+
+    // Continuous attack local generation for remote players
+    const remoteShooting = player.getState('isShooting');
+    if (remoteShooting) {
+      if (controller.triggerAttack()) {
+        const spawnPos = controller.getWeaponWorldPosition('hand_l', 1.0);
+        const target = controller.getNearestTarget();
+        let dir = controller.getForwardVector();
+        if (target) {
+          const targetWorldPos = new THREE.Vector3();
+          target.getWorldPosition(targetWorldPos);
+          targetWorldPos.y += 0.5;
+          dir = targetWorldPos.sub(spawnPos).normalize();
+        }
+        projectileSystem.spawn(spawnPos, dir, 40, target);
+      }
+    }
+  });
+
+  // Local state update & send to PlayroomKit
+  if (character) {
+    myPlayer().setState('pos', { x: character.position.x, y: character.position.y, z: character.position.z });
+    myPlayer().setState('rot', character.playerMesh ? character.playerMesh.rotation.y : 0);
+    myPlayer().setState('action', character.currentActionName);
+    myPlayer().setState('isShooting', isShooting);
+  }
+
+  projectileSystem.update(delta, colliderMesh, (hitPoint) => {
+    // No floor hit VFX to save mobile CPU/GPU
+  });
+  
+  // Boss logic removed completely
+  
+  if (character) {
+    skillsSystem.update(delta, character);
+  } else {
+    skillsSystem.update(delta);
+  }
+
   // Update Day Cycle variables (Morning -> Noon -> Afternoon -> Night)
-  dayCycle.update();
+  if (isHost()) {
+    dayCycle.update();
+    setState('dayCycleStartTime', (dayCycle as any).startTime);
+  } else {
+    const hostTime = getState('dayCycleStartTime');
+    if (hostTime !== undefined) {
+      (dayCycle as any).startTime = hostTime;
+    }
+    dayCycle.update();
+  }
   timeLabel.innerText = `Waktu: ${dayCycle.getCurrentPeriod()}`;
 
-  sabVfx.update();
   gasExplosionNative.update(delta);
-  gasExplosionQuarks.update(delta);
   flamethrowerNative.update(delta);
-  flamethrowerQuarks.update(delta);
   subemitter2Native.update(delta);
-  subemitter2Quarks.update(delta);
   tornadoNative.update(delta);
   updateFX(delta);
+  damageHUDBatcher.update(delta);
+  if (!isMobile) {
+    windEffect.update(delta);
+    sceneryWindLines.update(delta, clock.getElapsedTime());
+  }
 
   renderer.render(scene, camera);
 
@@ -418,14 +540,63 @@ function animate() {
 // Allow spawning VFX at character position when walking around and pressing 'E'
 // Also route 1, 2, 3 skills keys
 window.addEventListener('keydown', (e) => {
-  if (controllerMode === 'player') {
+  if (character && controllerMode === 'player') {
     const playerPos = character.position;
     const forward = character.getForwardVector();
-    skillsSystem.handleInput(e.code, playerPos, forward, character);
+    const triggered = skillsSystem.handleInput(e.code, playerPos, forward, character);
+    if (triggered) {
+      RPC.call("cast_skill", {
+        skillCode: e.code,
+        playerPos: { x: playerPos.x, y: playerPos.y, z: playerPos.z },
+        forward: { x: forward.x, y: forward.y, z: forward.z },
+        playerId: myPlayer().id
+      }, RPC.Mode.OTHERS);
+    }
   }
 });
 
-animate();
+insertCoin().then(() => {
+  // Register RPC handlers for syncing skills
+  RPC.register("boss_cast_skill", (data: any) => {
+    skillsSystem.triggerNetworkVFX(data.skillType, data.targetPos.x, data.targetPos.z);
+    return Promise.resolve();
+  });
+
+  RPC.register("cast_skill", (data: any) => {
+    const pos = new THREE.Vector3(data.playerPos.x, data.playerPos.y, data.playerPos.z);
+    const casterObj = playersAndControllers.find(p => p.player.id === data.playerId);
+    const caster = casterObj ? casterObj.controller : undefined;
+    skillsSystem.triggerNetworkVFX(data.skillCode, pos.x, pos.z, caster?.playerMesh || undefined);
+    return Promise.resolve();
+  });
+
+  onPlayerJoin((player) => {
+    const isLocal = player.id === myPlayer().id;
+    const charCtrl = new CharacterController(scene, camera, isLocal);
+    charCtrl.setEnvironment(colliderMesh);
+    charCtrl.setTargets([dummyMesh]);
+
+    const profile = player.getProfile();
+    const username = profile?.name || (isLocal ? "You" : "Player");
+    charCtrl.initNameTag(username);
+
+    if (isLocal) {
+      character = charCtrl;
+      player.setState('hp', 100);
+      applyModeLayout();
+    }
+
+    player.onQuit(() => {
+      scene.remove(charCtrl.playerGroup);
+      const idx = playersAndControllers.findIndex(p => p.player.id === player.id);
+      if (idx !== -1) playersAndControllers.splice(idx, 1);
+    });
+
+    playersAndControllers.push({ player, controller: charCtrl });
+  });
+
+  animate();
+});
 
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
