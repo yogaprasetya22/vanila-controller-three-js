@@ -96,7 +96,7 @@ export class BossController {
             (this.placeholderMesh.material as THREE.Material).dispose();
 
             this.playerMesh = SkeletonUtils.clone(charGLTF.scene);
-            this.playerMesh.scale.setScalar(3.2); // Giant Boss!
+            this.playerMesh.scale.setScalar(2.8); // Giant Boss!
             this.playerGroup.add(this.playerMesh);
 
             // Disable shadow costs, enable lighting

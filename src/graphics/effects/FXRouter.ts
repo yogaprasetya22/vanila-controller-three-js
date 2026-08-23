@@ -2,40 +2,26 @@ import * as THREE from "three";
 import { canSpawnFX } from "./FXCore";
 
 // 1. Centralized Imports of Modular Spawn Functions
-import {
-    spawnIronFortitudeAuraFX,
-    spawnFrostNovaBurstFX,
-    spawnDivineShieldFX,
-} from "./SkillFX_Buffs";
-
-import {
-    spawnTauntFX,
-    spawnShieldBashFX,
-    spawnEvasiveLeapFX,
-} from "./SkillFX_Combat";
-
-import {
-    spawnLightningFX,
-} from "./SkillFX_Lightning";
-
-import {
-    spawnBasicAttackFX,
-    spawnHealFX,
-    spawnHighNoonFX,
-    spawnSmokeBombFX,
-    spawnFanFireFX,
-    spawnShadowStepFX,
-    spawnBackstabFX,
-    spawnPoisonBladeFX,
-    spawnIceShatterFX,
-    spawnHolySanctuaryFX,
-} from "./SkillFX_Misc";
-
-import {
-    spawnArrowVolleyFX,
-    spawnFireballFX,
-    spawnDoubleShotFX,
-} from "./SkillFX_Projectiles";
+import { spawnIronFortitudeAuraFX } from "./IronFortitudeAuraFX";
+import { spawnFrostNovaBurstFX } from "./FrostNovaBurstFX";
+import { spawnDivineShieldFX } from "./DivineShieldFX";
+import { spawnTauntFX } from "./TauntFX";
+import { spawnShieldBashFX } from "./ShieldBashFX";
+import { spawnEvasiveLeapFX } from "./EvasiveLeapFX";
+import { spawnLightningFX } from "./LightningFX";
+import { spawnBasicAttackFX } from "./BasicAttackFX";
+import { spawnHealFX } from "./HealFX";
+import { spawnHighNoonFX } from "./HighNoonFX";
+import { spawnSmokeBombFX } from "./SmokeBombFX";
+import { spawnFanFireFX } from "./FanFireFX";
+import { spawnShadowStepFX } from "./ShadowStepFX";
+import { spawnBackstabFX } from "./BackstabFX";
+import { spawnPoisonBladeFX } from "./PoisonBladeFX";
+import { spawnIceShatterFX } from "./IceShatterFX";
+import { spawnHolySanctuaryFX } from "./HolySanctuaryFX";
+import { spawnArrowVolleyFX } from "./ArrowVolleyFX";
+import { spawnFireballFX } from "./FireballFX";
+import { spawnDoubleShotFX } from "./DoubleShotFX";
 
 import { getTerrainHeight } from "../../simulation/constants";
 

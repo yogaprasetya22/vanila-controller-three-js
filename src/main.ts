@@ -9,10 +9,10 @@ import { onPlayerJoin, insertCoin, isHost, myPlayer, RPC, setState, getState, on
 import { ProjectileSystem } from './character/projectile-system.ts';
 import { SkillsSystem } from './character/skills-system.ts';
 
-import { CartoonBlueGasExplosionNativeVFX } from './vfx/cartoon-blue-gas-explosion/Native.ts';
-import { CartoonBlueFlamethrowerNativeVFX } from './vfx/cartoon-blue-flamethrower/Native.ts';
-import { Subemitter2NativeVFX } from './vfx/subemitter2/Native.ts';
-import { CartoonTornadoNativeVFX } from './vfx/tornado/Native.ts';
+import { CartoonBlueGasExplosionNativeVFX } from './graphics/effects/CartoonBlueGasExplosionNative.ts';
+import { CartoonBlueFlamethrowerNativeVFX } from './graphics/effects/CartoonBlueFlamethrowerNative.ts';
+import { Subemitter2NativeVFX } from './graphics/effects/Subemitter2Native.ts';
+import { CartoonTornadoNativeVFX } from './graphics/effects/CartoonTornadoNative.ts';
 import { updateFX } from './graphics/effects/FXCore';
 import { dispatchSkillFX } from './graphics/effects/FXRouter';
 import { WindEffectManager } from './graphics/effects/WindLines.ts';
