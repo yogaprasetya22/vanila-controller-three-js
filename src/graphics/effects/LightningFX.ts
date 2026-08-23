@@ -6,6 +6,7 @@ export function spawnLightningFX(
     scene: THREE.Scene,
     points: THREE.Vector3[],
     team?: number,
+    scale = 1,
 ): void {
     if (points.length < 2) return;
 
@@ -75,7 +76,7 @@ export function spawnLightningFX(
 
             const dist = lastPt.distanceTo(nextPt);
             // Thick glowing lightning bolt geometry
-            const geo = new THREE.CylinderGeometry(0.06, 0.06, dist, 4);
+            const geo = new THREE.CylinderGeometry(0.06 * scale, 0.06 * scale, dist, 4);
             cylinderGeoPool.push(geo);
 
             const mesh = new THREE.Mesh(geo, mat);
@@ -97,7 +98,7 @@ export function spawnLightningFX(
                 ).normalize();
                 const branchEnd = new THREE.Vector3().copy(nextPt).addScaledVector(branchDir, branchLength);
 
-                const bGeo = new THREE.CylinderGeometry(0.02, 0.02, branchLength, 4);
+                const bGeo = new THREE.CylinderGeometry(0.02 * scale, 0.02 * scale, branchLength, 4);
                 cylinderGeoPool.push(bGeo);
                 const bMesh = new THREE.Mesh(bGeo, mat);
                 bMesh.frustumCulled = false;
@@ -117,7 +118,7 @@ export function spawnLightningFX(
 
     // Instanced glowing neon spark nodes at joints
     const glowCount = jointPositions.length;
-    const glowGeo = new THREE.PlaneGeometry(0.85, 0.85);
+    const glowGeo = new THREE.PlaneGeometry(0.85 * scale, 0.85 * scale);
     const glowMat = new THREE.ShaderMaterial({
         uniforms: {
             uColor: { value: new THREE.Color(colorLightning) },
@@ -153,7 +154,7 @@ export function spawnLightningFX(
     const tempObj = new THREE.Object3D();
     for (let i = 0; i < glowCount; i++) {
         tempObj.position.copy(jointPositions[i]);
-        tempObj.scale.setScalar(0.6 + Math.random() * 0.5);
+        tempObj.scale.setScalar((0.6 + Math.random() * 0.5) * scale);
         tempObj.updateMatrix();
         glowMesh.setMatrixAt(i, tempObj.matrix);
     }

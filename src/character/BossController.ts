@@ -4,8 +4,12 @@ import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 // @ts-ignore
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { getTerrainHeight } from '../simulation/constants';
-import { isHost, setState, getState, RPC, send, getNPCConfig, myPlayer } from '../network/NetworkManager.ts';
+import { isHost, setState, getState, RPC, send, getNPCConfig, myPlayer, onBossSkill } from '../network/NetworkManager.ts';
 import { damageHUDBatcher } from '../graphics/effects/DamageHUDBatcher.ts';
+import { BossGroundSlamFX } from '../graphics/effects/BossGroundSlamFX.ts';
+import { spawnShieldBashFX } from '../graphics/effects/ShieldBashFX.ts';
+import { spawnDoubleShotFX } from '../graphics/effects/DoubleShotFX.ts';
+import { spawnLightningFX } from '../graphics/effects/LightningFX.ts';
 
 const gltfLoader = new GLTFLoader();
 gltfLoader.setMeshoptDecoder(MeshoptDecoder);
@@ -36,6 +40,9 @@ export class BossController {
     private lastDamageCycle = -1;
     private hasDamagedThisLoop = false;
 
+    public groundSlamFX: BossGroundSlamFX;
+    private playersRef: { player: any; controller: any }[] = [];
+
     // Nametag Billboard Properties
     private nameTagCanvas: HTMLCanvasElement | null = null;
     private nameTagTexture: THREE.CanvasTexture | null = null;
@@ -44,6 +51,7 @@ export class BossController {
     constructor(scene: THREE.Scene, skillsSystem: any) {
         this.scene = scene;
         this.playerGroup = new THREE.Group();
+        this.groundSlamFX = new BossGroundSlamFX(scene);
 
         // Apply authoritative server settings if available
         const npcCfg = getNPCConfig();
@@ -64,6 +72,31 @@ export class BossController {
         this.placeholderMesh = new THREE.Mesh(geo, mat);
         this.placeholderMesh.position.y = 2.0;
         this.playerGroup.add(this.placeholderMesh);
+
+        // Listen for server-triggered boss skills (ground slam telegraph)
+        onBossSkill((data: any) => {
+            const onBoom = () => {
+                const bx = this.playerGroup.position.x;
+                const bz = this.playerGroup.position.z;
+                const by = this.playerGroup.position.y;
+                if (data.skill === "groundSlam") {
+                    this.applyAoEDamage(data.x, data.z, data.radius, 35, 'bossSlam');
+                } else if (data.skill === "shieldBash") {
+                    spawnShieldBashFX(this.scene, bx, by, bz, data.tx, 0, data.tz, 0, 2.5);
+                    this.applyAoEDamage(data.x, data.z, data.radius, 30, 'bossShieldBash');
+                } else if (data.skill === "doubleShot") {
+                    spawnDoubleShotFX(this.scene, bx, by, bz, data.tx, 0, data.tz, false, 0, 2.5);
+                    this.applyAoEDamage(data.x, data.z, data.radius, 25, 'bossDoubleShot');
+                } else if (data.skill === "lightning") {
+                    spawnLightningFX(this.scene, [
+                        new THREE.Vector3(bx, by + 2, bz),
+                        new THREE.Vector3(data.tx, 2, data.tz),
+                    ], 0, 2.5);
+                    this.applyAoEDamage(data.x, data.z, data.radius, 40, 'bossLightning');
+                }
+            };
+            this.groundSlamFX.spawn(data.x, data.z, data.radius, data.telegraph, onBoom);
+        });
 
         this.loadModel();
     }
@@ -256,10 +289,36 @@ export class BossController {
         }
     }
 
-
+    // ponytail: client-side AoE damage — matches existing melee pattern (server has no player HP).
+    // Ceiling: if server adds player HP authority later, move this check server-side.
+    private applyAoEDamage(centerX: number, centerZ: number, radius: number, damage: number, skillName: string) {
+        this.playersRef.forEach(p => {
+            if (p.player.id === myPlayer().id) {
+                const px = p.controller.playerGroup.position.x;
+                const pz = p.controller.playerGroup.position.z;
+                const dx = px - centerX;
+                const dz = pz - centerZ;
+                const dist = Math.sqrt(dx * dx + dz * dz);
+                if (dist < radius) {
+                    damageHUDBatcher.spawn({
+                        skill: skillName,
+                        value: damage,
+                        position: [px, p.controller.playerGroup.position.y + 1, pz],
+                        isCrit: Math.random() > 0.8,
+                        isMagic: false,
+                    });
+                    const localHp = myPlayer().getState('hp') ?? 100;
+                    const nextHp = Math.max(0, localHp - damage);
+                    myPlayer().setState('hp', nextHp === 0 ? 100 : nextHp);
+                }
+            }
+        });
+    }
 
     public update(delta: number, players: { player: any; controller: any }[]) {
         if (this.mixer) this.mixer.update(delta);
+        this.playersRef = players;
+        this.groundSlamFX.update(delta);
 
         // Synchronize damage with kick animation impact (0.9333s total duration, impact around 0.4s to 0.6s)
         const attackAction = this.actions["attack"];

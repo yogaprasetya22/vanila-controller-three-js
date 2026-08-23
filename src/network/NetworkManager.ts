@@ -76,6 +76,7 @@ export class NetworkManager {
     private static joinCallbacks: Array<(player: Player) => void> = [];
     private static rpcHandlers: Map<string, (data: any, senderId: string) => void> = new Map();
     private static bossDamagedCallbacks: Array<(data: any) => void> = [];
+    private static bossSkillCallbacks: Array<(data: any) => void> = [];
     private static npcConfig: any = null;
     private static resolveInitPromise: (() => void) | null = null;
 
@@ -177,6 +178,10 @@ export class NetworkManager {
                 this.bossDamagedCallbacks.forEach(cb => cb(msg));
                 break;
 
+            case "boss_skill":
+                this.bossSkillCallbacks.forEach(cb => cb(msg));
+                break;
+
             case "state_update":
                 const player = this.playersMap.get(msg.playerId);
                 if (player) {
@@ -233,6 +238,10 @@ export class NetworkManager {
         this.bossDamagedCallbacks.push(callback);
     }
 
+    public static onBossSkill(callback: (data: any) => void) {
+        this.bossSkillCallbacks.push(callback);
+    }
+
     public static getNPCConfig(): any {
         return this.npcConfig;
     }
@@ -247,6 +256,7 @@ export const setState = (k: string, v: any) => NetworkManager.setState(k, v);
 export const getState = (k: string) => NetworkManager.getState(k);
 export const send = (msg: any) => NetworkManager.send(msg);
 export const onBossDamaged = (cb: (data: any) => void) => NetworkManager.onBossDamaged(cb);
+export const onBossSkill = (cb: (data: any) => void) => NetworkManager.onBossSkill(cb);
 export const getNPCConfig = () => NetworkManager.getNPCConfig();
 
 // RPC API to mirror PlayroomKit

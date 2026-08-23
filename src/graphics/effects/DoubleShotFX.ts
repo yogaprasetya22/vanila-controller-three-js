@@ -65,6 +65,7 @@ export function spawnDoubleShotFX(
     tz: number,
     isTurret?: boolean,
     team?: number,
+    scale = 1,
 ) {
     const start = new THREE.Vector3(fx, fy, fz);
     const end = new THREE.Vector3(tx, ty, tz);
@@ -154,7 +155,7 @@ export function spawnDoubleShotFX(
             let age = -delay;
             const flight = 0.42;
 
-            const projectileGeo = new THREE.SphereGeometry(0.2, 8, 8);
+            const projectileGeo = new THREE.SphereGeometry(0.2 * scale, 8, 8);
             const projectileMat = new THREE.MeshBasicMaterial({
                 color: 0xffffff,
                 transparent: true,
@@ -164,7 +165,7 @@ export function spawnDoubleShotFX(
             const proj = new THREE.Mesh(projectileGeo, projectileMat);
 
             // Orbiting particle trail mesh (blueEmbersTex)
-            const trailGeo = pooledPlane(0.35, 0.35);
+            const trailGeo = pooledPlane(0.35 * scale, 0.35 * scale);
             const trailMat = getPooledMaterial({
                 map: blueEmbersTex,
                 color: isBlue ? 0x00dfff : 0xffdd44,
@@ -186,7 +187,7 @@ export function spawnDoubleShotFX(
             const trailPosList: THREE.Vector3[] = Array.from({ length: TRAIL_LEN }, () => start.clone());
 
             // Cartoon impact flipbook
-            const expGeo = new THREE.PlaneGeometry(1.8, 1.8);
+            const expGeo = new THREE.PlaneGeometry(1.8 * scale, 1.8 * scale);
             const expMat = makeFlipbookMat(blueExplosionTex, 3, 3, isBlue ? new THREE.Color(1.0, 1.2, 1.5) : new THREE.Color(1.8, 1.3, 0.8));
             const expMesh = new THREE.InstancedMesh(expGeo, expMat, 1);
             const aFrame = new Float32Array(1);
@@ -220,7 +221,7 @@ export function spawnDoubleShotFX(
 
                         // Spiral calculations
                         const orbitSpd = 32.0;
-                        const radius = 0.4 * (1.0 - t);
+                        const radius = 0.4 * scale * (1.0 - t);
                         const angle = age * orbitSpd + (isOffsetLeft ? Math.PI : 0);
                         const spiralOffset = new THREE.Vector3(Math.cos(angle) * radius, Math.sin(angle) * radius, 0);
 
@@ -265,7 +266,7 @@ export function spawnDoubleShotFX(
                         if (pct < 1.0) {
                             _tempObj.position.copy(end);
                             _tempObj.quaternion.copy(camera.quaternion);
-                            _tempObj.scale.setScalar(0.5 + pct * 1.5);
+                            _tempObj.scale.setScalar((0.5 + pct * 1.5) * scale);
                             _tempObj.updateMatrix();
                             expMesh.setMatrixAt(0, _tempObj.matrix);
 

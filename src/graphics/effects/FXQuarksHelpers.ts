@@ -96,6 +96,31 @@ export function evalColor(
     return keys[keys.length - 1].value;
 }
 
+// ponytail: out-param variant avoids {r,g,b} heap alloc per particle per frame.
+// Use when updating InstancedMesh color buffers in hot loops (60fps, many particles).
+export function evalColorOut(
+    keys: ColorKey[],
+    t: number,
+    out: { r: number; g: number; b: number },
+): void {
+    for (let i = 0; i < keys.length - 1; i++) {
+        if (t <= keys[i + 1].pos) {
+            const lt = (t - keys[i].pos) / (keys[i + 1].pos - keys[i].pos);
+            out.r =
+                keys[i].value.r + lt * (keys[i + 1].value.r - keys[i].value.r);
+            out.g =
+                keys[i].value.g + lt * (keys[i + 1].value.g - keys[i].value.g);
+            out.b =
+                keys[i].value.b + lt * (keys[i + 1].value.b - keys[i].value.b);
+            return;
+        }
+    }
+    const last = keys[keys.length - 1].value;
+    out.r = last.r;
+    out.g = last.g;
+    out.b = last.b;
+}
+
 export function rng(a: number, b: number): number {
     return a + Math.random() * (b - a);
 }

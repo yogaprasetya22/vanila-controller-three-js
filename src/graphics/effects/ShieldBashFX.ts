@@ -19,6 +19,7 @@ export function spawnShieldBashFX(
     ty: number,
     tz: number,
     team?: number,
+    scale = 1,
 ) {
     const isBlue = team === 1;
     const colorArc = isBlue ? 0x00aaff : 0xffaa00;
@@ -29,7 +30,7 @@ export function spawnShieldBashFX(
     const end = new THREE.Vector3(tx, ty + 0.8, tz);
 
     // Glowing holographic shield plane projecting forward
-    const shieldGeo = new THREE.PlaneGeometry(2.0, 2.2);
+    const shieldGeo = new THREE.PlaneGeometry(2.0 * scale, 2.2 * scale);
     const shieldMat = new THREE.ShaderMaterial({
         uniforms: {
             uTime: { value: 0 },
@@ -71,7 +72,7 @@ export function spawnShieldBashFX(
     scene.add(shield);
 
     // Flat ground shockwave expanding on impact point
-    const shockGeo = new THREE.PlaneGeometry(1.0, 1.0);
+    const shockGeo = new THREE.PlaneGeometry(1.0 * scale, 1.0 * scale);
     const shockMat = new THREE.ShaderMaterial({
         uniforms: {
             uColor: { value: new THREE.Color(colorShock) },
@@ -106,7 +107,7 @@ export function spawnShieldBashFX(
     shock.position.set(tx, y + 0.05, tz);
     scene.add(shock);
 
-    const sparkGeo = pooledPlane(0.35, 0.35);
+    const sparkGeo = pooledPlane(0.35 * scale, 0.35 * scale);
     const sparkMat = getPooledMaterial({
         map: sparkTex,
         color: colorSparks,
@@ -159,7 +160,7 @@ export function spawnShieldBashFX(
             shieldMat.uniforms.uOpacity.value = 1.0 - t;
 
             // Expand ground shockwave ring
-            const ds = 0.5 + t * 5.0;
+            const ds = (0.5 + t * 5.0) * scale;
             shock.scale.set(ds, ds, 1.0);
             shockMat.uniforms.uOpacity.value = 1.0 - t;
 
