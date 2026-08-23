@@ -79,20 +79,35 @@ export class BossController {
                 const bx = this.playerGroup.position.x;
                 const bz = this.playerGroup.position.z;
                 const by = this.playerGroup.position.y;
+                const handY = by + 4; // boss scale 2.8x, hand height ~4 units
                 if (data.skill === "groundSlam") {
                     this.applyAoEDamage(data.x, data.z, data.radius, 35, 'bossSlam');
-                } else if (data.skill === "shieldBash") {
-                    spawnShieldBashFX(this.scene, bx, by, bz, data.tx, 0, data.tz, 0, 2.5);
-                    this.applyAoEDamage(data.x, data.z, data.radius, 30, 'bossShieldBash');
-                } else if (data.skill === "doubleShot") {
-                    spawnDoubleShotFX(this.scene, bx, by, bz, data.tx, 0, data.tz, false, 0, 2.5);
-                    this.applyAoEDamage(data.x, data.z, data.radius, 25, 'bossDoubleShot');
-                } else if (data.skill === "lightning") {
-                    spawnLightningFX(this.scene, [
-                        new THREE.Vector3(bx, by + 2, bz),
-                        new THREE.Vector3(data.tx, 2, data.tz),
-                    ], 0, 2.5);
-                    this.applyAoEDamage(data.x, data.z, data.radius, 40, 'bossLightning');
+                } else {
+                    // Homing target: find nearest player to original target, use CURRENT position
+                    // Matches basic attack projectile pattern — VFX always hits where player actually is
+                    let nearest = null as any;
+                    let minD = Infinity;
+                    for (const p of this.playersRef) {
+                        const px = p.controller.playerGroup.position.x;
+                        const pz = p.controller.playerGroup.position.z;
+                        const d = (px - data.tx) ** 2 + (pz - data.tz) ** 2;
+                        if (d < minD) { minD = d; nearest = p; }
+                    }
+                    const tx = nearest ? nearest.controller.playerGroup.position.x : data.tx;
+                    const tz = nearest ? nearest.controller.playerGroup.position.z : data.tz;
+                    if (data.skill === "shieldBash") {
+                        spawnShieldBashFX(this.scene, bx, handY, bz, tx, 0, tz, 0, 2.5);
+                        this.applyAoEDamage(tx, tz, data.radius, 30, 'bossShieldBash');
+                    } else if (data.skill === "doubleShot") {
+                        spawnDoubleShotFX(this.scene, bx, handY, bz, tx, 0, tz, false, 0, 2.5);
+                        this.applyAoEDamage(tx, tz, data.radius, 25, 'bossDoubleShot');
+                    } else if (data.skill === "lightning") {
+                        spawnLightningFX(this.scene, [
+                            new THREE.Vector3(bx, handY, bz),
+                            new THREE.Vector3(tx, 1, tz),
+                        ], 0, 2.5);
+                        this.applyAoEDamage(tx, tz, data.radius, 40, 'bossLightning');
+                    }
                 }
             };
             this.groundSlamFX.spawn(data.x, data.z, data.radius, data.telegraph, onBoom);

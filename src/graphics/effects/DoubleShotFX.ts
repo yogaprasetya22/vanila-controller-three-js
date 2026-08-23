@@ -221,7 +221,8 @@ export function spawnDoubleShotFX(
 
                         // Spiral calculations
                         const orbitSpd = 32.0;
-                        const radius = 0.4 * scale * (1.0 - t);
+                        // ponytail: tight spiral for visual accuracy — 0.15 not 0.4, looks like direct hit not miss
+                        const radius = 0.15 * scale * (1.0 - t);
                         const angle = age * orbitSpd + (isOffsetLeft ? Math.PI : 0);
                         const spiralOffset = new THREE.Vector3(Math.cos(angle) * radius, Math.sin(angle) * radius, 0);
 
