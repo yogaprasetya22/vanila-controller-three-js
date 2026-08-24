@@ -54,7 +54,7 @@ camera.position.set(0, 15, 30);
 const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
 const renderer = new THREE.WebGLRenderer({ antialias: !isMobile, powerPreference: 'high-performance' });
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(isMobile ? 1.0 : Math.min(window.devicePixelRatio, 2));
+renderer.setPixelRatio(isMobile ? 1.0 : Math.min(window.devicePixelRatio, 1.5));
 renderer.setClearColor(scene.fog.color);
 container.appendChild(renderer.domElement);
 
@@ -119,14 +119,6 @@ for (const cfg of obstacleConfigs) {
 
 scene.add(new THREE.GridHelper(100, 50, 0x374151, 0x1f2937));
 
-// Training Dummy
-const dummyGeo = new THREE.CylinderGeometry(0.5, 0.5, 2.0, 16);
-const dummyMat = new THREE.MeshStandardMaterial({ color: 0x991b1b, roughness: 0.5 });
-const dummyMesh = new THREE.Mesh(dummyGeo, dummyMat);
-dummyMesh.position.set(0, 1.0, -8);
-scene.add(dummyMesh);
-dummyMesh.updateMatrixWorld();
-environmentGeometries.push(dummyGeo.clone().applyMatrix4(dummyMesh.matrixWorld));
 
 const mergedGeometry = BufferGeometryUtils.mergeGeometries(environmentGeometries);
 (mergedGeometry as any).computeBoundsTree();
@@ -178,7 +170,6 @@ function applyModeLayout() {
   if (vfxSelectorPanel) vfxSelectorPanel.style.display  = isPlayer ? 'none' : 'block';
   skillsSystem.setVisible(isPlayer);
   if (character) character.playerGroup.visible = isPlayer;
-  dummyMesh.visible = isPlayer;
 }
 applyModeLayout();
 
@@ -217,6 +208,20 @@ renderer.domElement.addEventListener('pointerdown', (e) => {
 });
 window.addEventListener('pointerup', (e) => { if (e.button === 0) isShooting = false; });
 window.addEventListener('contextmenu', (e) => e.preventDefault());
+
+// Reset player input and shooting state when browser tab loses focus to prevent stuck characters
+const resetLocalPlayerInput = () => {
+  isShooting = false;
+  if (character) {
+    character.resetInputs();
+  }
+};
+window.addEventListener('blur', resetLocalPlayerInput);
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    resetLocalPlayerInput();
+  }
+});
 
 function spawnActiveVFX(hit: THREE.Vector3) {
   const x = hit.x, y = hit.y, z = hit.z;
@@ -268,6 +273,29 @@ const fpsEl = document.getElementById('fps') as HTMLSpanElement;
 let frameCount = 0;
 let lastFpsTime = performance.now();
 const clock = new THREE.Clock();
+ 
+// ── DPS Tracker Variables ─────────────────────────────────────────────────────
+let totalDamageDealt = 0;
+let combatStartTime = 0;
+const damageTimestamps: { time: number; amount: number }[] = [];
+
+const dpsValEl   = document.getElementById('dps-val') as HTMLSpanElement;
+const dpsAvgEl   = document.getElementById('dps-avg') as HTMLSpanElement;
+const dpsTotalEl = document.getElementById('dps-total') as HTMLSpanElement;
+const dpsTimeEl  = document.getElementById('dps-time') as HTMLSpanElement;
+const dpsResetBtn = document.getElementById('dps-reset') as HTMLButtonElement;
+
+if (dpsResetBtn) {
+  dpsResetBtn.addEventListener('click', () => {
+    totalDamageDealt = 0;
+    combatStartTime = 0;
+    damageTimestamps.length = 0;
+    if (dpsValEl) dpsValEl.innerText = '0';
+    if (dpsAvgEl) dpsAvgEl.innerText = '0';
+    if (dpsTotalEl) dpsTotalEl.innerText = '0';
+    if (dpsTimeEl) dpsTimeEl.innerText = '0s';
+  });
+}
 
 // ── Scratch vectors for remote lerp — zero alloc ──────────────────────────────
 const _remotePos = new THREE.Vector3();
@@ -305,16 +333,18 @@ function animate() {
     }
 
     // Local attack
-    if (isShooting && character.triggerAttack()) {
-      const spawnPos = character.getWeaponWorldPosition('hand_l', 1.0);
-      const target   = character.getNearestTarget();
-      let dir        = character.getForwardVector();
-      if (target) {
-        target.getWorldPosition(_tgtPos);
-        _tgtPos.y += 0.5;
-        dir = _tgtPos.sub(spawnPos).normalize();
+    if (isShooting) {
+      while (character.attackCooldown <= 0 && character.triggerAttack()) {
+        const spawnPos = character.getWeaponWorldPosition('hand_l', 1.0);
+        const target   = character.getNearestTarget();
+        let dir        = character.getForwardVector();
+        if (target) {
+          target.getWorldPosition(_tgtPos);
+          _tgtPos.y += 0.5;
+          dir = _tgtPos.sub(spawnPos).normalize();
+        }
+        projectileSystem.spawn(spawnPos, dir, 40, target, -1, myPlayer().id);
       }
-      projectileSystem.spawn(spawnPos, dir, 40, target, -1, myPlayer().id);
     }
   } else {
     controls.update();
@@ -371,7 +401,24 @@ function animate() {
     if (target && playerGroupSet.has(target)) return; // O(1) friendly-fire check
     const isBoss = bossController !== null && target === bossController.playerGroup;
     if (isBoss) {
+      // Predict damage locally for instant feedback
+      const isCrit = Math.random() < 0.90;
+      const finalDmg = isCrit ? 24000 : 12000;
+      damageHUDBatcher.spawn({
+        skill: isCrit ? 'boss' : 'normal',
+        value: finalDmg,
+        position: [hitPoint.x, hitPoint.y + 0.8, hitPoint.z],
+        isCrit: isCrit,
+      });
       bossController!.takeDamage(12000, hitPoint.x, hitPoint.y, hitPoint.z);
+
+      // Update DPS Tracker
+      const nowSec = performance.now() / 1000;
+      if (totalDamageDealt === 0) {
+        combatStartTime = nowSec;
+      }
+      totalDamageDealt += finalDmg;
+      damageTimestamps.push({ time: nowSec, amount: finalDmg });
     } else {
       damageHUDBatcher.spawn({ skill: 'normal', value: 100, position: [hitPoint.x, hitPoint.y, hitPoint.z], isCrit: Math.random() > 0.8 });
     }
@@ -418,6 +465,37 @@ function animate() {
     fpsEl.textContent = frameCount.toString();
     frameCount = 0;
     lastFpsTime = now;
+  }
+
+  // Update DPS UI (Sliding window 3.0s)
+  const nowSec = performance.now() / 1000;
+  const threeSecAgo = nowSec - 3.0;
+  let rollingSum = 0;
+  
+  for (let i = damageTimestamps.length - 1; i >= 0; i--) {
+    if (damageTimestamps[i].time < threeSecAgo) {
+      damageTimestamps.splice(0, i + 1);
+      break;
+    }
+  }
+  for (let i = 0; i < damageTimestamps.length; i++) {
+    rollingSum += damageTimestamps[i].amount;
+  }
+
+  if (totalDamageDealt > 0) {
+    const duration = nowSec - combatStartTime;
+    const currentDps = rollingSum / Math.max(1, Math.min(duration, 3.0));
+    const averageDps = totalDamageDealt / Math.max(0.1, duration);
+
+    if (dpsValEl) dpsValEl.innerText = Math.round(currentDps).toLocaleString();
+    if (dpsAvgEl) dpsAvgEl.innerText = Math.round(averageDps).toLocaleString();
+    if (dpsTotalEl) dpsTotalEl.innerText = totalDamageDealt.toLocaleString();
+    if (dpsTimeEl) dpsTimeEl.innerText = `${Math.round(duration)}s`;
+  } else {
+    if (dpsValEl) dpsValEl.innerText = '0';
+    if (dpsAvgEl) dpsAvgEl.innerText = '0';
+    if (dpsTotalEl) dpsTotalEl.innerText = '0';
+    if (dpsTimeEl) dpsTimeEl.innerText = '0s';
   }
 }
 
@@ -478,12 +556,14 @@ insertCoin().then(() => {
 
   // Sync damage HUD for everyone (server-authoritative damage broadcast)
   onBossDamaged((data: any) => {
-    damageHUDBatcher.spawn({
-      skill: data.isCrit ? 'boss' : 'normal',
-      value: data.damage,
-      position: [data.x, data.y + 0.8, data.z],
-      isCrit: data.isCrit,
-    });
+    if (data.attackerId !== myPlayer().id) {
+      damageHUDBatcher.spawn({
+        skill: data.isCrit ? 'boss' : 'normal',
+        value: data.damage,
+        position: [data.x, data.y + 0.8, data.z],
+        isCrit: data.isCrit,
+      });
+    }
     if (bossController && bossController.hp > 0) {
       bossController.playHit();
     }
@@ -505,7 +585,7 @@ insertCoin().then(() => {
     const charCtrl = new CharacterController(scene, camera, isLocal);
     charCtrl.setEnvironment(colliderMesh);
 
-    const targets: THREE.Object3D[] = [dummyMesh];
+    const targets: THREE.Object3D[] = [];
     if (bossController?.playerGroup) targets.push(bossController.playerGroup);
     charCtrl.setTargets(targets);
 

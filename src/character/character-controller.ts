@@ -824,12 +824,8 @@ export class CharacterController {
     // 7. Handle skeletal animation transitions
     if (this.mixer) {
       const isLocked = this.animationLockTime > 0;
-      // Basic attacks should be immediately overrideable by core movements (jump, walk, run)
-      const isAttackLock = isLocked && this.currentActionName === 'attack';
-      const isCoreLock = isLocked && !isAttackLock; // double_jump, jump_land
-
-      if (isCoreLock) {
-        // Keep playing core locked animations (double_jump or jump_land)
+      if (isLocked) {
+        // Keep playing locked animations (attack, double_jump, jump_land)
       } else if (!this.isGrounded && this.airTime > 0.1) {
         // Multi-phase jump based on gravity vertical velocity
         if (this.velocity.y > 0.5) {
@@ -843,8 +839,7 @@ export class CharacterController {
         } else {
           this.playAnimationState('walk');
         }
-      } else if (!isLocked) {
-        // Only return to idle if not currently locked by an attack animation
+      } else {
         this.playAnimationState('idle');
       }
 
@@ -861,10 +856,9 @@ export class CharacterController {
       this.mixer.update(delta);
     }
 
-    // Tick attack cooldown down
-    if (this.attackCooldown > 0) {
-      this.attackCooldown -= delta;
-    }
+    // Tick attack cooldown down (allow negative values for frame-rate compensation, capped to prevent multi-shot bug when idle)
+    const rateOfFire = CHARACTER_CONFIG.combat.rateOfFire || 0.05;
+    this.attackCooldown = Math.max(-rateOfFire, this.attackCooldown - delta);
 
     // Update projectiles (gerak + expire + collision)
     if (this.projectileSystem) {
@@ -892,6 +886,7 @@ export class CharacterController {
 
     for (let i = 0; i < this.targets.length; i++) {
       const target = this.targets[i];
+      if (!target.visible) continue;
       _scratchTargetPos.copy(target.position);
       const distSq = playerPos.distanceToSquared(_scratchTargetPos);
       if (distSq < rangeSq && distSq < minDist) {
@@ -914,9 +909,15 @@ export class CharacterController {
 
     this.lastAttackTime = performance.now() / 1000;
 
-    this.playAnimationState('attack', 0.08, 1.0);
-    this.animationLockTime = 0.18; // Keep locked in attack state during rapid firing to avoid jitter
-    this.attackCooldown = CHARACTER_CONFIG.combat.rateOfFire;
+    const animScale = CHARACTER_CONFIG.combat.attackAnimScale || 1.0;
+    this.playAnimationState('attack', 0.08, animScale);
+    this.animationLockTime = CHARACTER_CONFIG.combat.attackLockDuration || 0.18;
+    const rateOfFire = CHARACTER_CONFIG.combat.rateOfFire || 0.05;
+    if (this.attackCooldown <= 0) {
+      this.attackCooldown += rateOfFire;
+    } else {
+      this.attackCooldown = rateOfFire;
+    }
 
     if (this.bowSound) {
       this.bowSound.currentTime = 0.11;
@@ -987,8 +988,8 @@ export class CharacterController {
     const capsuleStart = this.tempSegment.start;
     const capsuleEnd = this.tempSegment.end;
 
-    capsuleStart.copy(this.position).addScaledVector(new THREE.Vector3(0, 1, 0), this.radius);
-    capsuleEnd.copy(this.position).addScaledVector(new THREE.Vector3(0, 1, 0), this.height - this.radius);
+    capsuleStart.copy(this.position).addScaledVector(_upVec, this.radius);
+    capsuleEnd.copy(this.position).addScaledVector(_upVec, this.height - this.radius);
 
     this.tempBox.makeEmpty();
     this.tempBox.expandByPoint(capsuleStart);
@@ -1000,8 +1001,8 @@ export class CharacterController {
 
     // Run collision resolution in 3 passes to handle corners and sliding smoothly
     for (let iter = 0; iter < 3; iter++) {
-      capsuleStart.copy(this.position).addScaledVector(new THREE.Vector3(0, 1, 0), this.radius);
-      capsuleEnd.copy(this.position).addScaledVector(new THREE.Vector3(0, 1, 0), this.height - this.radius);
+      capsuleStart.copy(this.position).addScaledVector(_upVec, this.radius);
+      capsuleEnd.copy(this.position).addScaledVector(_upVec, this.height - this.radius);
 
       this.tempBox.makeEmpty();
       this.tempBox.expandByPoint(capsuleStart);
@@ -1021,8 +1022,8 @@ export class CharacterController {
             this.position.addScaledVector(normal, depth);
 
             // Immediately update the capsule segment start/end so subsequent triangle tests in this pass use the new position (prevents jitter)
-            capsuleStart.copy(this.position).addScaledVector(new THREE.Vector3(0, 1, 0), this.radius);
-            capsuleEnd.copy(this.position).addScaledVector(new THREE.Vector3(0, 1, 0), this.height - this.radius);
+            capsuleStart.copy(this.position).addScaledVector(_upVec, this.radius);
+            capsuleEnd.copy(this.position).addScaledVector(_upVec, this.height - this.radius);
 
             if (normal.y > 0.5) {
               groundedThisFrame = true;

@@ -1,6 +1,7 @@
 // NetworkManager.ts: PlayroomKit wrapper for custom Go WebSocket server
 // Designed to keep changes to main.ts and BossController.ts minimal.
 import { CHARACTER_CONFIG } from '../character/character-config.ts';
+import { encode, decode } from '@msgpack/msgpack';
 type PlayerStateCallback = (val: any) => void;
 type RPCMode = 'HOST' | 'OTHERS' | 'ALL';
 
@@ -82,7 +83,9 @@ export class NetworkManager {
 
     public static send(msg: any) {
         if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-            this.socket.send(JSON.stringify(msg));
+            // Use msgpack binary for smaller payloads (30-50% smaller than JSON)
+            const encoded = encode(msg);
+            this.socket.send(encoded);
         }
     }
 
@@ -101,17 +104,38 @@ export class NetworkManager {
         let name = localStorage.getItem("playerName") || "Player-" + Math.floor(100 + Math.random() * 900);
         localStorage.setItem("playerName", name);
 
+        // Fetch JWT token from /login endpoint before connecting
+        const httpBase = import.meta.env.VITE_API_URL || `${window.location.protocol}//${window.location.hostname}:8080`;
+        let token = "";
+        try {
+            const resp = await fetch(`${httpBase}/login`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name }),
+            });
+            if (resp.ok) {
+                const data = await resp.json();
+                token = data.token || "";
+            }
+        } catch (e) {
+            console.warn("Login failed, connecting without token (server may not require auth):", e);
+        }
+
         return new Promise((resolve) => {
             let wsBaseUrl = import.meta.env.VITE_WS_URL;
             if (!wsBaseUrl) {
                 const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
                 wsBaseUrl = `${protocol}//${window.location.hostname}:8080/ws`;
             }
-            const wsUrl = `${wsBaseUrl}?room=${this.roomID}&name=${name}`;
+            // ponytail: token as query param — browsers can't set headers on WebSocket upgrade.
+            // Ceiling: use Sec-WebSocket-Protocol subprotocol for token when browser support matures.
+            const wsUrl = `${wsBaseUrl}?room=${this.roomID}&token=${encodeURIComponent(token)}`;
             console.log("Connecting to WebSocket:", wsUrl);
 
             this.resolveInitPromise = resolve;
             this.socket = new WebSocket(wsUrl);
+            // Accept binary (msgpack) messages
+            this.socket.binaryType = 'arraybuffer';
 
             this.socket.onopen = () => {
                 console.log("Connected to Go multiplayer backend. Room:", this.roomID);
@@ -119,7 +143,14 @@ export class NetworkManager {
 
             this.socket.onmessage = (event) => {
                 try {
-                    const msg = JSON.parse(event.data);
+                    let msg: any;
+                    if (event.data instanceof ArrayBuffer) {
+                        // Binary message = msgpack
+                        msg = decode(new Uint8Array(event.data));
+                    } else {
+                        // Text message = JSON (fallback for backward compatibility)
+                        msg = JSON.parse(event.data);
+                    }
                     this.handleMessage(msg);
                 } catch (e) {
                     console.error("Failed to parse websocket message", e);
@@ -128,8 +159,47 @@ export class NetworkManager {
 
             this.socket.onclose = () => {
                 console.warn("WebSocket disconnected.");
+                NetworkManager.showConnectionLostOverlay();
             };
         });
+    }
+
+    private static showConnectionLostOverlay() {
+        if (document.getElementById('connection-lost-overlay')) return;
+        const overlay = document.createElement('div');
+        overlay.id = 'connection-lost-overlay';
+        overlay.style.cssText = `
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(5, 2, 2, 0.85);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 1000000;
+            color: white;
+            font-family: 'Outfit', sans-serif;
+        `;
+        overlay.innerHTML = `
+            <div style="font-weight: 800; font-size: 26px; text-transform: uppercase; color: #ef4444; letter-spacing: 2px; text-shadow: 0 0 12px rgba(239, 68, 68, 0.6); margin-bottom: 10px; font-family: 'Press Start 2P', monospace;">Koneksi Terputus</div>
+            <div style="font-size: 14px; color: rgba(255,255,255,0.7); margin-bottom: 25px; font-family: monospace;">Hubungan dengan server multiplayer terputus karena batas waktu (idle).</div>
+            <button id="reconnect-btn" style="background: #ef4444; border: none; border-radius: 6px; color: white; padding: 12px 24px; font-size: 14px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4); transition: transform 0.2s, background 0.2s;">Sambung Kembali</button>
+        `;
+        document.body.appendChild(overlay);
+
+        const btn = document.getElementById('reconnect-btn');
+        if (btn) {
+            btn.addEventListener('click', () => {
+                window.location.reload();
+            });
+            btn.addEventListener('mouseover', () => {
+                (btn.style as any).background = '#dc2626';
+                (btn.style as any).transform = 'scale(1.05)';
+            });
+            btn.addEventListener('mouseout', () => {
+                (btn.style as any).background = '#ef4444';
+                (btn.style as any).transform = 'scale(1)';
+            });
+        }
     }
 
     private static handleMessage(msg: any) {

@@ -1245,6 +1245,7 @@ export class CartoonBlueFlamethrowerNativeVFX {
     }
 
     public update(delta: number) {
+        if (this.activeFX.length === 0) return; // ponytail: early-out when idle
         for (let i = this.activeFX.length - 1; i >= 0; i--) {
             if (!this.activeFX[i].update(delta)) this.activeFX.splice(i, 1);
         }

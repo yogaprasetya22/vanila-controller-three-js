@@ -88,6 +88,7 @@ export class ProjectileSystem {
   }
 
   public update(delta: number, environmentMesh: THREE.Mesh | null, spawnVFXCallback?: (pos: THREE.Vector3, target: THREE.Object3D | null) => void) {
+    if (this.projectiles.length === 0) return; // ponytail: early-out when idle — avoids myPlayer() call
     const localPlayerId = myPlayer().id;
 
     for (let i = this.projectiles.length - 1; i >= 0; i--) {
@@ -148,8 +149,8 @@ export class ProjectileSystem {
           this.meshPool.push(p.mesh);
           this.projectiles[i] = this.projectiles[this.projectiles.length - 1];
           this.projectiles.length--;
-          continue;
         }
+        continue;
       } else {
         // Fallback blind fire (optional)
         p.velocity.addScaledVector(_gravity, delta);

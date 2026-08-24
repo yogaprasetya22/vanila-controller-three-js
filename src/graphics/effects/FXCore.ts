@@ -181,6 +181,7 @@ const MAX_FX_HARSH = 150;
 export const activeFX: Array<{ update: (delta: number) => boolean }> = [];
 
 export function updateFX(delta: number) {
+    if (activeFX.length === 0) return; // ponytail: early-out when idle
     for (let i = activeFX.length - 1; i >= 0; i--) {
         if (!activeFX[i].update(delta)) activeFX.splice(i, 1);
     }

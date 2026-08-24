@@ -37,6 +37,7 @@ export class BossController {
     private targetAction = "idle";
     public lastDamageTime = 0;
     private hitTimeout: any = null;
+    private lastHitAnimTime = 0;
     private lastDamageCycle = -1;
     private hasDamagedThisLoop = false;
 
@@ -285,6 +286,12 @@ export class BossController {
     }
 
     public playHit() {
+        const now = performance.now();
+        if (now - this.lastHitAnimTime < 800) {
+            return; // Cooldown to prevent hit spam jitter
+        }
+        this.lastHitAnimTime = now;
+
         const hit = this.actions["hit"];
         const current = this.actions[this.currentActionName];
         if (hit) {
