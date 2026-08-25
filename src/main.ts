@@ -2,12 +2,21 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
-import { CharacterController } from './character/character-controller.ts';
-import { BossController } from './character/BossController.ts';
+import { LocalPlayer } from './entities/player/LocalPlayer.ts';
+import { RemotePlayer } from './entities/player/RemotePlayer.ts';
+import { BaseEnemyController } from './entities/enemy/BaseEnemyController.ts';
+import { EnemyFactory } from './entities/enemy/EnemyFactory.ts';
+import { CHARACTER_CONFIG } from './entities/player/PlayerConfig.ts';
+import { TargetingManager } from './systems/targeting/TargetingManager.ts';
 import { DayCycleManager } from './day-cycle-manager.ts';
-import { onPlayerJoin, insertCoin, isHost, myPlayer, RPC, setState, getState, onBossDamaged } from './network/NetworkManager.ts';
-import { ProjectileSystem } from './character/projectile-system.ts';
-import { SkillsSystem } from './character/skills-system.ts';
+import { NetworkDebugger } from './systems/netcode/NetworkDebugger.ts';
+import { onPlayerJoin, insertCoin, isHost, myPlayer, RPC, setState, getState, onBossDamaged, NetworkManager } from './network/NetworkManager.ts';
+import { ProjectileSystem } from './systems/combat/ProjectileSystem.ts';
+import { SkillsSystem } from './systems/combat/SkillsSystem.ts';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+// @ts-ignore
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { BossGroundSlamFX } from './graphics/effects/BossGroundSlamFX.ts';
 
 import { CartoonBlueGasExplosionNativeVFX } from './graphics/effects/CartoonBlueGasExplosionNative.ts';
 import { CartoonBlueFlamethrowerNativeVFX } from './graphics/effects/CartoonBlueFlamethrowerNative.ts';
@@ -52,7 +61,14 @@ setCamera(camera);
 camera.position.set(0, 15, 30);
 
 const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
-const renderer = new THREE.WebGLRenderer({ antialias: !isMobile, powerPreference: 'high-performance' });
+const renderer = new THREE.WebGLRenderer({
+  antialias: !isMobile,
+  powerPreference: 'high-performance',
+  precision: 'mediump',
+  stencil: false,
+  alpha: false,
+  depth: true
+});
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(isMobile ? 1.0 : Math.min(window.devicePixelRatio, 1.5));
 renderer.setClearColor(scene.fog.color);
@@ -125,9 +141,9 @@ const mergedGeometry = BufferGeometryUtils.mergeGeometries(environmentGeometries
 const colliderMesh = new THREE.Mesh(mergedGeometry);
 
 // ── Systems ───────────────────────────────────────────────────────────────────
-let character: CharacterController | null = null;
-let bossController: BossController | null = null;
-const playersAndControllers: { player: any; controller: CharacterController }[] = [];
+let character: LocalPlayer | null = null;
+const npcControllers = new Map<string, BaseEnemyController>();
+const playersAndControllers: { player: any; controller: LocalPlayer }[] = [];
 // Pre-built Set of player groups for O(1) friendly-fire check — updated on join/quit
 const playerGroupSet = new Set<THREE.Object3D>();
 
@@ -138,6 +154,47 @@ const subemitter2Native  = new Subemitter2NativeVFX(scene, camera);
 const tornadoNative      = new CartoonTornadoNativeVFX(scene, camera);
 const skillsSystem = new SkillsSystem(subemitter2Native, flamethrowerNative, tornadoNative);
 const windEffect   = new WindEffectManager(scene);
+
+// Helper to sync NPCs list dynamically — called every frame from render loop
+// NPC state now arrives via world_snapshot (not room_state_update) at 30Hz
+function syncNPCs() {
+  const npcsState = getState("npcs");
+  if (!npcsState) return;
+
+  // serverTs embedded by broadcastWorldSnapshot() — 0 = fallback to clock offset
+  const snapshotServerTs: number = (npcsState as any)._snapshotServerTs ?? 0;
+
+  for (const id in npcsState) {
+    if (id === '_snapshotServerTs') continue; // skip metadata key
+    const data = npcsState[id];
+    let ctrl = npcControllers.get(id);
+    if (!ctrl) {
+      ctrl = EnemyFactory.create(scene, id, data.type, data.name, data.maxHp, data.hp, skillsSystem);
+      ctrl.setEnvironment(colliderMesh);
+      npcControllers.set(id, ctrl);
+    }
+    ctrl.hp = data.hp;
+    ctrl.maxHp = data.maxHp;
+    ctrl.speed = data.speed;
+    ctrl.interpolator.addSnapshot(data.x, data.y, data.z, data.rot, data.action, snapshotServerTs);
+  }
+
+  for (const id of npcControllers.keys()) {
+    if (id === '_snapshotServerTs') continue;
+    if (!npcsState[id]) {
+      const ctrl = npcControllers.get(id);
+      if (ctrl) {
+        scene.remove(ctrl.playerGroup);
+        if (ctrl.nameTagSprite) {
+          ctrl.playerGroup.remove(ctrl.nameTagSprite);
+        }
+        ctrl.dispose();
+      }
+      npcControllers.delete(id);
+    }
+  }
+}
+
 if (!isMobile) windEffect.start();
 const sceneryWindLines = new SceneryWindLines(scene);
 
@@ -273,6 +330,29 @@ const fpsEl = document.getElementById('fps') as HTMLSpanElement;
 let frameCount = 0;
 let lastFpsTime = performance.now();
 const clock = new THREE.Clock();
+const netDebugger = new NetworkDebugger();
+
+// ── WebGL Profiler HUD ────────────────────────────────────────────────────────
+const webglStatsEl = document.createElement('div');
+webglStatsEl.id = 'webgl-stats';
+webglStatsEl.style.cssText = `
+  position: fixed;
+  top: 60px;
+  left: 20px;
+  background: rgba(10, 10, 15, 0.75);
+  color: #00ffaa;
+  border: 1px solid rgba(0, 255, 170, 0.3);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-family: monospace;
+  font-size: 11px;
+  z-index: 9999;
+  pointer-events: none;
+  backdrop-filter: blur(5px);
+  line-height: 1.4;
+`;
+document.body.appendChild(webglStatsEl);
+
  
 // ── DPS Tracker Variables ─────────────────────────────────────────────────────
 let totalDamageDealt = 0;
@@ -309,11 +389,13 @@ if (dpsResetBtn) {
 const _remotePos = new THREE.Vector3();
 const _spawnDir  = new THREE.Vector3();
 const _tgtPos    = new THREE.Vector3();
+const _scratchQuat = new THREE.Quaternion();
 
 // ── Animate Loop ──────────────────────────────────────────────────────────────
 function animate() {
   requestAnimationFrame(animate);
   const delta = clock.getDelta();
+  netDebugger.update();
 
   if (character && controllerMode === 'player') {
     character.update(delta);
@@ -365,26 +447,40 @@ function animate() {
     controls.update();
   }
 
-  // Remote players
+  // Remote players — pre-alloc scratch to avoid GC per-frame
+  // ponytail: one shared quat is safe; interpolator writes to outQuaternion which is controller.playerMesh.quaternion directly
   for (const { player, controller } of playersAndControllers) {
     if (player.id === myPlayer().id) continue;
 
     const pos = player.getState('pos');
+    const rot = player.getState('rot') ?? 0;
+    const action = player.getState('action') ?? 'idle';
+    const serverTs = player.getState('_serverTs') ?? 0; // Pilar 4: server-clock timestamp
     if (pos) {
-      _remotePos.set(pos.x, pos.y, pos.z);
-      controller.position.lerp(_remotePos, 0.2);
+      controller.interpolator.addSnapshot(pos.x, pos.y, pos.z, rot, action, serverTs);
     }
 
-    const rot = player.getState('rot');
-    if (rot !== undefined && controller.playerMesh) {
-      // Shortest-angle lerp for rotation without Math.sin/cos allocation
-      let diff = rot - controller.playerMesh.rotation.y;
-      diff -= Math.round(diff / (Math.PI * 2)) * (Math.PI * 2); // wrap to [-π, π]
-      controller.playerMesh.rotation.y += diff * 0.2;
+    let animTimeScale = 1.0;
+    const outQuat = controller.playerMesh ? controller.playerMesh.quaternion : _scratchQuat;
+    const state = controller.interpolator.update(delta, controller.position, outQuat);
+    if (state) {
+      controller.playerGroup.position.copy(controller.position);
+      if (state.action === 'walk') {
+        const baseWalkSpeed = 4.0;
+        animTimeScale = Math.max(0.1, state.velocity / baseWalkSpeed);
+      }
+      controller.playAnimationState(state.action, 0.15, animTimeScale);
+    } else {
+      // Fallback
+      if (pos) {
+        controller.position.set(pos.x, pos.y, pos.z);
+        controller.playerGroup.position.copy(controller.position);
+      }
+      if (controller.playerMesh) {
+        controller.playerMesh.quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rot);
+      }
+      controller.playAnimationState(action);
     }
-
-    const action = player.getState('action');
-    if (action) controller.playAnimationState(action);
     controller.update(delta);
     controller.updateNameTag((player.getState('hp') ?? 100) / 100);
 
@@ -411,25 +507,52 @@ function animate() {
     me.setState('isShooting', isShooting);
   }
 
+  // Sync NPCs dynamically from server state
+  syncNPCs();
+
   // Projectile update + hit callback
   projectileSystem.update(delta, colliderMesh, (hitPoint, target) => {
     if (target && playerGroupSet.has(target)) return; // O(1) friendly-fire check
-    const isBoss = bossController !== null && target === bossController.playerGroup;
-    if (isBoss) {
-      // Send hit event to server. Server calculates damage authoritatively and broadcasts back.
-      bossController!.takeDamage(12000, hitPoint.x, hitPoint.y, hitPoint.z);
+
+    // Find which NPC was hit
+    let hitNPC: BaseEnemyController | null = null;
+    for (const ctrl of npcControllers.values()) {
+      if (target === ctrl.playerGroup) {
+        hitNPC = ctrl;
+        break;
+      }
+    }
+
+    if (hitNPC) {
+      // Send hit event targeting this specific NPC
+      hitNPC.takeDamage(12000, hitPoint.x, hitPoint.y, hitPoint.z);
     } else {
       damageHUDBatcher.spawn({ skill: 'normal', value: 100, position: [hitPoint.x, hitPoint.y, hitPoint.z], isCrit: Math.random() > 0.8 });
     }
   });
 
-  // Boss update + HP bar sync
-  if (bossController) {
-    bossController.update(delta, playersAndControllers);
-    bossUiContainer.style.display = bossController.hp > 0 ? 'block' : 'none';
-    const ratio = Math.max(0, bossController.hp / bossController.maxHp);
+  // Update all NPC controllers and determine which main boss to show on top global HP HUD
+  let mainBoss: BaseEnemyController | null = null;
+  for (const ctrl of npcControllers.values()) {
+    ctrl.update(delta);
+    if (ctrl.hp > 0) {
+      if (ctrl.npcType === 'world_boss') {
+        mainBoss = ctrl;
+      } else if (ctrl.npcType === 'raid_boss' && (!mainBoss || mainBoss.npcType !== 'world_boss')) {
+        mainBoss = ctrl;
+      }
+    }
+  }
+
+  if (mainBoss) {
+    bossUiContainer.style.display = 'block';
+    const ratio = Math.max(0, mainBoss.hp / mainBoss.maxHp);
     bossHpBarFg.style.width    = `${ratio * 100}%`;
-    bossHpBarText.innerText    = `${bossController.hp} / ${bossController.maxHp}`;
+    bossHpBarText.innerText    = `${mainBoss.npcName}: ${mainBoss.hp} / ${mainBoss.maxHp}`;
+    const nConfig = CHARACTER_CONFIG.npcs[mainBoss.npcType as 'mob' | 'raid_boss' | 'world_boss'] || CHARACTER_CONFIG.npcs.mob;
+    bossHpBarFg.style.backgroundColor = nConfig.hudColor;
+  } else {
+    bossUiContainer.style.display = 'none';
   }
 
   skillsSystem.update(delta, character ?? undefined);
@@ -462,6 +585,22 @@ function animate() {
   const now = performance.now();
   if (now - lastFpsTime >= 1000) {
     fpsEl.textContent = frameCount.toString();
+    
+    // Update WebGL Memory & Render Statistics
+    const memoryInfo = renderer.info.memory;
+    const renderInfo = renderer.info.render;
+    const ping = NetworkManager.ping;
+    const pingStr = ping < 1.0 ? "&lt;1" : Math.round(ping).toString();
+    webglStatsEl.innerHTML = `
+      <b style="color:#ffffff;">PERFORMANCE HUD</b><br/>
+      FPS: <span style="color:#00ffaa; font-weight:bold;">${frameCount}</span><br/>
+      Ping: <span style="color:#3b82f6; font-weight:bold;">${pingStr} ms</span><br/>
+      Geometries: ${memoryInfo.geometries}<br/>
+      Textures: ${memoryInfo.textures}<br/>
+      Draw Calls: ${renderInfo.calls}<br/>
+      Triangles: ${renderInfo.triangles}
+    `;
+
     frameCount = 0;
     lastFpsTime = now;
   }
@@ -513,6 +652,7 @@ function animate() {
 
 // ── Skill Hotkeys ─────────────────────────────────────────────────────────────
 window.addEventListener('keydown', (e) => {
+  if (e.repeat) return;
   if (!character || controllerMode !== 'player') return;
   const playerPos = character.position;
   const forward   = character.getForwardVector();
@@ -558,7 +698,7 @@ function setLoadingProgress(pct: number, label: string) {
   if (statusEl) statusEl.innerText = label;
 }
 
-// Pre-fetch all game assets so GPU shader compiles happen BEFORE animate() starts
+// Pre-fetch all game assets and pre-warm GPU shader materials to eliminate combat micro-stuttering
 async function preloadGameAssets() {
   const assets = [
     '/character/characters/Ranger.glb',
@@ -575,29 +715,83 @@ async function preloadGameAssets() {
   const total = assets.length;
   let done = 0;
 
-  // Parallel fetch with progress — browser caches the responses so GLTFLoader.loadAsync hits cache
+  // Parallel fetch with progress (fetches from 10% to 75% progress)
   await Promise.all(assets.map(url =>
     fetch(url)
       .then(r => r.arrayBuffer()) // force into browser cache
-      .catch(() => {}) // non-blocking: if file missing, GLTFLoader handles the real error
+      .catch(() => {})
       .finally(() => {
         done++;
-        setLoadingProgress(20 + (done / total) * 70, `Memuat aset: ${done}/${total}`);
+        setLoadingProgress(10 + (done / total) * 65, `Memuat aset: ${done}/${total}`);
       })
   ));
+
+  // GPU Shader Pre-compilation / Pre-warming
+  setLoadingProgress(80, 'Mengompilasi shader GPU...');
+
+  const dummyScene = new THREE.Scene();
+  const loader = new GLTFLoader();
+  loader.setMeshoptDecoder(MeshoptDecoder);
+
+  // Load models into dummy scene
+  try {
+    const gltfs = await Promise.all([
+      loader.loadAsync('/character/characters/Ranger.glb'),
+      loader.loadAsync('/character/characters/Barbarian.glb')
+    ]);
+    gltfs.forEach(gltf => {
+      dummyScene.add(gltf.scene);
+    });
+  } catch (e) {
+    console.warn("Shader pre-warm model load skipped:", e);
+  }
+
+  // Pre-warm active particle VFX
+  const dummyGas = new CartoonBlueGasExplosionNativeVFX(dummyScene, camera);
+  const dummyFlame = new CartoonBlueFlamethrowerNativeVFX(dummyScene, camera);
+  const dummyTornado = new CartoonTornadoNativeVFX(dummyScene, camera);
+  const dummySub = new Subemitter2NativeVFX(dummyScene, camera);
+
+  dummyGas.spawn(0, 0, 0);
+  dummyFlame.spawn(0, 0, 0);
+  dummyTornado.spawn(0, 0, 0);
+
+  // Pre-warm Boss telegraph SDF warning geometries/materials
+  const dummyTelegraph = new BossGroundSlamFX(dummyScene);
+  dummyTelegraph.spawn(0, 0, 8.0, 1.5, null, 0, false, 0, 0xff0000); // circle
+  dummyTelegraph.spawn(0, 0, 8.0, 1.5, null, 1, false, 0, 0xff0000); // cone
+  dummyTelegraph.spawn(0, 0, 8.0, 1.5, null, 2, false, 0, 0xff0000); // line
+  dummyTelegraph.spawn(0, 0, 8.0, 1.5, null, 3, false, 0, 0xff0000); // ring
+  dummyTelegraph.spawn(0, 0, 8.0, 1.5, null, 4, false, 0, 0xff0000); // cross
+
+  // Force GPU driver to compile all shader code immediately
+  renderer.compile(dummyScene, camera);
+
+  // Safely dispose pre-warmed structures
+  dummyScene.traverse((node) => {
+    if (node instanceof THREE.Mesh) {
+      if (node.geometry) node.geometry.dispose();
+      if (Array.isArray(node.material)) {
+        node.material.forEach(m => m.dispose());
+      } else if (node.material) {
+        node.material.dispose();
+      }
+    }
+  });
+
+  setLoadingProgress(90, 'Shader siap!');
 }
 
-insertCoin().then(async () => {
-  setLoadingProgress(10, 'Server terhubung! Memuat aset...');
-  await preloadGameAssets();
+setLoadingProgress(10, 'Memuat aset game...');
+preloadGameAssets().then(async () => {
+  setLoadingProgress(90, 'Menghubungkan ke server...');
+  await insertCoin();
   setLoadingProgress(95, 'Memulai game...');
 
   // Brief yield so browser can paint the 95% bar before the heavy setup
   await new Promise(r => setTimeout(r, 80));
   setLoadingProgress(100, 'Siap!');
-
-  bossController = new BossController(scene, skillsSystem);
-  bossController.setEnvironment(colliderMesh);
+  NetworkManager.startPingInterval();
 
   // Sync damage HUD for everyone (server-authoritative damage broadcast)
   onBossDamaged((data: any) => {
@@ -607,11 +801,10 @@ insertCoin().then(async () => {
       position: [data.x, data.y + 0.8, data.z],
       isCrit: data.isCrit,
     });
-    if (bossController && bossController.hp > 0) {
-      bossController.playHit();
-      // Trigger white flash for Crit, red flash for normal hits
-      bossController.flash(0.12, data.isCrit ? 0xffffff : 0xff3333);
-      // Spawn hit impact particle sparks at the hit coordinates
+    const targetNPC = npcControllers.get(data.npcId);
+    if (targetNPC && targetNPC.hp > 0) {
+      targetNPC.playHit();
+      targetNPC.flash(0.12, data.isCrit ? 0xffffff : 0xff3333);
       gasExplosionNative.spawn(data.x, data.y + 0.5, data.z);
     }
     // Update local player's DPS Tracker authoritatively
@@ -638,12 +831,9 @@ insertCoin().then(async () => {
 
   onPlayerJoin((player) => {
     const isLocal = player.id === myPlayer().id;
-    const charCtrl = new CharacterController(scene, camera, isLocal);
+    const charCtrl = isLocal ? new LocalPlayer(scene, camera) : new RemotePlayer(scene, camera);
+    charCtrl.playerId = player.id;
     charCtrl.setEnvironment(colliderMesh);
-
-    const targets: THREE.Object3D[] = [];
-    if (bossController?.playerGroup) targets.push(bossController.playerGroup);
-    charCtrl.setTargets(targets);
 
     const username = player.getProfile()?.name || (isLocal ? 'You' : 'Player');
     charCtrl.initNameTag(username);
@@ -656,9 +846,21 @@ insertCoin().then(async () => {
 
     playerGroupSet.add(charCtrl.playerGroup); // Register in O(1) friendly-fire set
 
+    // Register Player in decoupled static TargetingManager
+    const playerEntity = {
+      id: player.id,
+      type: 'player' as const,
+      position: charCtrl.playerGroup.position,
+      playerGroup: charCtrl.playerGroup,
+      radius: 0.6,
+      get hp() { return player.getState('hp') || 100; }
+    };
+    TargetingManager.registerEntity(playerEntity);
+
     player.onQuit(() => {
       scene.remove(charCtrl.playerGroup);
       playerGroupSet.delete(charCtrl.playerGroup);
+      TargetingManager.unregisterEntity(player.id);
       const idx = playersAndControllers.findIndex(p => p.player.id === player.id);
       if (idx !== -1) playersAndControllers.splice(idx, 1);
     });

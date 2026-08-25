@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { CHARACTER_CONFIG } from "../../character/character-config";
+import { CHARACTER_CONFIG } from "../../entities/player/PlayerConfig";
 
 interface SmokeParticle {
     x: number;

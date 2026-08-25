@@ -1,10 +1,10 @@
 import * as THREE from 'three';
-import { CHARACTER_CONFIG } from './character-config';
-import { getTerrainHeight } from '../simulation/constants';
-import { scene } from '../graphics/core/scene';
-import { spawnArrowVolleyFX } from '../graphics/effects/ArrowVolleyFX';
-import { spawnDoubleShotFX } from '../graphics/effects/DoubleShotFX';
-import { spawnEvasiveLeapFX } from '../graphics/effects/EvasiveLeapFX';
+import { CHARACTER_CONFIG } from '../../entities/player/PlayerConfig';
+import { getTerrainHeight } from '../../simulation/constants';
+import { scene } from '../../graphics/core/scene';
+import { spawnArrowVolleyFX } from '../../graphics/effects/ArrowVolleyFX';
+import { spawnDoubleShotFX } from '../../graphics/effects/DoubleShotFX';
+import { spawnEvasiveLeapFX } from '../../graphics/effects/EvasiveLeapFX';
 
 export interface VFXInterface {
   spawn: (x: number, y: number, z: number, anchor?: THREE.Object3D, duration?: number) => void;
@@ -344,7 +344,6 @@ export class SkillsSystem {
     if (skillId === CHARACTER_CONFIG.skills.arrowVolley.key) {
       spawnArrowVolleyFX(scene, x, z, floorY, CHARACTER_CONFIG.skills.arrowVolley.radius, 0);
     } else if (skillId === CHARACTER_CONFIG.skills.doubleShot.key) {
-      // Setup network position indicators for doubleShot target trajectory
       const tx = x + (targetMesh ? targetMesh.position.x : 0);
       const tz = z + (targetMesh ? targetMesh.position.z : 0);
       spawnDoubleShotFX(scene, x, spawnY + 1.1, z, tx, spawnY, tz, false, 0);
@@ -358,10 +357,8 @@ export class SkillsSystem {
   public handleInput(code: string, playerPos: THREE.Vector3, forward: THREE.Vector3, character?: any): boolean {
     const skill = this.skills[code];
     if (skill && skill.currentCD <= 0) {
-      // Auto-Aim: Force character to face target dummy before casting any skill
       if (character) {
         character.faceNearestTarget();
-        // Fetch fresh vectors pointing towards the newly auto-aimed target
         forward = character.getForwardVector();
         playerPos = character.position;
       }
@@ -384,7 +381,6 @@ export class SkillsSystem {
         cdUpdated = true;
       }
     }
-    // Track dynamic character stats (dodge cooldown) for UI updates
     if (character && (character.dodgeCooldownLeft !== undefined || character.dodgeCooldownLeft >= 0)) {
       cdUpdated = true;
     }
@@ -394,7 +390,6 @@ export class SkillsSystem {
   }
 
   private updateUI(character?: any) {
-    // Update active skills UI state without rebuilding DOM
     this.skillElements.forEach((el) => {
       const s = this.skills[el.key];
       if (!s) return;
@@ -411,7 +406,6 @@ export class SkillsSystem {
       }
     });
 
-    // Update passive dodge UI state
     if (this.passiveElement) {
       const dodgeCD = character ? (character.dodgeCooldownLeft ?? 0) : 0;
       const isReady = dodgeCD <= 0;
@@ -428,4 +422,3 @@ export class SkillsSystem {
     }
   }
 }
-

@@ -1,7 +1,8 @@
 import * as THREE from 'three';
-import { CHARACTER_CONFIG } from './character-config';
-import { getTerrainHeight } from '../simulation/constants';
-import { myPlayer } from '../network/NetworkManager.ts';
+import { CHARACTER_CONFIG } from '../../entities/player/PlayerConfig';
+import { getTerrainHeight } from '../../simulation/constants';
+import { myPlayer } from '../../network/NetworkManager.ts';
+import { TargetingManager } from '../targeting/TargetingManager';
 
 function getUnits(): any[] {
   return [];
@@ -54,6 +55,19 @@ export class ProjectileSystem {
       depthWrite: true,
       side: THREE.DoubleSide
     });
+
+    // Warm up/Pre-compile cache: Instansiasi 32 mesh ke pool saat start
+    // ponytail: 32 projectiles capacity covers typical arrows volley; ceiling: increase if pool exhausts
+    for (let i = 0; i < 32; i++) {
+      const arrowMesh = new THREE.Mesh(this.arrowGeometry, this.arrowMaterial);
+      arrowMesh.frustumCulled = false;
+      arrowMesh.castShadow = false;
+      arrowMesh.receiveShadow = false;
+      arrowMesh.visible = false;
+      arrowMesh.userData.velocity = new THREE.Vector3();
+      this.scene.add(arrowMesh);
+      this.meshPool.push(arrowMesh);
+    }
   }
 
   public spawn(startPosition: THREE.Vector3, direction: THREE.Vector3, speed = CHARACTER_CONFIG.projectiles.speed, target: THREE.Object3D | null = null, ownerTeam = -1, ownerId?: string) {
@@ -117,10 +131,17 @@ export class ProjectileSystem {
           _toTarget.multiplyScalar(p.speed);
           p.velocity.lerp(_toTarget, CHARACTER_CONFIG.projectiles.homingSteerForce * delta);
 
-          // Explode if close to target center
+          // Explode if close to target center (dynamically scaled for large bosses)
           _tPos.copy(p.target.position);
           _tPos.y += 0.5;
-          if (p.mesh.position.distanceToSquared(_tPos) < 0.81) {
+          let hitRadius = 0.9;
+          const targetEntity = TargetingManager.getAllEntities().find(e => e.playerGroup === p.target);
+          if (targetEntity && targetEntity.radius) {
+            hitRadius = targetEntity.radius + 0.35;
+          }
+          const hitRadiusSq = hitRadius * hitRadius;
+
+          if (p.mesh.position.distanceToSquared(_tPos) < hitRadiusSq) {
             remoteCollided = true;
           }
         }
@@ -140,7 +161,14 @@ export class ProjectileSystem {
         _tPos.copy(p.target.position);
         _tPos.y += 0.5;
         let collided = false;
-        if (p.mesh.position.distanceToSquared(_tPos) < 0.81) { // 0.9m tolerance
+        let hitRadius = 0.9;
+        const targetEntity = TargetingManager.getAllEntities().find(e => e.playerGroup === p.target);
+        if (targetEntity && targetEntity.radius) {
+          hitRadius = targetEntity.radius + 0.35;
+        }
+        const hitRadiusSq = hitRadius * hitRadius;
+
+        if (p.mesh.position.distanceToSquared(_tPos) < hitRadiusSq) {
           collided = true;
           if (spawnVFXCallback) spawnVFXCallback(p.mesh.position, p.target);
         }

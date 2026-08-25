@@ -1,6 +1,6 @@
 // NetworkManager.ts: PlayroomKit wrapper for custom Go WebSocket server
 // Designed to keep changes to main.ts and BossController.ts minimal.
-import { CHARACTER_CONFIG } from '../character/character-config.ts';
+import { CHARACTER_CONFIG } from '../entities/player/PlayerConfig.ts';
 import { encode, decode } from '@msgpack/msgpack';
 type PlayerStateCallback = (val: any) => void;
 type RPCMode = 'HOST' | 'OTHERS' | 'ALL';
@@ -20,33 +20,28 @@ export class Player {
         return { name: this.name };
     }
 
-    private lastSendTimes: Record<string, number> = {};
+    private pendingBatch: Record<string, any> = {};
 
     public setState(key: string, value: any) {
-        // 1. Dirty check: Only send if the value actually changed
+        // Dirty check: only accumulate if value changed
         const currentValStr = JSON.stringify(this.state[key]);
-        const newValStr = JSON.stringify(value);
-        if (currentValStr === newValStr) {
-            return;
-        }
+        const newValStr     = JSON.stringify(value);
+        if (currentValStr === newValStr) return;
 
-        this.state[key] = value;
+        this.state[key]        = value;
+        this.pendingBatch[key] = value;
+    }
 
-        // 2. Throttle continuous values like pos and rot (max once every 50ms / 20 Hz)
-        if (key === 'pos' || key === 'rot') {
-            const now = performance.now();
-            const lastSend = this.lastSendTimes[key] || 0;
-            if (now - lastSend < 50) {
-                return; // Skip this frame's update to save bandwidth
-            }
-            this.lastSendTimes[key] = now;
-        }
 
-        // Send state to Go Server
+    public flushBatch() {
+        if (Object.keys(this.pendingBatch).length === 0) return;
+
+        const batch = this.pendingBatch;
+        this.pendingBatch = {}; // swap out atomically
+
         NetworkManager.send({
-            type: "state_update",
-            key,
-            value
+            type: "state_updates_batch",
+            value: batch
         });
     }
 
@@ -83,12 +78,45 @@ export class NetworkManager {
     private static heartbeatInterval: any = null;
     private static reconnectAttempts = 0;
     private static maxReconnectAttempts = 8;
+    public static ping = 0;
+    private static pingInterval: any = null;
+    public static bytesSent = 0;
+    public static bytesReceived = 0;
+    public static packetsSent = 0;
+    public static packetsReceived = 0;
+    public static flushTimeouts: Record<string, any> = {};
+
+    // Clock sync: offset between server unix-ms and client performance.now()
+    // serverTs ≈ performance.now() + clockOffset
+    // ponytail: one NTP round; multi-sample Cristian's algo if drift > 50ms is detected
+    public static clockOffset = 0;
+    private static clockSyncInterval: any = null;
+
+    // 30Hz flush pump — drives all Player.setState() batches
+    private static flushPumpId: ReturnType<typeof setInterval> | null = null;
+
+    public static startFlushPump() {
+        if (this.flushPumpId !== null) return;
+        this.flushPumpId = setInterval(() => {
+            this.localPlayer?.flushBatch();
+        }, 33);
+    }
+
+
+    public static stopFlushPump() {
+        if (this.flushPumpId !== null) {
+            clearInterval(this.flushPumpId);
+            this.flushPumpId = null;
+        }
+    }
 
 
     public static send(msg: any) {
         if (this.socket && this.socket.readyState === WebSocket.OPEN) {
             // Use msgpack binary for smaller payloads (30-50% smaller than JSON)
             const encoded = encode(msg);
+            this.bytesSent += encoded.byteLength;
+            this.packetsSent++;
             this.socket.send(encoded);
         }
     }
@@ -135,6 +163,24 @@ export class NetworkManager {
             console.warn("Login failed, connecting without token (server may not require auth):", e);
         }
 
+        // Split Handshake: Load initial static game configuration over HTTP instead of WebSocket
+        try {
+            const configResp = await fetch(`${httpBase}/room/config`);
+            if (configResp.ok) {
+                const configData = await configResp.json();
+                if (configData.config) {
+                    Object.assign(CHARACTER_CONFIG.combat, configData.config);
+                    console.log("[REST] Authoritative combat config loaded:", CHARACTER_CONFIG.combat);
+                }
+                if (configData.npcConfig) {
+                    this.npcConfig = configData.npcConfig;
+                    console.log("[REST] Authoritative NPC config loaded:", this.npcConfig);
+                }
+            }
+        } catch (e) {
+            console.error("Failed to load initial configurations via REST:", e);
+        }
+
         // Generate a persistent session-based player ID unique to this tab
         let sessionPlayerId = sessionStorage.getItem("sessionPlayerId");
         if (!sessionPlayerId) {
@@ -160,17 +206,27 @@ export class NetworkManager {
 
             this.socket.onopen = () => {
                 console.log("Connected to Go multiplayer backend. Room:", this.roomID);
-                this.reconnectAttempts = 0; // Reset on successful connection
+                this.reconnectAttempts = 0;
                 NetworkManager.startHeartbeat();
+                // Pilar 4: kick off clock sync immediately after connect
+                NetworkManager.sendTimeSync();
+                NetworkManager.startClockSyncInterval();
             };
+
 
             this.socket.onmessage = (event) => {
                 try {
                     let msg: any;
                     if (event.data instanceof ArrayBuffer) {
+                        this.bytesReceived += event.data.byteLength;
+                        this.packetsReceived++;
                         // Binary message = msgpack
                         msg = decode(new Uint8Array(event.data));
                     } else {
+                        if (typeof event.data === 'string') {
+                            this.bytesReceived += event.data.length;
+                        }
+                        this.packetsReceived++;
                         // Text message = JSON (fallback for backward compatibility)
                         msg = JSON.parse(event.data);
                     }
@@ -213,11 +269,41 @@ export class NetworkManager {
         }, 15000); // Send heartbeat every 15 seconds
     }
 
+    public static startPingInterval() {
+        if (this.pingInterval) {
+            clearInterval(this.pingInterval);
+        }
+        this.pingInterval = setInterval(() => {
+            this.send({ type: "ping", value: performance.now() });
+        }, 2000);
+    }
+
     private static stopHeartbeat() {
         if (this.heartbeatInterval) {
             clearInterval(this.heartbeatInterval);
             this.heartbeatInterval = null;
         }
+        if (this.pingInterval) {
+            clearInterval(this.pingInterval);
+            this.pingInterval = null;
+        }
+        if (this.clockSyncInterval) {
+            clearInterval(this.clockSyncInterval);
+            this.clockSyncInterval = null;
+        }
+    }
+
+    // Send a time_sync request and record the send timestamp
+    private static _pendingTimeSyncTs = 0;
+    private static sendTimeSync() {
+        this._pendingTimeSyncTs = performance.now();
+        this.send({ type: 'time_sync', clientTs: this._pendingTimeSyncTs });
+    }
+
+    private static startClockSyncInterval() {
+        if (this.clockSyncInterval) clearInterval(this.clockSyncInterval);
+        // Re-sync every 30s to correct clock drift
+        this.clockSyncInterval = setInterval(() => this.sendTimeSync(), 30_000);
     }
 
 
@@ -264,14 +350,6 @@ export class NetworkManager {
         switch (msg.type) {
             case "init":
                 this.hostID = msg.hostId;
-                if (msg.config) {
-                    Object.assign(CHARACTER_CONFIG.combat, msg.config);
-                    console.log("Authoritative combat config synced from server:", CHARACTER_CONFIG.combat);
-                }
-                if (msg.npcConfig) {
-                    this.npcConfig = msg.npcConfig;
-                    console.log("Authoritative NPC config synced from server:", this.npcConfig);
-                }
 
                 // If reconnecting, do not duplicate local player controller / object
                 const isNewPlayer = !this.playersMap.has(msg.playerId);
@@ -288,6 +366,8 @@ export class NetworkManager {
                 if (isNewPlayer && this.localPlayer) {
                     this.joinCallbacks.forEach(cb => cb(this.localPlayer!));
                 }
+                // Start the 30Hz network batch flush pump now that localPlayer is ready
+                NetworkManager.startFlushPump();
                 break;
 
             case "player_joined":
@@ -309,8 +389,12 @@ export class NetworkManager {
                 break;
 
             case "boss_damaged":
-                this.roomState["bossHp"] = msg.bossHp;
+            case "npc_damaged":
                 this.bossDamagedCallbacks.forEach(cb => cb(msg));
+                break;
+
+            case "npc_respawned":
+                // Notify clients or handle locally
                 break;
 
             case "boss_skill":
@@ -324,6 +408,41 @@ export class NetworkManager {
                 }
                 break;
 
+            case "state_updates_batch": {
+                const p = this.playersMap.get(msg.playerId);
+                if (p && msg.value) {
+                    for (const [k, v] of Object.entries(msg.value)) {
+                        p.setInternalState(k, v);
+                    }
+                }
+                break;
+            }
+
+            case "world_snapshot": {
+                // Pilar 3+4: Server sends AoI-filtered snapshot at 30Hz with serverTs
+                const snapServerTs: number = msg.serverTs || 0;
+                const snapPlayers: Array<any> = msg.players || [];
+                for (const playerData of snapPlayers) {
+                    const pid = playerData.id as string;
+                    if (!pid) continue;
+                    const p = this.playersMap.get(pid);
+                    if (!p) continue;
+                    // Inject serverTs so interpolator can use server timeline
+                    p.setInternalState('_serverTs', snapServerTs);
+                    for (const [k, v] of Object.entries(playerData)) {
+                        if (k === 'id') continue;
+                        p.setInternalState(k, v);
+                    }
+                }
+                // AoI: server now also embeds npcs in snapshot for visible range
+                if (msg.npcs) {
+                    // Inject _snapshotServerTs so syncNPCs() can pass it to addSnapshot()
+                    msg.npcs._snapshotServerTs = snapServerTs;
+                    this.roomState['npcs'] = msg.npcs;
+                }
+                break;
+            }
+
             case "room_state_update":
                 this.roomState[msg.key] = msg.value;
                 break;
@@ -334,6 +453,26 @@ export class NetworkManager {
                     handler(msg.data, msg.senderId);
                 }
                 break;
+
+            case "pong": {
+                const rawPing = performance.now() - msg.value;
+                NetworkManager.ping = NetworkManager.ping <= 0 
+                    ? rawPing 
+                    : NetworkManager.ping * 0.4 + rawPing * 0.6;
+                break;
+            }
+
+            case "time_sync_ack": {
+                // NTP Cristian's algorithm: offset = serverTs - (clientTs + rtt/2)
+                const now = performance.now();
+                const rtt = now - NetworkManager._pendingTimeSyncTs;
+                // msg.serverTs is unix ms from Go server
+                // We want: serverTs_in_perf_units = serverTs (unix ms) adjusted by epoch
+                // Simpler: just track delta so: server_perf_now = msg.serverTs + clockOffset
+                NetworkManager.clockOffset = msg.serverTs - (NetworkManager._pendingTimeSyncTs + rtt / 2);
+                console.log(`[ClockSync] RTT=${rtt.toFixed(1)}ms offset=${NetworkManager.clockOffset.toFixed(1)}ms`);
+                break;
+            }
         }
     }
 
@@ -357,6 +496,10 @@ export class NetworkManager {
     }
 
     public static setState(key: string, value: any) {
+        const currentValStr = JSON.stringify(this.roomState[key]);
+        const newValStr     = JSON.stringify(value);
+        if (currentValStr === newValStr) return;
+
         this.roomState[key] = value;
         this.send({
             type: "room_state_update",

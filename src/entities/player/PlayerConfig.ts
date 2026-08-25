@@ -79,7 +79,23 @@ export const CHARACTER_CONFIG = {
       damage: 8000,
       radius: 3.0,
     }
+  },
+  // NPCs configs
+  npcs: {
+    mob: {
+      modelPath: '/character/characters/Skeleton_Minion.glb',
+      scale: 1.0,
+      hudColor: '#10b981', // Green for mob
+    },
+    raid_boss: {
+      modelPath: '/character/characters/Knight.glb',
+      scale: 2.0,
+      hudColor: '#f59e0b', // Orange for Raid Boss
+    },
+    world_boss: {
+      modelPath: '/character/characters/Barbarian.glb',
+      scale: 3.5,
+      hudColor: '#ef4444', // Red for World Boss
+    }
   }
 };
-
-

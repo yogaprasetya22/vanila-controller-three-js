@@ -3,9 +3,11 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 // @ts-ignore
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
-import { CHARACTER_CONFIG } from './character-config';
-import { ProjectileSystem } from './projectile-system';
-import { getTerrainHeight } from '../simulation/constants';
+import { CHARACTER_CONFIG } from './PlayerConfig';
+import { ProjectileSystem } from '../../systems/combat/ProjectileSystem';
+import { getTerrainHeight } from '../../simulation/constants';
+import { TargetingManager } from '../../systems/targeting/TargetingManager';
+import { MovementInterpolator } from '../../systems/netcode/MovementInterpolator';
 
 const gltfLoader = new GLTFLoader();
 gltfLoader.setMeshoptDecoder(MeshoptDecoder);
@@ -32,7 +34,7 @@ const _forwardVec = new THREE.Vector3();
 const _upAxis = new THREE.Vector3(0, 1, 0);
 
 
-export class CharacterController {
+export class LocalPlayer {
   // THREE.js elements
   public playerGroup: THREE.Group;
   public playerMesh: THREE.Object3D | null = null;
@@ -117,6 +119,8 @@ export class CharacterController {
   // Placeholder mesh (shown while loading GLTF assets)
   private placeholderMesh: THREE.Mesh;
   public isLocal: boolean;
+  public playerId: string = '';
+  public interpolator = new MovementInterpolator();
   private bowSound: HTMLAudioElement | null = null;
   private lastAttackTime = 0;
 
@@ -618,9 +622,6 @@ export class CharacterController {
         if (t >= 1) {
           scene.remove(ghost);
           materials.forEach(m => m.dispose());
-          ghost.traverse(c => {
-            if ((c as THREE.Mesh).isMesh) (c as THREE.Mesh).geometry.dispose();
-          });
           return false;
         }
         materials.forEach(m => {
@@ -684,16 +685,7 @@ export class CharacterController {
         this.attackCooldown -= delta;
       }
       
-      // Spawn dodge ghost trail for remote players based on synced animation state
-      if (this.currentActionName && this.currentActionName.startsWith('dodge_')) {
-        this.ghostSpawnTimer -= delta;
-        if (this.ghostSpawnTimer <= 0) {
-          this.ghostSpawnTimer = 0.07;
-          this.spawnGhostTrail();
-        }
-      } else {
-        this.ghostSpawnTimer = 0; // Reset so next dodge starts spawning trails instantly
-      }
+      // Remote player updates: skip ghost trails entirely for extreme performance optimization
 
       // Update active ghost afterimages
       for (let i = this.activeGhosts.length - 1; i >= 0; i--) {
@@ -734,7 +726,7 @@ export class CharacterController {
       this.dodgeTimeLeft -= delta;
       this.ghostSpawnTimer -= delta;
       if (this.ghostSpawnTimer <= 0) {
-        this.ghostSpawnTimer = 0.07;
+        this.ghostSpawnTimer = 0.14; // Halved frequency (from 0.07 to 0.14) to cut CPU clone overhead by 50%
         this.spawnGhostTrail();
       }
 
@@ -890,28 +882,14 @@ export class CharacterController {
     }
     this.lastTargetCacheTime = now;
 
-    if (this.targets.length === 0) {
-      this.nearestTargetCached = null;
-      return null;
+    const nearestEntity = TargetingManager.getNearestTarget(this.position, 'enemy');
+    if (nearestEntity) {
+      this.nearestTargetCached = nearestEntity.playerGroup;
+      return nearestEntity.playerGroup;
     }
-    let nearest: THREE.Object3D | null = null;
-    let minDist = Infinity;
-    const playerPos = this.position;
-    const range = CHARACTER_CONFIG.combat.autoAimRange;
-    const rangeSq = range * range;
-
-    for (let i = 0; i < this.targets.length; i++) {
-      const target = this.targets[i];
-      if (!target.visible) continue;
-      _scratchTargetPos.copy(target.position);
-      const distSq = playerPos.distanceToSquared(_scratchTargetPos);
-      if (distSq < rangeSq && distSq < minDist) {
-        minDist = distSq;
-        nearest = target;
-      }
-    }
-    this.nearestTargetCached = nearest;
-    return nearest;
+    
+    this.nearestTargetCached = null;
+    return null;
   }
 
   public triggerAttack(): boolean {
@@ -954,7 +932,7 @@ export class CharacterController {
         _scratchDir.copy(this.getForwardVector());
         dx = _scratchDir.x; dy = _scratchDir.y; dz = _scratchDir.z;
       }
-      this.projectileSystem.spawn(spawnPos, _scratchDir, CHARACTER_CONFIG.projectiles.speed, target ?? null, this.teamId);
+      this.projectileSystem.spawn(spawnPos, _scratchDir, CHARACTER_CONFIG.projectiles.speed, target ?? null, this.teamId, this.playerId);
     }
     return true;
   }
