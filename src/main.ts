@@ -276,11 +276,15 @@ const clock = new THREE.Clock();
  
 // ── DPS Tracker Variables ─────────────────────────────────────────────────────
 let totalDamageDealt = 0;
+let totalAttacksCount = 0;
 let combatStartTime = 0;
 const damageTimestamps: { time: number; amount: number }[] = [];
+const attackTimestamps: number[] = [];
 
 const dpsValEl   = document.getElementById('dps-val') as HTMLSpanElement;
 const dpsAvgEl   = document.getElementById('dps-avg') as HTMLSpanElement;
+const apsValEl   = document.getElementById('aps-val') as HTMLSpanElement;
+const apsAvgEl   = document.getElementById('aps-avg') as HTMLSpanElement;
 const dpsTotalEl = document.getElementById('dps-total') as HTMLSpanElement;
 const dpsTimeEl  = document.getElementById('dps-time') as HTMLSpanElement;
 const dpsResetBtn = document.getElementById('dps-reset') as HTMLButtonElement;
@@ -288,10 +292,14 @@ const dpsResetBtn = document.getElementById('dps-reset') as HTMLButtonElement;
 if (dpsResetBtn) {
   dpsResetBtn.addEventListener('click', () => {
     totalDamageDealt = 0;
+    totalAttacksCount = 0;
     combatStartTime = 0;
     damageTimestamps.length = 0;
+    attackTimestamps.length = 0;
     if (dpsValEl) dpsValEl.innerText = '0';
     if (dpsAvgEl) dpsAvgEl.innerText = '0';
+    if (apsValEl) apsValEl.innerText = '0';
+    if (apsAvgEl) apsAvgEl.innerText = '0';
     if (dpsTotalEl) dpsTotalEl.innerText = '0';
     if (dpsTimeEl) dpsTimeEl.innerText = '0s';
   });
@@ -344,6 +352,13 @@ function animate() {
           dir = _tgtPos.sub(spawnPos).normalize();
         }
         projectileSystem.spawn(spawnPos, dir, 40, target, -1, myPlayer().id);
+
+        const nowSec = performance.now() / 1000;
+        if (totalDamageDealt === 0 && totalAttacksCount === 0) {
+          combatStartTime = nowSec;
+        }
+        totalAttacksCount++;
+        attackTimestamps.push(nowSec);
       }
     }
   } else {
@@ -401,24 +416,8 @@ function animate() {
     if (target && playerGroupSet.has(target)) return; // O(1) friendly-fire check
     const isBoss = bossController !== null && target === bossController.playerGroup;
     if (isBoss) {
-      // Predict damage locally for instant feedback
-      const isCrit = Math.random() < 0.90;
-      const finalDmg = isCrit ? 24000 : 12000;
-      damageHUDBatcher.spawn({
-        skill: isCrit ? 'boss' : 'normal',
-        value: finalDmg,
-        position: [hitPoint.x, hitPoint.y + 0.8, hitPoint.z],
-        isCrit: isCrit,
-      });
+      // Send hit event to server. Server calculates damage authoritatively and broadcasts back.
       bossController!.takeDamage(12000, hitPoint.x, hitPoint.y, hitPoint.z);
-
-      // Update DPS Tracker
-      const nowSec = performance.now() / 1000;
-      if (totalDamageDealt === 0) {
-        combatStartTime = nowSec;
-      }
-      totalDamageDealt += finalDmg;
-      damageTimestamps.push({ time: nowSec, amount: finalDmg });
     } else {
       damageHUDBatcher.spawn({ skill: 'normal', value: 100, position: [hitPoint.x, hitPoint.y, hitPoint.z], isCrit: Math.random() > 0.8 });
     }
@@ -482,18 +481,31 @@ function animate() {
     rollingSum += damageTimestamps[i].amount;
   }
 
-  if (totalDamageDealt > 0) {
+  for (let i = attackTimestamps.length - 1; i >= 0; i--) {
+    if (attackTimestamps[i] < threeSecAgo) {
+      attackTimestamps.splice(0, i + 1);
+      break;
+    }
+  }
+
+  if (totalDamageDealt > 0 || totalAttacksCount > 0) {
     const duration = nowSec - combatStartTime;
     const currentDps = rollingSum / Math.max(1, Math.min(duration, 3.0));
     const averageDps = totalDamageDealt / Math.max(0.1, duration);
+    const currentAps = attackTimestamps.length / Math.max(1, Math.min(duration, 3.0));
+    const averageAps = totalAttacksCount / Math.max(0.1, duration);
 
     if (dpsValEl) dpsValEl.innerText = Math.round(currentDps).toLocaleString();
     if (dpsAvgEl) dpsAvgEl.innerText = Math.round(averageDps).toLocaleString();
+    if (apsValEl) apsValEl.innerText = currentAps.toFixed(1);
+    if (apsAvgEl) apsAvgEl.innerText = averageAps.toFixed(1);
     if (dpsTotalEl) dpsTotalEl.innerText = totalDamageDealt.toLocaleString();
     if (dpsTimeEl) dpsTimeEl.innerText = `${Math.round(duration)}s`;
   } else {
     if (dpsValEl) dpsValEl.innerText = '0';
     if (dpsAvgEl) dpsAvgEl.innerText = '0';
+    if (apsValEl) apsValEl.innerText = '0';
+    if (apsAvgEl) apsAvgEl.innerText = '0';
     if (dpsTotalEl) dpsTotalEl.innerText = '0';
     if (dpsTimeEl) dpsTimeEl.innerText = '0s';
   }
@@ -520,7 +532,7 @@ loadingOverlay.id = 'loading-overlay';
 loadingOverlay.style.cssText = `
   position: absolute;
   top: 0; left: 0; width: 100%; height: 100%;
-  background: radial-gradient(circle, #0f0505 0%, #050202 100%);
+  background: radial-gradient(circle at 50% 40%, #1a0505 0%, #050202 100%);
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   z-index: 100000;
   transition: opacity 0.5s ease-out;
@@ -528,44 +540,88 @@ loadingOverlay.style.cssText = `
   font-family: 'Outfit', sans-serif;
 `;
 loadingOverlay.innerHTML = `
-  <div style="font-weight: 800; font-size: 24px; text-transform: uppercase; color: #ef4444; letter-spacing: 4px; text-shadow: 0 0 12px rgba(239, 68, 68, 0.6); margin-bottom: 15px; font-family: 'Press Start 2P', monospace;">Loading Game</div>
-  <div style="font-size: 14px; color: rgba(255,255,255,0.7); letter-spacing: 2px; font-family: monospace;" id="loading-status">Sinkronisasi data game dengan server...</div>
-  <div style="width: 160px; height: 3px; background: rgba(255,255,255,0.1); border-radius: 2px; margin-top: 20px; overflow: hidden; position: relative;">
-    <div style="position: absolute; width: 60px; height: 100%; background: #ef4444; box-shadow: 0 0 8px #ef4444; animation: slideLoading 1.2s infinite ease-in-out;"></div>
+  <div style="font-weight: 800; font-size: 22px; text-transform: uppercase; color: #ef4444; letter-spacing: 4px; text-shadow: 0 0 16px rgba(239, 68, 68, 0.7); margin-bottom: 18px; font-family: 'Press Start 2P', monospace;">Loading Game</div>
+  <div style="font-size: 12px; color: rgba(255,255,255,0.6); letter-spacing: 2px; font-family: monospace; margin-bottom: 14px;" id="loading-status">Menghubungkan ke server...</div>
+  <div style="width: 260px; height: 6px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden; position: relative; border: 1px solid rgba(239,68,68,0.2);">
+    <div id="loading-bar" style="height: 100%; width: 0%; background: linear-gradient(90deg, #b91c1c, #ef4444, #f87171); box-shadow: 0 0 12px #ef4444; border-radius: 4px; transition: width 0.25s ease-out;"></div>
   </div>
-  <style>
-    @keyframes slideLoading {
-      0% { left: -60px; }
-      100% { left: 160px; }
-    }
-  </style>
+  <div id="loading-pct" style="font-size: 11px; color: rgba(255,255,255,0.35); margin-top: 8px; font-family: monospace;">0%</div>
 `;
 document.body.appendChild(loadingOverlay);
 
-insertCoin().then(() => {
-  const status = document.getElementById('loading-status');
-  if (status) status.innerText = 'Sinkronisasi Selesai! Memulai Game...';
+function setLoadingProgress(pct: number, label: string) {
+  const bar  = document.getElementById('loading-bar');
+  const pctEl = document.getElementById('loading-pct');
+  const statusEl = document.getElementById('loading-status');
+  if (bar) bar.style.width = `${Math.round(pct)}%`;
+  if (pctEl) pctEl.innerText = `${Math.round(pct)}%`;
+  if (statusEl) statusEl.innerText = label;
+}
 
-  loadingOverlay.style.opacity = '0';
-  setTimeout(() => {
-    loadingOverlay.remove();
-  }, 500);
+// Pre-fetch all game assets so GPU shader compiles happen BEFORE animate() starts
+async function preloadGameAssets() {
+  const assets = [
+    '/character/characters/Ranger.glb',
+    '/character/characters/Barbarian.glb',
+    '/character/animation/Rig_Medium_General.glb',
+    '/character/animation/Rig_Medium_MovementAdvanced.glb',
+    '/character/animation/Rig_Medium_CombatRanged.glb',
+    '/character/animation/Rig_Medium_CombatMelee.glb',
+    '/character/animation/Rig_Medium_MovementBasic.glb',
+    '/character/animation/Running_Forward_Flip.glb',
+    '/character/weapons/bow_withString.glb',
+    '/character/weapons/quiver.glb',
+  ];
+  const total = assets.length;
+  let done = 0;
+
+  // Parallel fetch with progress — browser caches the responses so GLTFLoader.loadAsync hits cache
+  await Promise.all(assets.map(url =>
+    fetch(url)
+      .then(r => r.arrayBuffer()) // force into browser cache
+      .catch(() => {}) // non-blocking: if file missing, GLTFLoader handles the real error
+      .finally(() => {
+        done++;
+        setLoadingProgress(20 + (done / total) * 70, `Memuat aset: ${done}/${total}`);
+      })
+  ));
+}
+
+insertCoin().then(async () => {
+  setLoadingProgress(10, 'Server terhubung! Memuat aset...');
+  await preloadGameAssets();
+  setLoadingProgress(95, 'Memulai game...');
+
+  // Brief yield so browser can paint the 95% bar before the heavy setup
+  await new Promise(r => setTimeout(r, 80));
+  setLoadingProgress(100, 'Siap!');
 
   bossController = new BossController(scene, skillsSystem);
   bossController.setEnvironment(colliderMesh);
 
   // Sync damage HUD for everyone (server-authoritative damage broadcast)
   onBossDamaged((data: any) => {
-    if (data.attackerId !== myPlayer().id) {
-      damageHUDBatcher.spawn({
-        skill: data.isCrit ? 'boss' : 'normal',
-        value: data.damage,
-        position: [data.x, data.y + 0.8, data.z],
-        isCrit: data.isCrit,
-      });
-    }
+    damageHUDBatcher.spawn({
+      skill: data.isCrit ? 'boss' : 'normal',
+      value: data.damage,
+      position: [data.x, data.y + 0.8, data.z],
+      isCrit: data.isCrit,
+    });
     if (bossController && bossController.hp > 0) {
       bossController.playHit();
+      // Trigger white flash for Crit, red flash for normal hits
+      bossController.flash(0.12, data.isCrit ? 0xffffff : 0xff3333);
+      // Spawn hit impact particle sparks at the hit coordinates
+      gasExplosionNative.spawn(data.x, data.y + 0.5, data.z);
+    }
+    // Update local player's DPS Tracker authoritatively
+    if (data.attackerId === myPlayer().id) {
+      const nowSec = performance.now() / 1000;
+      if (totalDamageDealt === 0) {
+        combatStartTime = nowSec;
+      }
+      totalDamageDealt += data.damage;
+      damageTimestamps.push({ time: nowSec, amount: data.damage });
     }
   });
 
@@ -611,6 +667,10 @@ insertCoin().then(() => {
   });
 
   animate();
+
+  // Fade out loading overlay now that everything is warm and running
+  loadingOverlay.style.opacity = '0';
+  setTimeout(() => loadingOverlay.remove(), 500);
 });
 
 window.addEventListener('resize', () => {

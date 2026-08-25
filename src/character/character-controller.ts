@@ -98,6 +98,8 @@ export class CharacterController {
     update: (delta: number) => boolean;
   }> = [];
   private ghostSpawnTimer = 0;
+  private nearestTargetCached: THREE.Object3D | null = null;
+  private lastTargetCacheTime = -1;
   private dodgeCooldownLeft = 0;
 
   // Temp variables for math to avoid garbage collection
@@ -478,10 +480,17 @@ export class CharacterController {
   }
 
   public playAnimationState(name: string, crossfadeDuration = 0.15, timeScale = 1.0) {
+    // Dynamically scale down crossfade duration at high attack speeds to prevent muddy animation transitions
+    if (name === 'attack' && timeScale > 2.0) {
+      crossfadeDuration = Math.max(0.02, 0.15 / timeScale);
+    }
+
     if (this.currentActionName === name) {
       // Still allow timeScale updates even when already in this state
       const action = this.actions[name];
-      if (action) action.setEffectiveTimeScale(timeScale);
+      if (action) {
+        action.setEffectiveTimeScale(timeScale);
+      }
       return;
     }
 
@@ -779,21 +788,19 @@ export class CharacterController {
       const isShootingState = (nowSec - this.lastAttackTime < 0.8);
       
       if (isShootingState) {
-        // Face the target or camera direction (strafing)
+        // Face the target only — no target means keep current rotation
         const target = this.getNearestTarget();
-        let targetAngle = 0;
         if (target) {
           _scratchTargetPos.copy(target.position);
           const dx = _scratchTargetPos.x - this.position.x;
           const dz = _scratchTargetPos.z - this.position.z;
-          targetAngle = Math.atan2(dx, dz);
-        } else {
-          targetAngle = this.cameraTargetRotation.y;
+          const targetAngle = Math.atan2(dx, dz);
+          const currentAngle = this.playerMesh.rotation.y;
+          let diff = targetAngle - currentAngle;
+          diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+          this.playerMesh.rotation.y += diff * 15 * delta;
         }
-        const currentAngle = this.playerMesh.rotation.y;
-        let diff = targetAngle - currentAngle;
-        diff = Math.atan2(Math.sin(diff), Math.cos(diff));
-        this.playerMesh.rotation.y += diff * 15 * delta;
+        // No target → keep facing current direction (e.g. after boss dies)
       } else if (inputDirection.lengthSq() > 0.01) {
         const targetAngle = Math.atan2(inputDirection.x, inputDirection.z);
         const currentAngle = this.playerMesh.rotation.y;
@@ -877,7 +884,16 @@ export class CharacterController {
   }
 
   public getNearestTarget(): THREE.Object3D | null {
-    if (this.targets.length === 0) return null;
+    const now = performance.now();
+    if (now === this.lastTargetCacheTime) {
+      return this.nearestTargetCached;
+    }
+    this.lastTargetCacheTime = now;
+
+    if (this.targets.length === 0) {
+      this.nearestTargetCached = null;
+      return null;
+    }
     let nearest: THREE.Object3D | null = null;
     let minDist = Infinity;
     const playerPos = this.position;
@@ -894,6 +910,7 @@ export class CharacterController {
         nearest = target;
       }
     }
+    this.nearestTargetCached = nearest;
     return nearest;
   }
 
@@ -909,10 +926,11 @@ export class CharacterController {
 
     this.lastAttackTime = performance.now() / 1000;
 
+    const rateOfFire = CHARACTER_CONFIG.combat.rateOfFire || 0.05;
     const animScale = CHARACTER_CONFIG.combat.attackAnimScale || 1.0;
     this.playAnimationState('attack', 0.08, animScale);
-    this.animationLockTime = CHARACTER_CONFIG.combat.attackLockDuration || 0.18;
-    const rateOfFire = CHARACTER_CONFIG.combat.rateOfFire || 0.05;
+    // Lock animation to attack pose for 90% of the duration to prevent jittery transitions back to walk/idle
+    this.animationLockTime = (rateOfFire * 0.9) || 0.18;
     if (this.attackCooldown <= 0) {
       this.attackCooldown += rateOfFire;
     } else {

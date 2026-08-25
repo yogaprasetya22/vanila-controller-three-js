@@ -14,7 +14,11 @@ import { spawnLightningFX } from '../graphics/effects/LightningFX.ts';
 const gltfLoader = new GLTFLoader();
 gltfLoader.setMeshoptDecoder(MeshoptDecoder);
 
-const _dirVec = new THREE.Vector3();
+// Pre-allocated objects to prevent garbage collection overhead in the update loop
+const _tempV1 = new THREE.Vector3();
+const _tempColor = new THREE.Color();
+const _blackColor = new THREE.Color(0, 0, 0);
+const _lightningPoints = [new THREE.Vector3(), new THREE.Vector3()];
 
 export class BossController {
     public playerGroup: THREE.Group;
@@ -38,6 +42,8 @@ export class BossController {
     public lastDamageTime = 0;
     private hitTimeout: any = null;
     private lastHitAnimTime = 0;
+    private originalEmissiveColors = new Map<THREE.Material, THREE.Color>();
+    private flashEndTime = 0;
     private lastDamageCycle = -1;
     private hasDamagedThisLoop = false;
 
@@ -48,6 +54,7 @@ export class BossController {
     private nameTagCanvas: HTMLCanvasElement | null = null;
     private nameTagTexture: THREE.CanvasTexture | null = null;
     public nameTagSprite: THREE.Sprite | null = null;
+    private lastHpRatio = -1;
 
     constructor(scene: THREE.Scene, skillsSystem: any) {
         this.scene = scene;
@@ -76,42 +83,109 @@ export class BossController {
 
         // Listen for server-triggered boss skills (ground slam telegraph)
         onBossSkill((data: any) => {
+            let shapeMode = 0;
+            let outlineOnly = false;
+            let rotationY = 0;
+            let spawnX = data.x;
+            let spawnZ = data.z;
+            let colorHex = 0xff2200; // Default Red for groundSlam
+
+            // Find current target if needed for the skill configurations
+            let targetX = data.tx;
+            let targetZ = data.tz;
+            if (data.skill !== "groundSlam") {
+                let nearest = null as any;
+                let minD = Infinity;
+                for (const p of this.playersRef) {
+                    const px = p.controller.playerGroup.position.x;
+                    const pz = p.controller.playerGroup.position.z;
+                    const d = (px - data.tx) ** 2 + (pz - data.tz) ** 2;
+                    if (d < minD) { minD = d; nearest = p; }
+                }
+                if (nearest) {
+                    targetX = nearest.controller.playerGroup.position.x;
+                    targetZ = nearest.controller.playerGroup.position.z;
+                }
+            }
+
+            if (data.skill === "shieldBash" || data.skill === "doubleShot") {
+                const dx = targetX - data.x;
+                const dz = targetZ - data.z;
+                const len = Math.sqrt(dx * dx + dz * dz);
+                if (len > 0.001) {
+                    const dirX = dx / len;
+                    const dirZ = dz / len;
+                    rotationY = Math.atan2(dx, dz);
+                    // Offset center forward by radius so the back edge starts at the boss's feet
+                    spawnX = data.x + dirX * data.radius;
+                    spawnZ = data.z + dirZ * data.radius;
+                }
+            }
+
+            if (data.skill === "shieldBash") {
+                shapeMode = 1; // Cone
+                colorHex = 0xd94b14; // Poison Orange/Brown
+            } else if (data.skill === "doubleShot") {
+                shapeMode = 2; // Line
+                outlineOnly = true;
+                colorHex = 0xffcc00; // Gold Yellow
+            } else if (data.skill === "lightning") {
+                shapeMode = 3; // Ring
+                outlineOnly = true;
+                colorHex = 0x00f0ff; // Electric Cyan
+                spawnX = targetX;
+                spawnZ = targetZ;
+            }
+
             const onBoom = () => {
                 const bx = this.playerGroup.position.x;
                 const bz = this.playerGroup.position.z;
                 const by = this.playerGroup.position.y;
                 const handY = by + 4; // boss scale 2.8x, hand height ~4 units
+
+                // O(1) lookup of local player controller
+                const local = this.playersRef.find(p => p.player.id === myPlayer().id);
+                if (!local) return;
+
+                const localCtrl = local.controller;
+                const px = localCtrl.playerGroup.position.x;
+                const pz = localCtrl.playerGroup.position.z;
+
+                // Check if local player is hit using our precise CPU SDF helper
+                const isHit = this.checkPlayerInArea(localCtrl, spawnX, spawnZ, data.radius, shapeMode, rotationY);
+
                 if (data.skill === "groundSlam") {
-                    this.applyAoEDamage(data.x, data.z, data.radius, 35, 'bossSlam');
-                } else {
-                    // Homing target: find nearest player to original target, use CURRENT position
-                    // Matches basic attack projectile pattern — VFX always hits where player actually is
-                    let nearest = null as any;
-                    let minD = Infinity;
-                    for (const p of this.playersRef) {
-                        const px = p.controller.playerGroup.position.x;
-                        const pz = p.controller.playerGroup.position.z;
-                        const d = (px - data.tx) ** 2 + (pz - data.tz) ** 2;
-                        if (d < minD) { minD = d; nearest = p; }
+                    if (isHit) {
+                        this.applyDamage(localCtrl, 35, 'bossSlam');
                     }
-                    const tx = nearest ? nearest.controller.playerGroup.position.x : data.tx;
-                    const tz = nearest ? nearest.controller.playerGroup.position.z : data.tz;
-                    if (data.skill === "shieldBash") {
-                        spawnShieldBashFX(this.scene, bx, handY, bz, tx, 0, tz, 0, 2.5);
-                        this.applyAoEDamage(tx, tz, data.radius, 30, 'bossShieldBash');
-                    } else if (data.skill === "doubleShot") {
-                        spawnDoubleShotFX(this.scene, bx, handY, bz, tx, 0, tz, false, 0, 2.5);
-                        this.applyAoEDamage(tx, tz, data.radius, 25, 'bossDoubleShot');
-                    } else if (data.skill === "lightning") {
-                        spawnLightningFX(this.scene, [
-                            new THREE.Vector3(bx, handY, bz),
-                            new THREE.Vector3(tx, 1, tz),
-                        ], 0, 2.5);
-                        this.applyAoEDamage(tx, tz, data.radius, 40, 'bossLightning');
+                } else if (data.skill === "shieldBash") {
+                    // Resolve VFX target coordinates dynamically based on Hit vs Miss
+                    const vfxTargetX = isHit ? px : targetX;
+                    const vfxTargetZ = isHit ? pz : targetZ;
+                    spawnShieldBashFX(this.scene, bx, handY, bz, vfxTargetX, 0, vfxTargetZ, 0, 2.5);
+                    if (isHit) {
+                        this.applyDamage(localCtrl, 30, 'bossShieldBash');
+                    }
+                } else if (data.skill === "doubleShot") {
+                    const vfxTargetX = isHit ? px : targetX;
+                    const vfxTargetZ = isHit ? pz : targetZ;
+                    spawnDoubleShotFX(this.scene, bx, handY, bz, vfxTargetX, 0, vfxTargetZ, false, 0, 2.5);
+                    if (isHit) {
+                        this.applyDamage(localCtrl, 25, 'bossDoubleShot');
+                    }
+                } else if (data.skill === "lightning") {
+                    const vfxTargetX = isHit ? px : targetX;
+                    const vfxTargetZ = isHit ? pz : targetZ;
+                    _lightningPoints[0].set(bx, handY, bz);
+                    _lightningPoints[1].set(vfxTargetX, 1, vfxTargetZ);
+                    spawnLightningFX(this.scene, _lightningPoints, 0, 2.5);
+                    if (isHit) {
+                        this.applyDamage(localCtrl, 40, 'bossLightning');
                     }
                 }
             };
-            this.groundSlamFX.spawn(data.x, data.z, data.radius, data.telegraph, onBoom);
+
+            this.groundSlamFX.spawn(spawnX, spawnZ, data.radius, data.telegraph, onBoom, shapeMode, outlineOnly, rotationY, colorHex);
         });
 
         this.loadModel();
@@ -145,7 +219,7 @@ export class BossController {
             (this.placeholderMesh.material as THREE.Material).dispose();
 
             this.playerMesh = SkeletonUtils.clone(charGLTF.scene);
-            this.playerMesh.scale.setScalar(2.8); // Giant Boss!
+            this.playerMesh.scale.setScalar(1.0); // Giant Boss!
             this.playerGroup.add(this.playerMesh);
 
             // Disable shadow costs, enable lighting
@@ -237,10 +311,15 @@ export class BossController {
         this.nameTagSprite.position.set(0, 7.5, 0); // Position high above giant head
         this.playerGroup.add(this.nameTagSprite);
 
+        this.lastHpRatio = -1; // Reset to force initial render
         this.updateNameTag(1.0);
     }
 
     public updateNameTag(hpRatio: number) {
+        // Prevent expensive 2D canvas drawing and GPU texture uploads if HP ratio hasn't changed
+        if (Math.abs(hpRatio - this.lastHpRatio) < 0.001) return;
+        this.lastHpRatio = hpRatio;
+
         if (!this.nameTagCanvas || !this.nameTagTexture) return;
         const ctx = this.nameTagCanvas.getContext("2d")!;
         ctx.clearRect(0, 0, 256, 64);
@@ -285,6 +364,44 @@ export class BossController {
         });
     }
 
+    public flash(duration = 0.12, colorHex = 0xff3333) {
+        if (!this.playerMesh) return;
+        this.flashEndTime = performance.now() + duration * 1000;
+        _tempColor.setHex(colorHex);
+
+        this.playerMesh.traverse((child) => {
+            if ((child as THREE.Mesh).isMesh) {
+                const mesh = child as THREE.Mesh;
+                const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+                materials.forEach(mat => {
+                    const m = mat as THREE.MeshStandardMaterial;
+                    if (mat) {
+                        if (!this.originalEmissiveColors.has(m)) {
+                            this.originalEmissiveColors.set(m, m.emissive ? m.emissive.clone() : new THREE.Color(0,0,0));
+                        }
+                        if (m.emissive) {
+                            m.emissive.copy(_tempColor);
+                            m.emissiveIntensity = 2.0;
+                        }
+                    }
+                });
+            }
+        });
+    }
+
+    private updateFlash() {
+        if (this.originalEmissiveColors.size > 0 && performance.now() > this.flashEndTime) {
+            this.originalEmissiveColors.forEach((origColor, m) => {
+                const mat = m as THREE.MeshStandardMaterial;
+                if (mat.emissive) {
+                    mat.emissive.copy(origColor);
+                    mat.emissiveIntensity = 0.0;
+                }
+            });
+            this.originalEmissiveColors.clear();
+        }
+    }
+
     public playHit() {
         const now = performance.now();
         if (now - this.lastHitAnimTime < 800) {
@@ -313,28 +430,133 @@ export class BossController {
 
     // ponytail: client-side AoE damage — matches existing melee pattern (server has no player HP).
     // Ceiling: if server adds player HP authority later, move this check server-side.
-    private applyAoEDamage(centerX: number, centerZ: number, radius: number, damage: number, skillName: string) {
-        this.playersRef.forEach(p => {
-            if (p.player.id === myPlayer().id) {
-                const px = p.controller.playerGroup.position.x;
-                const pz = p.controller.playerGroup.position.z;
-                const dx = px - centerX;
-                const dz = pz - centerZ;
-                const dist = Math.sqrt(dx * dx + dz * dz);
-                if (dist < radius) {
-                    damageHUDBatcher.spawn({
-                        skill: skillName,
-                        value: damage,
-                        position: [px, p.controller.playerGroup.position.y + 1, pz],
-                        isCrit: Math.random() > 0.8,
-                        isMagic: false,
-                    });
-                    const localHp = myPlayer().getState('hp') ?? 100;
-                    const nextHp = Math.max(0, localHp - damage);
-                    myPlayer().setState('hp', nextHp === 0 ? 100 : nextHp);
-                }
-            }
+    private checkPlayerInArea(
+        localCtrl: any,
+        centerX: number,
+        centerZ: number,
+        radius: number,
+        shapeMode: number,
+        rotationY: number
+    ): boolean {
+        const px = localCtrl.playerGroup.position.x;
+        const pz = localCtrl.playerGroup.position.z;
+        const dx = px - centerX;
+        const dz = pz - centerZ;
+        const distSq = dx * dx + dz * dz;
+        const radiusSq = radius * radius;
+
+        // Bounding circle early-out (Zero calculation overhead for far away players)
+        if (distSq >= radiusSq) return false;
+
+        // Translate and rotate coordinates to Local space using inverse rotationY
+        const cos = Math.cos(-rotationY);
+        const sin = Math.sin(-rotationY);
+        const rx = dx * cos - dz * sin;
+        const rz = dx * sin + dz * cos;
+
+        // Normalize coordinates relative to radius (SDF assumes local shape size is 1.0)
+        const localX = rx / radius;
+        const localZ = rz / radius;
+
+        let d = 1.0;
+
+        if (shapeMode === 0) {
+            // Circle
+            d = Math.sqrt(localX * localX + localZ * localZ) - 1.0;
+        } else if (shapeMode === 1) {
+            // Cone (Cleave 90 deg frontal)
+            const len = Math.sqrt(localX * localX + localZ * localZ);
+            const angle = Math.abs(Math.atan2(localX, localZ));
+            d = Math.max(len - 1.0, angle - 0.785);
+        } else if (shapeMode === 2) {
+            // Line (laser)
+            const dx_val = Math.abs(localX) - 0.18;
+            const dy_val = Math.abs(localZ) - 1.0;
+            d = Math.max(dx_val, dy_val);
+        } else if (shapeMode === 3) {
+            // Ring
+            const len = Math.sqrt(localX * localX + localZ * localZ);
+            d = Math.max(0.55 - len, len - 1.0);
+        } else if (shapeMode === 4) {
+            // Cross
+            const len = Math.sqrt(localX * localX + localZ * localZ);
+            const dx1 = Math.abs(localX) - 0.18;
+            const dy1 = Math.abs(localZ) - 1.0;
+            const d_v = Math.max(dx1, dy1);
+
+            const dx2 = Math.abs(localZ) - 0.18;
+            const dy2 = Math.abs(localX) - 1.0;
+            const d_h = Math.max(dx2, dy2);
+
+            d = Math.max(Math.min(d_v, d_h), len - 1.0);
+        }
+
+        return d <= 0.0;
+    }
+
+    private applyDamage(localCtrl: any, damage: number, skillName: string) {
+        const px = localCtrl.playerGroup.position.x;
+        const pz = localCtrl.playerGroup.position.z;
+        damageHUDBatcher.spawn({
+            skill: skillName,
+            value: damage,
+            position: [px, localCtrl.playerGroup.position.y + 1, pz],
+            isCrit: Math.random() > 0.8,
+            isMagic: false,
         });
+        const localHp = myPlayer().getState('hp') ?? 100;
+        const nextHp = Math.max(0, localHp - damage);
+        myPlayer().setState('hp', nextHp === 0 ? 100 : nextHp);
+    }
+
+    public dispose() {
+        if (this.hitTimeout) {
+            clearTimeout(this.hitTimeout);
+        }
+
+        // Remove and dispose nametag sprite and material
+        if (this.nameTagSprite) {
+            this.playerGroup.remove(this.nameTagSprite);
+            if (this.nameTagSprite.material) {
+                this.nameTagSprite.material.dispose();
+            }
+        }
+        if (this.nameTagTexture) {
+            this.nameTagTexture.dispose();
+        }
+
+        // Dispose placeholder mesh
+        if (this.placeholderMesh) {
+            this.placeholderMesh.geometry.dispose();
+            if (Array.isArray(this.placeholderMesh.material)) {
+                this.placeholderMesh.material.forEach(m => m.dispose());
+            } else {
+                this.placeholderMesh.material.dispose();
+            }
+        }
+
+        // Traverse and dispose playerMesh geometries/materials
+        if (this.playerMesh) {
+            this.playerMesh.traverse((child) => {
+                if ((child as THREE.Mesh).isMesh) {
+                    const mesh = child as THREE.Mesh;
+                    mesh.geometry.dispose();
+                    if (Array.isArray(mesh.material)) {
+                        mesh.material.forEach(m => m.dispose());
+                    } else {
+                        mesh.material.dispose();
+                    }
+                }
+            });
+        }
+
+        // Dispose ground slam FX
+        if (this.groundSlamFX) {
+            this.groundSlamFX.dispose();
+        }
+
+        // Remove from scene
+        this.scene.remove(this.playerGroup);
     }
 
     public update(delta: number, players: { player: any; controller: any }[]) {
@@ -359,8 +581,8 @@ export class BossController {
                     this.hasDamagedThisLoop = true;
                     players.forEach(p => {
                         if (p.player.id === myPlayer().id) {
-                            const dist = p.controller.playerGroup.position.distanceTo(this.playerGroup.position);
-                            if (dist < 4.5) {
+                            const distSq = p.controller.playerGroup.position.distanceToSquared(this.playerGroup.position);
+                            if (distSq < 20.25) { // 4.5 * 4.5
                                 damageHUDBatcher.spawn({
                                     skill: 'boss',
                                     value: 20,
@@ -424,5 +646,9 @@ export class BossController {
 
         // Render/update billboard nametag health
         this.updateNameTag(this.hp / this.maxHp);
+
+        // Process flashing color updates
+        this.updateFlash();
     }
 }
+

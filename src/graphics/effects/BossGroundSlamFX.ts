@@ -1,75 +1,168 @@
 import * as THREE from "three";
 
-// ponytail: 1 RingGeometry + 1 ShaderMaterial, pool of 6 clones.
-// Phase 1 (telegraph): red circle fills 0→1, pulsing + rotating warning stripes.
-// Phase 2 (boom): expanding shockwave ring + white-hot flash + fade over 0.4s.
-// Driven from render loop via update(delta) — no gsap, no setTimeout.
+// ponytail: 1 PlaneGeometry + 5 specialized Shape Shaders.
+// Pre-compiles 5 specialized, 100% branchless materials to avoid GPU instruction divergence.
+// Uses Additive Blending and custom GLSL noise for premium, organic AAA energy effects.
 
-const _sharedGeo = new THREE.RingGeometry(0.82, 1.0, 64, 1);
-_sharedGeo.rotateX(-Math.PI / 2); // flat on ground
+const _sharedGeo = new THREE.PlaneGeometry(2.5, 2.5); // Larger size to prevent glow clipping
 
-const _sharedMat = new THREE.ShaderMaterial({
+const VERTEX_SHADER = `
+    varying vec2 vUv;
+    void main() {
+        vUv = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+`;
+
+// Helper to compile a highly optimized, branchless fragment shader per shape
+const createShapeShader = (shapeSdfAndFillGLSL: string) => new THREE.ShaderMaterial({
     uniforms: {
+        uOutlineOnly: { value: 0 },
         uFill: { value: 0 },
         uBoom: { value: 0 },
         uTime: { value: 0 },
         uColor: { value: new THREE.Color(0xff2200) },
     },
-    vertexShader: `
-        varying vec2 vUv;
-        void main() {
-            vUv = uv;
-            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }
-    `,
+    vertexShader: VERTEX_SHADER,
     fragmentShader: `
+        uniform int uOutlineOnly;
         uniform float uFill;
         uniform float uBoom;
         uniform float uTime;
         uniform vec3 uColor;
         varying vec2 vUv;
+
+        // Cheap 2D value noise for swirling energy aura
+        float hash(vec2 p) {
+            return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+        }
+        float noise(vec2 p) {
+            vec2 i = floor(p);
+            vec2 f = fract(p);
+            f = f * f * (3.0 - 2.0 * f);
+            return mix(
+                mix(hash(i + vec2(0.0, 0.0)), hash(i + vec2(1.0, 0.0)), f.x),
+                mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x),
+                f.y
+            );
+        }
+
         void main() {
-            // vUv.y: 0=inner, 1=outer (radial). vUv.x: 0→1 around ring (angular).
-            float r = vUv.y;
+            // Map UV to local coordinates [-1.25, 1.25]
+            vec2 p = vUv * 2.5 - 1.25;
 
-            // ── Telegraph phase ──
-            float fillEdge = 1.0 - smoothstep(uFill - 0.02, uFill + 0.02, r);
-            float pulse = 0.6 + 0.4 * sin(uTime * 6.0);
-            float stripes = step(0.5, fract(vUv.x * 12.0 + uTime * 0.4));
-            float innerGlow = (1.0 - smoothstep(uFill - 0.15, uFill, r)) * 0.25 * pulse;
-            float teleAlpha = fillEdge * 0.7 * pulse;
-            teleAlpha = max(teleAlpha, innerGlow);
-            teleAlpha *= mix(0.5, 1.0, stripes * fillEdge);
+            float d = 1.0;
+            float fillVal = 0.0;
+            float fillMask = 0.0;
 
-            // ── Boom phase ──
+            ${shapeSdfAndFillGLSL}
+
+            // Swirling organic noise using polar coordinates
+            float theta = atan(p.y, p.x);
+            float energyPattern = noise(vec2(theta * 2.5 - uTime * 3.5, length(p) * 2.0 - uTime * 1.5));
+            energyPattern = mix(0.4, 1.0, energyPattern);
+
+            // Shape mask with soft feathering
+            float shapeMask = mix(
+                smoothstep(0.01, -0.05, d),                  // Full mode: soft interior drop-off
+                smoothstep(0.08, 0.0, abs(d)),              // Outline mode: soft border drop-off
+                float(uOutlineOnly)
+            ) * fillMask;
+
+            if (shapeMask <= 0.01 && uBoom <= 0.01) {
+                discard;
+            }
+
+            // ── Telegraph Phase (Core Glow + Additive Soft-edges) ──
+            float pulse = 0.75 + 0.25 * sin(uTime * 5.0 + energyPattern * 2.0);
+            
+            // Bright scanline laser ring at the front of uFill progress
+            float scanGlow = smoothstep(0.05, 0.0, abs(fillVal - uFill)) * 0.45;
+
+            // HDR-like White-hot core glow on boundaries
+            float borderGlow = smoothstep(0.1, 0.0, abs(d));
+            float whiteHotCore = smoothstep(0.02, 0.0, abs(d)) * 0.85;
+
+            float teleAlpha = shapeMask * (0.6 * pulse * energyPattern);
+            teleAlpha = max(teleAlpha, (borderGlow * 0.35 + whiteHotCore * 0.6) * shapeMask);
+            teleAlpha = max(teleAlpha, scanGlow * shapeMask);
+
+            // ── Boom Phase (Shockwave flash) ──
             float boomPos = (1.0 - uBoom) * 0.85 + 0.15;
-            float shockRing = 1.0 - smoothstep(boomPos - 0.04, boomPos + 0.04, r);
-            shockRing *= uBoom * 1.8;
-            float flashDisc = (1.0 - smoothstep(0.0, 0.95, r)) * uBoom * 0.6;
+            float shockRing = smoothstep(boomPos - 0.06, boomPos, length(p)) * smoothstep(boomPos + 0.06, boomPos, length(p)) * uBoom * 3.0 * shapeMask;
+            float flashDisc = (1.0 - smoothstep(0.0, 0.95, length(p))) * uBoom * 0.85 * shapeMask;
             float boomAlpha = max(shockRing, flashDisc);
 
-            // ── Combine ──
             float alpha = max(teleAlpha, boomAlpha);
-            vec3 col = mix(uColor, vec3(1.0, 0.9, 0.5), uBoom);
-            col = mix(col, vec3(1.0, 1.0, 0.95), shockRing * 0.6);
 
-            gl_FragColor = vec4(col, alpha);
+            // Dynamic HDR Color combining (uColor -> HDR White core -> Boom flash)
+            vec3 finalCol = mix(uColor, vec3(1.0, 0.9, 0.6), uBoom);
+            finalCol = mix(finalCol, vec3(1.0, 1.0, 1.0), (whiteHotCore * 0.5 + shockRing * 0.8) * shapeMask);
+
+            gl_FragColor = vec4(finalCol, alpha);
         }
     `,
     transparent: true,
     depthWrite: false,
+    depthTest: true,
+    blending: THREE.AdditiveBlending, // Enable AAA Additive Glow blending
     side: THREE.DoubleSide,
 });
 
+// Specialized GLSL code blocks for each shape
+const SHADERS = {
+    Circle: createShapeShader(`
+        d = length(p) - 1.0;
+        fillVal = length(p);
+        fillMask = step(fillVal, uFill);
+    `),
+    Cone: createShapeShader(`
+        float angle = abs(atan(p.x, p.y));
+        d = max(length(p) - 1.0, angle - 0.785);
+        fillVal = length(p);
+        fillMask = step(fillVal, uFill);
+    `),
+    Line: createShapeShader(`
+        float dx = abs(p.x) - 0.18;
+        float dy = abs(p.y) - 1.0;
+        d = max(dx, dy);
+        fillVal = p.y;
+        fillMask = step(fillVal, uFill * 2.0 - 1.0);
+    `),
+    Ring: createShapeShader(`
+        d = max(0.55 - length(p), length(p) - 1.0);
+        fillVal = length(p);
+        fillMask = step(fillVal, 0.55 + uFill * 0.45);
+    `),
+    Cross: createShapeShader(`
+        float dx1 = abs(p.x) - 0.18;
+        float dy1 = abs(p.y) - 1.0;
+        float d_v = max(dx1, dy1);
+        float dx2 = abs(p.y) - 0.18;
+        float dy2 = abs(p.x) - 1.0;
+        float d_h = max(dx2, dy2);
+        d = max(min(d_v, d_h), length(p) - 1.0);
+        fillVal = length(p);
+        fillMask = step(fillVal, uFill);
+    `),
+};
+
 interface SlamState {
     mesh: THREE.Mesh;
-    uniforms: { uFill: { value: number }; uBoom: { value: number }; uTime: { value: number } };
+    materials: THREE.ShaderMaterial[];
+    uniforms: {
+        uOutlineOnly: { value: number };
+        uFill: { value: number };
+        uBoom: { value: number };
+        uTime: { value: number };
+        uColor: { value: THREE.Color };
+    } | null;
     available: boolean;
     age: number;
     telegraphDuration: number;
     boomDuration: number;
     radius: number;
-    phase: 0 | 1; // 0=telegraph, 1=boom
+    phase: 0 | 1;
     onBoom: (() => void) | null;
     boomTriggered: boolean;
 }
@@ -78,19 +171,25 @@ export class BossGroundSlamFX {
     private pool: SlamState[] = [];
 
     constructor(scene: THREE.Scene) {
+        const matClones = [
+            SHADERS.Circle.clone(),
+            SHADERS.Cone.clone(),
+            SHADERS.Line.clone(),
+            SHADERS.Ring.clone(),
+            SHADERS.Cross.clone(),
+        ];
+
         for (let i = 0; i < 6; i++) {
-            const mat = _sharedMat.clone();
-            const mesh = new THREE.Mesh(_sharedGeo, mat);
+            const mesh = new THREE.Mesh(_sharedGeo, matClones[0]);
+            mesh.rotation.order = 'YXZ'; // Critical for flat ground orientation with Y yaw
             mesh.renderOrder = 2;
             mesh.visible = false;
             scene.add(mesh);
+
             this.pool.push({
                 mesh,
-                uniforms: mat.uniforms as {
-                    uFill: { value: number };
-                    uBoom: { value: number };
-                    uTime: { value: number };
-                },
+                materials: matClones.map(m => m.clone()),
+                uniforms: null,
                 available: true,
                 age: 0,
                 telegraphDuration: 1.5,
@@ -103,20 +202,16 @@ export class BossGroundSlamFX {
         }
     }
 
-    /**
-     * Spawn a ground slam telegraph at (x, z).
-     * @param x world x
-     * @param z world z
-     * @param radius AoE radius
-     * @param telegraphDuration seconds before boom
-     * @param onBoom callback fired once at boom moment (for damage check)
-     */
     spawn(
         x: number,
         z: number,
         radius: number,
         telegraphDuration: number,
         onBoom: (() => void) | null,
+        shapeMode = 0,
+        outlineOnly = false,
+        rotationY = 0,
+        colorHex = 0xff2200
     ) {
         const s = this.pool.find((p) => p.available);
         if (!s) return;
@@ -128,37 +223,44 @@ export class BossGroundSlamFX {
         s.phase = 0;
         s.onBoom = onBoom;
         s.boomTriggered = false;
-        s.uniforms.uFill.value = 0;
-        s.uniforms.uBoom.value = 0;
-        s.uniforms.uTime.value = 0;
+
+        // Switch to the pre-compiled shape-specific material
+        const activeMat = s.materials[shapeMode] || s.materials[0];
+        s.mesh.material = activeMat;
+
+        // Extract and assign shape-specific uniforms
+        s.uniforms = activeMat.uniforms as any;
+        s.uniforms!.uOutlineOnly.value = outlineOnly ? 1 : 0;
+        s.uniforms!.uColor.value.setHex(colorHex);
+        s.uniforms!.uFill.value = 0;
+        s.uniforms!.uBoom.value = 0;
+        s.uniforms!.uTime.value = 0;
 
         s.mesh.position.set(x, 0.1, z);
+        s.mesh.rotation.set(-Math.PI / 2, rotationY, 0);
         s.mesh.scale.setScalar(radius);
         s.mesh.visible = true;
     }
 
     update(delta: number) {
         for (const s of this.pool) {
-            if (s.available || !s.mesh.visible) continue;
+            if (s.available || !s.mesh.visible || !s.uniforms) continue;
             s.age += delta;
             s.uniforms.uTime.value += delta;
 
             if (s.phase === 0) {
-                // Telegraph: fill circle
                 const t = s.age / s.telegraphDuration;
                 s.uniforms.uFill.value = Math.min(1, t);
                 if (t >= 1) {
                     s.phase = 1;
                     s.age = 0;
                     s.uniforms.uBoom.value = 1;
-                    // Trigger damage callback at boom moment
                     if (!s.boomTriggered && s.onBoom) {
                         s.boomTriggered = true;
                         s.onBoom();
                     }
                 }
             } else {
-                // Boom: shockwave + flash + fade
                 const t = s.age / s.boomDuration;
                 s.uniforms.uBoom.value = Math.max(0, 1 - t);
                 if (t >= 1) {
@@ -167,5 +269,17 @@ export class BossGroundSlamFX {
                 }
             }
         }
+    }
+
+    public dispose() {
+        for (const s of this.pool) {
+            // Clean up cloned materials and geometries
+            s.materials.forEach(mat => mat.dispose());
+            if (s.mesh.parent) {
+                s.mesh.parent.remove(s.mesh);
+            }
+        }
+        // Note: _sharedGeo is not disposed here because it is a file-level shared constant geometry.
+        this.pool = [];
     }
 }

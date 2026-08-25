@@ -486,10 +486,14 @@ export class DamageHUDBatcher {
         const direction = (this.evtPtr % 2 === 0) ? 1 : -1;
 
         if (isCrit) {
-            e.vx = direction * (2.0 + Math.random() * 2.5) + (Math.random() - 0.5) * 0.8;
-            e.vy = 12.0 + Math.random() * 4.0;
-            e.grav = 24.0;
-            e.duration = 0.85;
+            // Wider staggered horizontal pop (alternating left/right aggressively)
+            e.vx = direction * (4.8 + Math.random() * 4.0) + (Math.random() - 0.5) * 1.0;
+            // High upward velocity
+            e.vy = 12.0 + Math.random() * 6.0;
+            // Higher gravity to make them drop/curve down quickly
+            e.grav = 36.0;
+            // Ultra-fast duration to prevent cluttering
+            e.duration = 0.45;
         } else if (isMiss) {
             e.vx = direction * (1.2 + Math.random() * 0.8);
             e.vy = 4.0 + Math.random() * 1.0;
@@ -501,10 +505,10 @@ export class DamageHUDBatcher {
             e.grav = 10.0;
             e.duration = 0.95;
         } else {
-            e.vx = direction * (3.2 + Math.random() * 2.2) + (Math.random() - 0.5) * 1.0;
-            e.vy = 9.0 + Math.random() * 4.0;
-            e.grav = 24.0;
-            e.duration = 0.70;
+            e.vx = direction * (3.5 + Math.random() * 3.0) + (Math.random() - 0.5) * 1.0;
+            e.vy = 10.0 + Math.random() * 5.0;
+            e.grav = 34.0;
+            e.duration = 0.38;
         }
 
         e._totalW = totalW;
@@ -549,20 +553,21 @@ export class DamageHUDBatcher {
 
             let scaleMultiplier = 1.0;
             if (e.isCrit) {
-                if (tn < 0.15) {
-                    const ratio = tn / 0.15;
-                    const ease = 1.0 - Math.pow(1.0 - ratio, 3);
-                    scaleMultiplier = THREE.MathUtils.lerp(1.45, 1.0, ease);
+                if (tn < 0.20) {
+                    const ratio = tn / 0.20;
+                    // Satisfying spring elastic ease-out pop (overshoot up to 3.0x and snap down)
+                    const ease = Math.sin(ratio * Math.PI * 0.5);
+                    scaleMultiplier = THREE.MathUtils.lerp(2.8, 1.0, ease);
                 } else {
-                    scaleMultiplier = THREE.MathUtils.lerp(1.0, 0.6, (tn - 0.15) / 0.85);
+                    scaleMultiplier = THREE.MathUtils.lerp(1.0, 0.55, (tn - 0.20) / 0.80);
                 }
             } else {
-                if (tn < 0.12) {
-                    const ratio = tn / 0.12;
-                    const ease = 1.0 - Math.pow(1.0 - ratio, 3);
-                    scaleMultiplier = THREE.MathUtils.lerp(1.25, 1.0, ease);
+                if (tn < 0.15) {
+                    const ratio = tn / 0.15;
+                    const ease = Math.sin(ratio * Math.PI * 0.5);
+                    scaleMultiplier = THREE.MathUtils.lerp(1.9, 1.0, ease);
                 } else {
-                    scaleMultiplier = THREE.MathUtils.lerp(1.0, 0.7, (tn - 0.12) / 0.88);
+                    scaleMultiplier = THREE.MathUtils.lerp(1.0, 0.65, (tn - 0.15) / 0.85);
                 }
             }
 
@@ -587,13 +592,16 @@ export class DamageHUDBatcher {
             let jx = 0.0, jy = 0.0;
             if (e.isCrit && di === 0 && t < 0.10) {
                 const j = (1.0 - t / 0.10) * 0.25;
-                jx = (Math.random() - 0.5) * j;
-                jy = (Math.random() - 0.5) * j;
+                // Optimization: avoid Math.random() calls in hot update loop
+                const angleSeed = e.startTime * 1234.56 + t * 987.65;
+                jx = Math.sin(angleSeed) * j;
+                jy = Math.cos(angleSeed) * j;
             }
 
             // Animate Star Background
             if (e.isCrit) {
-                const starBaseScale = totalScale * 1.85;
+                // Reduced from 1.85 to 1.25 to prevent blocking the boss model
+                const starBaseScale = totalScale * 1.25;
                 const scaleX = starBaseScale * (1.15 + (e.numChars - 1) * 0.35);
                 const scaleY = starBaseScale * 1.05;
 

@@ -1,6 +1,10 @@
 import * as THREE from 'three';
 import { CHARACTER_CONFIG } from './character-config';
 import { getTerrainHeight } from '../simulation/constants';
+import { scene } from '../graphics/core/scene';
+import { spawnArrowVolleyFX } from '../graphics/effects/ArrowVolleyFX';
+import { spawnDoubleShotFX } from '../graphics/effects/DoubleShotFX';
+import { spawnEvasiveLeapFX } from '../graphics/effects/EvasiveLeapFX';
 
 export interface VFXInterface {
   spawn: (x: number, y: number, z: number, anchor?: THREE.Object3D, duration?: number) => void;
@@ -12,7 +16,6 @@ export class SkillsSystem {
       name: string;
       cooldown: number;
       currentCD: number;
-      vfx: VFXInterface;
       trigger: (playerPos: THREE.Vector3, forward: THREE.Vector3, character?: any) => void;
     };
   } = {};
@@ -34,78 +37,73 @@ export class SkillsSystem {
   } | null = null;
 
   constructor(
-    gasVFX: VFXInterface,
-    flameVFX: VFXInterface,
-    tornadoVFX: VFXInterface
+    _gasVFX?: any,
+    _flameVFX?: any,
+    _tornadoVFX?: any
   ) {
-    // Skill 1: SubEmitter2 (Forward Spawn or Target Spawn)
-    const gasConf = CHARACTER_CONFIG.skills.gasExplosion;
-    this.skills[gasConf.key] = {
-      name: 'SubEmitter2',
-      cooldown: gasConf.cooldown,
+    // Skill 1: Arrow Volley (Digit 1)
+    const arrowConf = CHARACTER_CONFIG.skills.arrowVolley;
+    this.skills[arrowConf.key] = {
+      name: 'Arrow Volley',
+      cooldown: arrowConf.cooldown,
       currentCD: 0,
-      vfx: gasVFX,
       trigger: (playerPos, forward, character) => {
         const target = character ? character.getNearestTarget() : null;
+        let tx = playerPos.x + forward.x * arrowConf.forwardOffset;
+        let tz = playerPos.z + forward.z * arrowConf.forwardOffset;
         if (target) {
-          const targetPos = new THREE.Vector3();
-          targetPos.copy(target.position);
-          // Clamp Y to terrain surface so explosion never spawns underground
-          const floorY = getTerrainHeight(targetPos.x, targetPos.z);
-          gasVFX.spawn(targetPos.x, Math.max(targetPos.y, floorY) + 0.1, targetPos.z);
-        } else {
-          const spawnPos = playerPos.clone().addScaledVector(forward, gasConf.forwardOffset);
-          const floorY = getTerrainHeight(spawnPos.x, spawnPos.z);
-          gasVFX.spawn(spawnPos.x, Math.max(spawnPos.y, floorY) + 0.1, spawnPos.z);
+          tx = target.position.x;
+          tz = target.position.z;
         }
+        const ty = getTerrainHeight(tx, tz);
+        spawnArrowVolleyFX(scene, tx, tz, ty, arrowConf.radius, 0);
       }
     };
 
-    // Skill 2: Flamethrower (Forward Stream + Speed Buff + Body Follow)
-    const flameConf = CHARACTER_CONFIG.skills.flamethrower;
-    this.skills[flameConf.key] = {
-      name: 'Flamethrower',
-      cooldown: flameConf.cooldown,
+    // Skill 2: Double Shot (Digit 2)
+    const doubleConf = CHARACTER_CONFIG.skills.doubleShot;
+    this.skills[doubleConf.key] = {
+      name: 'Double Shot',
+      cooldown: doubleConf.cooldown,
       currentCD: 0,
-      vfx: flameVFX,
       trigger: (playerPos, forward, character) => {
-        const target = playerPos.clone().addScaledVector(forward, flameConf.forwardOffset);
-        
-        // Give character a speed buff matching the active duration
+        const target = character ? character.getNearestTarget() : null;
+        const fx = playerPos.x;
+        const fy = playerPos.y + 1.1; // Projectile height offset
+        const fz = playerPos.z;
+        let tx = playerPos.x + forward.x * 15.0;
+        let ty = playerPos.y;
+        let tz = playerPos.z + forward.z * 15.0;
+        if (target) {
+          tx = target.position.x;
+          ty = target.position.y;
+          tz = target.position.z;
+        }
+        spawnDoubleShotFX(scene, fx, fy, fz, tx, ty, tz, false, 0);
+      }
+    };
+
+    // Skill 3: Evasive Leap (Digit 3)
+    const leapConf = CHARACTER_CONFIG.skills.evasiveLeap;
+    this.skills[leapConf.key] = {
+      name: 'Evasive Leap',
+      cooldown: leapConf.cooldown,
+      currentCD: 0,
+      trigger: (playerPos, forward, character) => {
+        const fx = playerPos.x;
+        const fy = playerPos.y;
+        const fz = playerPos.z;
+        const tx = playerPos.x - forward.x * leapConf.forwardOffset;
+        const tz = playerPos.z - forward.z * leapConf.forwardOffset;
+        const ty = getTerrainHeight(tx, tz);
+
         if (character) {
-          character.applySpeedBuff(flameConf.speedMultiplier || 1.8, flameConf.activeDuration);
+          character.applySpeedBuff(leapConf.speedMultiplier, leapConf.activeDuration);
+          if (character.velocity) {
+            character.velocity.set(-forward.x * 16.0, 7.5, -forward.z * 16.0);
+          }
         }
-
-        // Spawn flamethrower visual attached to character chest/body with configured duration
-        flameVFX.spawn(
-          target.x,
-          target.y + 1.0,
-          target.z,
-          (character && character.playerMesh) ? character.playerMesh : undefined,
-          flameConf.activeDuration
-        );
-      }
-    };
-
-    // Skill 3: Cartoon Tornado (Local AoE or Target Spawn)
-    const tornadoConf = CHARACTER_CONFIG.skills.tornado;
-    this.skills[tornadoConf.key] = {
-      name: 'Tornado',
-      cooldown: tornadoConf.cooldown,
-      currentCD: 0,
-      vfx: tornadoVFX,
-      trigger: (playerPos, forward, character) => {
-        const target = character ? character.getNearestTarget() : null;
-        if (target) {
-          const targetPos = new THREE.Vector3();
-          targetPos.copy(target.position);
-          // Clamp Y to terrain surface
-          const floorY = getTerrainHeight(targetPos.x, targetPos.z);
-          tornadoVFX.spawn(targetPos.x, Math.max(targetPos.y, floorY) + 0.1, targetPos.z, target);
-        } else {
-          const floorY = getTerrainHeight(playerPos.x, playerPos.z);
-          tornadoVFX.spawn(playerPos.x, Math.max(playerPos.y, floorY), playerPos.z);
-        }
+        spawnEvasiveLeapFX(scene, fx, fy, fz, tx, ty, tz);
       }
     };
 
@@ -150,24 +148,24 @@ export class SkillsSystem {
     this.cdIndicator.appendChild(label);
 
     const keys = [
-      CHARACTER_CONFIG.skills.gasExplosion.key,
-      CHARACTER_CONFIG.skills.flamethrower.key,
-      CHARACTER_CONFIG.skills.tornado.key
+      CHARACTER_CONFIG.skills.arrowVolley.key,
+      CHARACTER_CONFIG.skills.doubleShot.key,
+      CHARACTER_CONFIG.skills.evasiveLeap.key
     ];
     const keyLabels = keys.map(k => k.replace('Digit', '').replace('Key', ''));
 
-    // Custom asset PNG icons mapping
+    // Custom asset PNG icons mapping for Archer
     const skillIcons: { [key: string]: string } = {
-      [CHARACTER_CONFIG.skills.gasExplosion.key]: '/assets-image-skills/PNG/3.png',
-      [CHARACTER_CONFIG.skills.flamethrower.key]: '/assets-image-skills/PNG/6.png',
-      [CHARACTER_CONFIG.skills.tornado.key]: '/assets-image-skills/PNG/4.png'
+      [CHARACTER_CONFIG.skills.arrowVolley.key]: '/assets-image-skills/PNG/3.png',
+      [CHARACTER_CONFIG.skills.doubleShot.key]: '/assets-image-skills/PNG/6.png',
+      [CHARACTER_CONFIG.skills.evasiveLeap.key]: '/assets-image-skills/PNG/4.png'
     };
 
     // Custom HUD border colors mapping from character config
     const skillColors: { [key: string]: string } = {
-      [CHARACTER_CONFIG.skills.gasExplosion.key]: CHARACTER_CONFIG.skills.gasExplosion.hudColor,
-      [CHARACTER_CONFIG.skills.flamethrower.key]: CHARACTER_CONFIG.skills.flamethrower.hudColor,
-      [CHARACTER_CONFIG.skills.tornado.key]: CHARACTER_CONFIG.skills.tornado.hudColor
+      [CHARACTER_CONFIG.skills.arrowVolley.key]: CHARACTER_CONFIG.skills.arrowVolley.hudColor,
+      [CHARACTER_CONFIG.skills.doubleShot.key]: CHARACTER_CONFIG.skills.doubleShot.hudColor,
+      [CHARACTER_CONFIG.skills.evasiveLeap.key]: CHARACTER_CONFIG.skills.evasiveLeap.hudColor
     };
 
     keys.forEach((key, idx) => {
@@ -340,19 +338,20 @@ export class SkillsSystem {
   }
 
   public triggerNetworkVFX(skillId: string, x: number, z: number, targetMesh?: THREE.Object3D) {
-    const skill = this.skills[skillId];
-    if (skill) {
-      const floorY = getTerrainHeight(x, z);
-      const spawnY = Math.max(0, floorY) + 0.1;
-      
-      if (skillId === CHARACTER_CONFIG.skills.flamethrower.key) {
-        skill.vfx.spawn(x, spawnY + 1.0, z, targetMesh, CHARACTER_CONFIG.skills.flamethrower.activeDuration);
-      } else if (skillId === CHARACTER_CONFIG.skills.tornado.key) {
-        // Tornado spawns at coordinates, do not anchor to caster (targetMesh)
-        skill.vfx.spawn(x, spawnY, z, undefined);
-      } else {
-        skill.vfx.spawn(x, spawnY, z);
-      }
+    const floorY = getTerrainHeight(x, z);
+    const spawnY = Math.max(0, floorY) + 0.1;
+
+    if (skillId === CHARACTER_CONFIG.skills.arrowVolley.key) {
+      spawnArrowVolleyFX(scene, x, z, floorY, CHARACTER_CONFIG.skills.arrowVolley.radius, 0);
+    } else if (skillId === CHARACTER_CONFIG.skills.doubleShot.key) {
+      // Setup network position indicators for doubleShot target trajectory
+      const tx = x + (targetMesh ? targetMesh.position.x : 0);
+      const tz = z + (targetMesh ? targetMesh.position.z : 0);
+      spawnDoubleShotFX(scene, x, spawnY + 1.1, z, tx, spawnY, tz, false, 0);
+    } else if (skillId === CHARACTER_CONFIG.skills.evasiveLeap.key) {
+      const tx = x - (targetMesh ? targetMesh.position.x : 0);
+      const tz = z - (targetMesh ? targetMesh.position.z : 0);
+      spawnEvasiveLeapFX(scene, x, spawnY, z, tx, floorY, tz);
     }
   }
 
@@ -429,3 +428,4 @@ export class SkillsSystem {
     }
   }
 }
+

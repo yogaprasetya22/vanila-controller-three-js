@@ -80,6 +80,10 @@ export class NetworkManager {
     private static bossSkillCallbacks: Array<(data: any) => void> = [];
     private static npcConfig: any = null;
     private static resolveInitPromise: (() => void) | null = null;
+    private static heartbeatInterval: any = null;
+    private static reconnectAttempts = 0;
+    private static maxReconnectAttempts = 8;
+
 
     public static send(msg: any) {
         if (this.socket && this.socket.readyState === WebSocket.OPEN) {
@@ -90,6 +94,16 @@ export class NetworkManager {
     }
 
     public static async insertCoin(): Promise<void> {
+        // Clean up previous socket connection if it exists to avoid leaks/gaps during reconnects
+        if (this.socket) {
+            this.socket.onopen = null;
+            this.socket.onmessage = null;
+            this.socket.onerror = null;
+            this.socket.onclose = null;
+            try { this.socket.close(); } catch (e) {}
+            this.socket = null;
+        }
+
         // Read Room ID from URL Hash. e.g. #ROOM123
         let hash = window.location.hash;
         if (!hash || hash === "#") {
@@ -121,6 +135,13 @@ export class NetworkManager {
             console.warn("Login failed, connecting without token (server may not require auth):", e);
         }
 
+        // Generate a persistent session-based player ID unique to this tab
+        let sessionPlayerId = sessionStorage.getItem("sessionPlayerId");
+        if (!sessionPlayerId) {
+            sessionPlayerId = "p_" + Math.floor(1000 + Math.random() * 9000);
+            sessionStorage.setItem("sessionPlayerId", sessionPlayerId);
+        }
+
         return new Promise((resolve) => {
             let wsBaseUrl = import.meta.env.VITE_WS_URL;
             if (!wsBaseUrl) {
@@ -129,7 +150,7 @@ export class NetworkManager {
             }
             // ponytail: token as query param — browsers can't set headers on WebSocket upgrade.
             // Ceiling: use Sec-WebSocket-Protocol subprotocol for token when browser support matures.
-            const wsUrl = `${wsBaseUrl}?room=${this.roomID}&token=${encodeURIComponent(token)}`;
+            const wsUrl = `${wsBaseUrl}?room=${this.roomID}&token=${encodeURIComponent(token)}&playerId=${sessionPlayerId}`;
             console.log("Connecting to WebSocket:", wsUrl);
 
             this.resolveInitPromise = resolve;
@@ -139,6 +160,8 @@ export class NetworkManager {
 
             this.socket.onopen = () => {
                 console.log("Connected to Go multiplayer backend. Room:", this.roomID);
+                this.reconnectAttempts = 0; // Reset on successful connection
+                NetworkManager.startHeartbeat();
             };
 
             this.socket.onmessage = (event) => {
@@ -159,10 +182,45 @@ export class NetworkManager {
 
             this.socket.onclose = () => {
                 console.warn("WebSocket disconnected.");
-                NetworkManager.showConnectionLostOverlay();
+                NetworkManager.stopHeartbeat();
+                NetworkManager.attemptReconnect();
             };
         });
     }
+
+    private static attemptReconnect() {
+        if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+            console.error("Max reconnect attempts reached");
+            this.showConnectionLostOverlay();
+            return;
+        }
+
+        const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 8000);
+        this.reconnectAttempts++;
+        console.log(`Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+
+        setTimeout(() => {
+            this.insertCoin().catch(() => {
+                // connection fail will trigger onclose and retry
+            });
+        }, delay);
+    }
+
+    private static startHeartbeat() {
+        this.stopHeartbeat();
+        this.heartbeatInterval = setInterval(() => {
+            this.send({ type: "heartbeat" });
+        }, 15000); // Send heartbeat every 15 seconds
+    }
+
+    private static stopHeartbeat() {
+        if (this.heartbeatInterval) {
+            clearInterval(this.heartbeatInterval);
+            this.heartbeatInterval = null;
+        }
+    }
+
+
 
     private static showConnectionLostOverlay() {
         if (document.getElementById('connection-lost-overlay')) return;
@@ -214,15 +272,22 @@ export class NetworkManager {
                     this.npcConfig = msg.npcConfig;
                     console.log("Authoritative NPC config synced from server:", this.npcConfig);
                 }
-                this.localPlayer = new Player(msg.playerId, localStorage.getItem("playerName") || "Player");
-                this.playersMap.set(msg.playerId, this.localPlayer);
+
+                // If reconnecting, do not duplicate local player controller / object
+                const isNewPlayer = !this.playersMap.has(msg.playerId);
+                if (isNewPlayer) {
+                    this.localPlayer = new Player(msg.playerId, localStorage.getItem("playerName") || "Player");
+                    this.playersMap.set(msg.playerId, this.localPlayer);
+                }
                 
                 if (this.resolveInitPromise) {
                     this.resolveInitPromise();
                     this.resolveInitPromise = null;
                 }
                 
-                this.joinCallbacks.forEach(cb => cb(this.localPlayer!));
+                if (isNewPlayer && this.localPlayer) {
+                    this.joinCallbacks.forEach(cb => cb(this.localPlayer!));
+                }
                 break;
 
             case "player_joined":

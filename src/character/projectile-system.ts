@@ -10,6 +10,7 @@ function getUnits(): any[] {
 interface Projectile {
   mesh: THREE.Mesh;
   velocity: THREE.Vector3;
+  speed: number;
   age: number;
   maxAge: number;
   target: THREE.Object3D | null;
@@ -79,6 +80,7 @@ export class ProjectileSystem {
     this.projectiles.push({
       mesh: arrowMesh,
       velocity: velocity,
+      speed: speed,
       age: 0,
       maxAge: CHARACTER_CONFIG.projectiles.maxDistance / speed,
       target: target,
@@ -112,8 +114,7 @@ export class ProjectileSystem {
           _targetPos.copy(p.target.position);
           _targetPos.y += 1.0;
           _toTarget.copy(_targetPos).sub(p.mesh.position).normalize();
-          const speed = p.velocity.length();
-          _toTarget.multiplyScalar(speed);
+          _toTarget.multiplyScalar(p.speed);
           p.velocity.lerp(_toTarget, CHARACTER_CONFIG.projectiles.homingSteerForce * delta);
 
           // Explode if close to target center

@@ -29,31 +29,57 @@ export const CHARACTER_CONFIG = {
 
   // Skills configs
   skills: {
-    tornado: {
-      cooldown: 12.0,             // Cooldown in seconds (disesuaikan)
+    arrowVolley: {
+      cooldown: 0,
+      key: 'Digit1',
+      hudColor: '#ef4444',       // Red for Arrow Volley
+      damage: 150000,
+      radius: 4.5,
+      forwardOffset: 6.0,
+    },
+    doubleShot: {
+      cooldown: 0,
+      key: 'Digit2',
+      hudColor: '#10b981',       // Green for Double Shot
+      damage: 60000,
+      forwardOffset: 1.0,
+    },
+    evasiveLeap: {
+      cooldown: 0,
       key: 'Digit3',
-      hudColor: '#00d2ff',       // Cyan/Blue border color for tornado
-      damage: 180000,              // AoE damage
-      radius: 3.0,               // AoE radius
-      activeDuration: 13.5,        // Duration of the tornado (seconds)
+      hudColor: '#3b82f6',       // Blue for Evasive Leap
+      damage: 0,
+      forwardOffset: 3.0,
+      activeDuration: 0.6,
+      speedMultiplier: 2.2,
+    },
+    tornado: {
+      cooldown: 12.0,
+      key: 'Digit3',
+      hudColor: '#00d2ff',
+      damage: 180000,
+      radius: 3.0,
+      activeDuration: 13.5,
     },
     gasExplosion: {
-      cooldown: 6.0,             // Cooldown in seconds (disesuaikan)
+      cooldown: 6.0,
       key: 'Digit1',
-      forwardOffset: 4.0,        // Distance in front of character to spawn explosion
-      hudColor: '#00ffaa',       // Bright Teal/Green for gas explosion
-      damage: 90000,              // AoE damage
-      radius: 5.0,               // AoE radius
+      forwardOffset: 4.0,
+      hudColor: '#00ffaa',
+      damage: 90000,
+      radius: 5.0,
     },
     flamethrower: {
-      cooldown: 18.0,             // Cooldown in seconds (disesuaikan)
+      cooldown: 18.0,
       key: 'Digit2',
-      forwardOffset: 1.5,        // Distance offset
-      activeDuration: 12.0,      // Duration of the flamethrower spray (seconds)
-      speedMultiplier: 1.5,      // Speed multiplier when casting
-      hudColor: '#ffaa00',       // Orange/Yellow for flamethrower
-      damage: 8000,               // AoE damage
-      radius: 3.0,               // AoE radius
+      forwardOffset: 1.5,
+      activeDuration: 12.0,
+      speedMultiplier: 1.5,
+      hudColor: '#ffaa00',
+      damage: 8000,
+      radius: 3.0,
     }
   }
 };
+
+
