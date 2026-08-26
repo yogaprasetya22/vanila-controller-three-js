@@ -17,6 +17,7 @@ interface Projectile {
   target: THREE.Object3D | null;
   ownerId?: string;
   ownerTeam?: number;
+  hitRadius: number;
 }
 
 // Module-level pre-allocated scratch vectors — zero heap allocation in hot loop
@@ -91,6 +92,15 @@ export class ProjectileSystem {
     const velocity = arrowMesh.userData.velocity as THREE.Vector3;
     velocity.copy(direction).normalize().multiplyScalar(speed);
 
+    let hitRadius = 0.9;
+    if (target) {
+      const allEntities = TargetingManager.getAllEntities();
+      const targetEntity = allEntities.find(e => e.playerGroup === target);
+      if (targetEntity && targetEntity.radius) {
+        hitRadius = targetEntity.radius + 0.35;
+      }
+    }
+
     this.projectiles.push({
       mesh: arrowMesh,
       velocity: velocity,
@@ -99,7 +109,8 @@ export class ProjectileSystem {
       maxAge: CHARACTER_CONFIG.projectiles.maxDistance / speed,
       target: target,
       ownerId: ownerId,
-      ownerTeam: ownerTeam
+      ownerTeam: ownerTeam,
+      hitRadius: hitRadius
     });
   }
 
@@ -134,12 +145,7 @@ export class ProjectileSystem {
           // Explode if close to target center (dynamically scaled for large bosses)
           _tPos.copy(p.target.position);
           _tPos.y += 0.5;
-          let hitRadius = 0.9;
-          const targetEntity = TargetingManager.getAllEntities().find(e => e.playerGroup === p.target);
-          if (targetEntity && targetEntity.radius) {
-            hitRadius = targetEntity.radius + 0.35;
-          }
-          const hitRadiusSq = hitRadius * hitRadius;
+          const hitRadiusSq = p.hitRadius * p.hitRadius;
 
           if (p.mesh.position.distanceToSquared(_tPos) < hitRadiusSq) {
             remoteCollided = true;
@@ -161,12 +167,7 @@ export class ProjectileSystem {
         _tPos.copy(p.target.position);
         _tPos.y += 0.5;
         let collided = false;
-        let hitRadius = 0.9;
-        const targetEntity = TargetingManager.getAllEntities().find(e => e.playerGroup === p.target);
-        if (targetEntity && targetEntity.radius) {
-          hitRadius = targetEntity.radius + 0.35;
-        }
-        const hitRadiusSq = hitRadius * hitRadius;
+        const hitRadiusSq = p.hitRadius * p.hitRadius;
 
         if (p.mesh.position.distanceToSquared(_tPos) < hitRadiusSq) {
           collided = true;

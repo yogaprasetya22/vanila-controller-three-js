@@ -40,29 +40,37 @@ export class MeleeAttackBehavior implements IAttackBehavior {
           const baseDamage = isRaid ? 15 : 8;
           const rangeSq = this.attackRange * this.attackRange;
 
+          let closestPlayer: any = null;
+          let closestDistSq = rangeSq;
+
           for (const playerEntity of players) {
             const distSq = playerEntity.position.distanceToSquared(this.owner.playerGroup.position);
-            if (distSq < rangeSq) {
-              if (playerEntity.id === localId) {
-                damageHUDBatcher.spawn({
-                  skill: 'normal',
-                  value: baseDamage,
-                  position: [playerEntity.position.x, playerEntity.position.y + 1, playerEntity.position.z],
-                  isCrit: Math.random() > 0.9,
-                  isMagic: false
-                });
-                const localHp = myPlayer().getState('hp') ?? 100;
-                const nextHp = Math.max(0, localHp - baseDamage);
-                myPlayer().setState('hp', nextHp === 0 ? 100 : nextHp);
-              } else {
-                damageHUDBatcher.spawn({
-                  skill: 'normal',
-                  value: baseDamage,
-                  position: [playerEntity.position.x, playerEntity.position.y + 1, playerEntity.position.z],
-                  isCrit: Math.random() > 0.9,
-                  isMagic: false
-                });
-              }
+            if (distSq < closestDistSq) {
+              closestDistSq = distSq;
+              closestPlayer = playerEntity;
+            }
+          }
+
+          if (closestPlayer) {
+            if (closestPlayer.id === localId) {
+              damageHUDBatcher.spawn({
+                skill: 'normal',
+                value: baseDamage,
+                position: [closestPlayer.position.x, closestPlayer.position.y + 1, closestPlayer.position.z],
+                isCrit: Math.random() > 0.9,
+                isMagic: false
+              });
+              const localHp = myPlayer().getState('hp') ?? 100;
+              const nextHp = Math.max(0, localHp - baseDamage);
+              myPlayer().setState('hp', nextHp === 0 ? 100 : nextHp);
+            } else {
+              damageHUDBatcher.spawn({
+                skill: 'normal',
+                value: baseDamage,
+                position: [closestPlayer.position.x, closestPlayer.position.y + 1, closestPlayer.position.z],
+                isCrit: Math.random() > 0.9,
+                isMagic: false
+              });
             }
           }
         }

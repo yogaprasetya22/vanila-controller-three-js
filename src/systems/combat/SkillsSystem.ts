@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { CHARACTER_CONFIG } from '../../entities/player/PlayerConfig';
 import { getTerrainHeight } from '../../simulation/constants';
-import { scene } from '../../graphics/core/scene';
+import { scene, getLODLevelAt } from '../../graphics/core/scene';
 import { SkillManager } from '../../skills/SkillManager';
 import { SkillRegistry } from '../../skills/SkillRegistry';
 import { SKILL_CONFIGS } from '../../skills/SkillConfig';
@@ -266,11 +266,14 @@ export class SkillsSystem {
   }
 
   public triggerNetworkVFX(skillId: string, x: number, z: number, targetMesh?: THREE.Object3D) {
+    const floorY = getTerrainHeight(x, z);
+    const mockPos = new THREE.Vector3(x, floorY, z);
+    if (getLODLevelAt(mockPos) !== 'full') return;
+
     const skill = SkillRegistry.create(skillId);
     if (skill) {
-      const floorY = getTerrainHeight(x, z);
       const mockCaster = {
-        position: new THREE.Vector3(x, floorY, z)
+        position: mockPos
       };
       skill.cast(mockCaster, {
         scene,

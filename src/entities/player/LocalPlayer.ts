@@ -125,6 +125,9 @@ export class LocalPlayer {
   
   public setLODLevel(level: 'full' | 'name-only' | 'culled') {
     if (this.lodLevel === level) return;
+    if (this.lodLevel === 'culled') {
+      this.interpolator.reset();
+    }
     this.lodLevel = level;
 
     switch (level) {
@@ -912,8 +915,12 @@ export class LocalPlayer {
 
     const nearestEntity = TargetingManager.getNearestTarget(this.position, 'enemy');
     if (nearestEntity) {
-      this.nearestTargetCached = nearestEntity.playerGroup;
-      return nearestEntity.playerGroup;
+      const limit = CHARACTER_CONFIG.combat.autoAimRange || 15.0;
+      const dist = nearestEntity.position.distanceTo(this.position) - (nearestEntity.radius || 0);
+      if (dist <= limit) {
+        this.nearestTargetCached = nearestEntity.playerGroup;
+        return nearestEntity.playerGroup;
+      }
     }
     
     this.nearestTargetCached = null;
@@ -929,6 +936,7 @@ export class LocalPlayer {
 
     // Get target once — reused for projectile aim
     const target = this.getNearestTarget();
+    if (!target) return false;
 
     this.lastAttackTime = performance.now() / 1000;
 

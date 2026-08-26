@@ -40,39 +40,47 @@ export class RangedAttackBehavior implements IAttackBehavior {
           const baseDamage = 12; // Ranged base damage
           const rangeSq = this.attackRange * this.attackRange;
 
+          let closestPlayer: any = null;
+          let closestDistSq = rangeSq;
+
           for (const playerEntity of players) {
             const distSq = playerEntity.position.distanceToSquared(this.owner.playerGroup.position);
-            if (distSq < rangeSq) {
-              const fx = this.owner.playerGroup.position.x;
-              const fy = this.owner.playerGroup.position.y + 1.1;
-              const fz = this.owner.playerGroup.position.z;
-              const tx = playerEntity.position.x;
-              const ty = playerEntity.position.y;
-              const tz = playerEntity.position.z;
-              
-              // Spawns projectile from the enemy group position to the target player
-              spawnDoubleShotFX(this.owner.playerGroup.parent as any, fx, fy, fz, tx, ty, tz, true, 0);
+            if (distSq < closestDistSq) {
+              closestDistSq = distSq;
+              closestPlayer = playerEntity;
+            }
+          }
 
-              if (playerEntity.id === localId) {
-                damageHUDBatcher.spawn({
-                  skill: 'normal',
-                  value: baseDamage,
-                  position: [playerEntity.position.x, playerEntity.position.y + 1, playerEntity.position.z],
-                  isCrit: Math.random() > 0.9,
-                  isMagic: true
-                });
-                const localHp = myPlayer().getState('hp') ?? 100;
-                const nextHp = Math.max(0, localHp - baseDamage);
-                myPlayer().setState('hp', nextHp === 0 ? 100 : nextHp);
-              } else {
-                damageHUDBatcher.spawn({
-                  skill: 'normal',
-                  value: baseDamage,
-                  position: [playerEntity.position.x, playerEntity.position.y + 1, playerEntity.position.z],
-                  isCrit: Math.random() > 0.9,
-                  isMagic: true
-                });
-              }
+          if (closestPlayer) {
+            const fx = this.owner.playerGroup.position.x;
+            const fy = this.owner.playerGroup.position.y + 1.1;
+            const fz = this.owner.playerGroup.position.z;
+            const tx = closestPlayer.position.x;
+            const ty = closestPlayer.position.y;
+            const tz = closestPlayer.position.z;
+            
+            // Spawns projectile from the enemy group position to the target player
+            spawnDoubleShotFX(this.owner.playerGroup.parent as any, fx, fy, fz, tx, ty, tz, true, 0);
+
+            if (closestPlayer.id === localId) {
+              damageHUDBatcher.spawn({
+                skill: 'normal',
+                value: baseDamage,
+                position: [closestPlayer.position.x, closestPlayer.position.y + 1, closestPlayer.position.z],
+                isCrit: Math.random() > 0.9,
+                isMagic: true
+              });
+              const localHp = myPlayer().getState('hp') ?? 100;
+              const nextHp = Math.max(0, localHp - baseDamage);
+              myPlayer().setState('hp', nextHp === 0 ? 100 : nextHp);
+            } else {
+              damageHUDBatcher.spawn({
+                skill: 'normal',
+                value: baseDamage,
+                position: [closestPlayer.position.x, closestPlayer.position.y + 1, closestPlayer.position.z],
+                isCrit: Math.random() > 0.9,
+                isMagic: true
+              });
             }
           }
         }

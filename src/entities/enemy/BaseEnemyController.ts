@@ -35,6 +35,9 @@ export class BaseEnemyController {
 
     public setLODLevel(level: 'full' | 'name-only' | 'culled') {
         if (this.lodLevel === level) return;
+        if (this.lodLevel === 'culled') {
+            this.interpolator.reset();
+        }
         this.lodLevel = level;
 
         switch (level) {
@@ -107,7 +110,8 @@ export class BaseEnemyController {
             position: this.playerGroup.position,
             playerGroup: this.playerGroup,
             radius: 0.6 * scaleVal,
-            get hp() { return self.hp; }
+            get hp() { return self.hp; },
+            controller: self
         });
 
         // Add max attack/skill range indicator ring
@@ -146,13 +150,27 @@ export class BaseEnemyController {
         const config = CHARACTER_CONFIG.npcs[this.npcType as 'mob' | 'raid_boss' | 'world_boss'] || CHARACTER_CONFIG.npcs.mob;
         const scaleVal = config.scale;
 
+        const isRanged = this.npcName.includes('Mage') || this.npcName.includes('Ranged');
+        let modelPath = config.modelPath;
+        if (this.npcName.includes('Mage')) {
+            modelPath = '/character/characters/Mage.glb';
+        } else if (this.npcName.includes('Rogue')) {
+            modelPath = '/character/characters/Skeleton_Rogue.glb';
+        } else if (this.npcName.includes('Warrior')) {
+            modelPath = '/character/characters/Skeleton_Warrior.glb';
+        }
+
+        const combatAnimPath = isRanged
+            ? "/character/animation/Rig_Medium_CombatRanged.glb"
+            : "/character/animation/Rig_Medium_CombatMelee.glb";
+
         try {
             const [charGLTF, generalAnim, advancedAnim, combatAnim, basicAnim] =
                 await Promise.all([
-                    gltfLoader.loadAsync(config.modelPath),
+                    gltfLoader.loadAsync(modelPath),
                     gltfLoader.loadAsync("/character/animation/Rig_Medium_General.glb"),
                     gltfLoader.loadAsync("/character/animation/Rig_Medium_MovementAdvanced.glb"),
-                    gltfLoader.loadAsync("/character/animation/Rig_Medium_CombatMelee.glb"),
+                    gltfLoader.loadAsync(combatAnimPath),
                     gltfLoader.loadAsync("/character/animation/Rig_Medium_MovementBasic.glb"),
                 ]);
 
@@ -207,9 +225,11 @@ export class BaseEnemyController {
                 return null;
             };
 
-            const idleClip = pickClip(["Idle_A", "Idle_B", "Idle"]);
-            const walkClip = pickClip(["Running_B", "Walk"]);
-            const attackClip = pickClip(["Melee_Unarmed_Attack_Kick", "Melee_2H_Attack_Chop", "Melee_1H_Attack_Chop", "Melee_2H_Attack_Slice", "Melee_1H_Attack_Slice_Horizontal", "Melee_Unarmed_Attack_Punch_A"]);
+            const idleClip = pickClip(isRanged ? ["Ranged_Bow_Idle", "Idle_A", "Idle_B", "Idle"] : ["Idle_A", "Idle_B", "Idle"]);
+            const walkClip = pickClip(isRanged ? ["Running_HoldingBow", "Running_B", "Walk"] : ["Running_B", "Walk"]);
+            const attackClip = pickClip(isRanged 
+                ? ["Ranged_Bow_Release", "Ranged_Bow_Aiming_Idle", "Shoot", "Attack"] 
+                : ["Melee_Unarmed_Attack_Kick", "Melee_2H_Attack_Chop", "Melee_1H_Attack_Chop", "Melee_2H_Attack_Slice", "Melee_1H_Attack_Slice_Horizontal", "Melee_Unarmed_Attack_Punch_A"]);
             const hitClip = pickClip(["Hit_A", "Hit_B"]);
 
             if (idleClip) this.actions["idle"] = this.mixer.clipAction(idleClip);

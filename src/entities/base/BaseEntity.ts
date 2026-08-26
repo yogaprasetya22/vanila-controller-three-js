@@ -7,4 +7,5 @@ export interface BaseEntity {
   playerGroup: THREE.Group;
   hp: number;
   radius?: number;
+  controller?: any;
 }

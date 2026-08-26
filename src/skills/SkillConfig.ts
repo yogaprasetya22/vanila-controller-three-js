@@ -13,8 +13,8 @@ export const SKILL_CONFIGS: Record<string, SkillConfigData> = {
   Digit1: {
     id: 'Digit1',
     name: 'Arrow Volley',
-    cooldown: 6.0,
-    damage: 35,
+    cooldown: 0,
+    damage: 12000,
     radius: 4.5,
     range: 15.0,
     hudColor: '#22c55e',
@@ -23,8 +23,8 @@ export const SKILL_CONFIGS: Record<string, SkillConfigData> = {
   Digit2: {
     id: 'Digit2',
     name: 'Double Shot',
-    cooldown: 3.5,
-    damage: 25,
+    cooldown: 0,
+    damage: 12000,
     radius: 1.0,
     range: 16.0,
     hudColor: '#3b82f6',
@@ -33,7 +33,7 @@ export const SKILL_CONFIGS: Record<string, SkillConfigData> = {
   Digit3: {
     id: 'Digit3',
     name: 'Evasive Leap',
-    cooldown: 9.0,
+    cooldown: 0,
     damage: 0,
     radius: 0,
     range: 8.0,

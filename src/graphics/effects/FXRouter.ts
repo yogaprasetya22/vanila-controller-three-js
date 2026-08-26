@@ -53,7 +53,7 @@ export function dispatchSkillFX(scene: THREE.Scene, event: { skill: string; [key
         pz = event.positions[2];
     }
     tempVec1.set(px, py, pz);
-    if (getLODLevelAt(tempVec1) !== 'full') return;
+    if (!event.forceShow && getLODLevelAt(tempVec1) !== 'full') return;
 
     switch (event.skill) {
         case "arrowVolley": {

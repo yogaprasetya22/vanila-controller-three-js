@@ -183,6 +183,12 @@ export class NetworkManager {
                 const configData = await configResp.json();
                 if (configData.config) {
                     Object.assign(CHARACTER_CONFIG.combat, configData.config);
+                    if (configData.config.projectileSpeed !== undefined) {
+                        CHARACTER_CONFIG.projectiles.speed = configData.config.projectileSpeed;
+                    }
+                    if (configData.config.projectileMaxDist !== undefined) {
+                        CHARACTER_CONFIG.projectiles.maxDistance = configData.config.projectileMaxDist;
+                    }
                     console.log("[REST] Authoritative combat config loaded:", CHARACTER_CONFIG.combat);
                 }
                 if (configData.npcConfig) {

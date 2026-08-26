@@ -21,6 +21,7 @@ export class MovementInterpolator {
   private head = 0; // oldest
   private tail = 0; // next write slot
   private count = 0;
+  private isFirstFrame = true;
 
   // bufferDelay: how far behind server time we render (ms)
   // 100ms = safe for ~30Hz server tick + 30ms jitter headroom
@@ -120,6 +121,15 @@ export class MovementInterpolator {
   ): { action: string; velocity: number } {
     if (this.count < 1) return { action: 'idle', velocity: 0 };
 
+    if (this.isFirstFrame) {
+      this.isFirstFrame = false;
+      const newest = this._newest();
+      outPosition.copy(newest.position);
+      outQuaternion.copy(newest.rotation);
+      this.lastOutputPos.copy(newest.position);
+      return { action: newest.action, velocity: 0 };
+    }
+
     // Render time in server-clock space
     // = current client time (perf.now) mapped to server timeline, then walked back by bufferDelay
     const renderTs = (performance.now() + NetworkManager.clockOffset) - this.bufferDelay;
@@ -190,5 +200,6 @@ export class MovementInterpolator {
     this.tail = 0;
     this.count = 0;
     this.frameVelocity = 0;
+    this.isFirstFrame = true;
   }
 }

@@ -336,16 +336,16 @@ function spawnActiveVFX(hit: THREE.Vector3) {
     case 'flamethrower-native': flamethrowerNative.spawn(x, y, z); break;
     case 'subemitter2-native':  subemitter2Native.spawn(x, y, z);  break;
     case 'tornado-native':      tornadoNative.spawn(x, y, z);      break;
-    case 'skill-ironFortitude':  dispatchSkillFX(scene, { skill: 'ironFortitude',  x, y, z, team: 1 }); break;
-    case 'skill-frostNova':      dispatchSkillFX(scene, { skill: 'frostNova',      x, y, z, team: 1 }); break;
-    case 'skill-divineShield':   dispatchSkillFX(scene, { skill: 'divineShield',   tx: x, ty: y, tz: z, team: 1 }); break;
-    case 'skill-holySanctuary':  dispatchSkillFX(scene, { skill: 'holySanctuary',  x, y, z, team: 1 }); break;
-    case 'skill-taunt':          dispatchSkillFX(scene, { skill: 'taunt',          x: x-2, y, z: z-2, tx: x, ty: y, tz: z, team: 1 }); break;
-    case 'skill-shieldBash':     dispatchSkillFX(scene, { skill: 'shieldBash',     x: x-2, y, z: z-2, tx: x, ty: y, tz: z, team: 1 }); break;
-    case 'skill-chainLightning': dispatchSkillFX(scene, { skill: 'chainLightning', positions: [x, y+4, z, x+1.5, y+1, z+1.5, x-1.5, y+1, z-1.5, x+3, y, z+3], team: 1 }); break;
-    case 'skill-arrowVolley':    dispatchSkillFX(scene, { skill: 'arrowVolley',    x, z, team: 1 }); break;
-    case 'skill-fireball':       dispatchSkillFX(scene, { skill: 'fireball',       fx: x, fy: y+3, fz: z, tx: x, ty: y, tz: z, team: 1 }); break;
-    case 'skill-doubleShot':     dispatchSkillFX(scene, { skill: 'doubleShot',     fx: x-5, fy: y+2, fz: z-5, tx: x, ty: y, tz: z, team: 1 }); break;
+    case 'skill-ironFortitude':  dispatchSkillFX(scene, { skill: 'ironFortitude',  x, y, z, team: 1, forceShow: true }); break;
+    case 'skill-frostNova':      dispatchSkillFX(scene, { skill: 'frostNova',      x, y, z, team: 1, forceShow: true }); break;
+    case 'skill-divineShield':   dispatchSkillFX(scene, { skill: 'divineShield',   tx: x, ty: y, tz: z, team: 1, forceShow: true }); break;
+    case 'skill-holySanctuary':  dispatchSkillFX(scene, { skill: 'holySanctuary',  x, y, z, team: 1, forceShow: true }); break;
+    case 'skill-taunt':          dispatchSkillFX(scene, { skill: 'taunt',          x: x-2, y, z: z-2, tx: x, ty: y, tz: z, team: 1, forceShow: true }); break;
+    case 'skill-shieldBash':     dispatchSkillFX(scene, { skill: 'shieldBash',     x: x-2, y, z: z-2, tx: x, ty: y, tz: z, team: 1, forceShow: true }); break;
+    case 'skill-chainLightning': dispatchSkillFX(scene, { skill: 'chainLightning', positions: [x, y+4, z, x+1.5, y+1, z+1.5, x-1.5, y+1, z-1.5, x+3, y, z+3], team: 1, forceShow: true }); break;
+    case 'skill-arrowVolley':    dispatchSkillFX(scene, { skill: 'arrowVolley',    x, z, team: 1, forceShow: true }); break;
+    case 'skill-fireball':       dispatchSkillFX(scene, { skill: 'fireball',       fx: x, fy: y+3, fz: z, tx: x, ty: y, tz: z, team: 1, forceShow: true }); break;
+    case 'skill-doubleShot':     dispatchSkillFX(scene, { skill: 'doubleShot',     fx: x-5, fy: y+2, fz: z-5, tx: x, ty: y, tz: z, team: 1, forceShow: true }); break;
   }
 }
 
@@ -656,8 +656,6 @@ function animate() {
     if (hitNPC) {
       // Send hit event targeting this specific NPC
       hitNPC.takeDamage(12000, hitPoint.x, hitPoint.y, hitPoint.z);
-    } else {
-      damageHUDBatcher.spawn({ skill: 'normal', value: 100, position: [hitPoint.x, hitPoint.y, hitPoint.z], isCrit: Math.random() > 0.8 });
     }
   });
 
@@ -925,11 +923,13 @@ preloadGameAssets().then(async () => {
 
   // Sync damage HUD for everyone (server-authoritative damage broadcast)
   onBossDamaged((data: any) => {
+    const isAttackerLocal = data.attackerId === myPlayer().id;
     damageHUDBatcher.spawn({
       skill: data.isCrit ? 'boss' : 'normal',
       value: data.damage,
       position: [data.x, data.y + 0.8, data.z],
       isCrit: data.isCrit,
+      forceShow: isAttackerLocal,
     });
     const targetNPC = npcControllers.get(data.npcId);
     if (targetNPC && targetNPC.hp > 0) {
