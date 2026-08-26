@@ -34,15 +34,24 @@ export class Player {
 
 
     public flushBatch() {
-        if (Object.keys(this.pendingBatch).length === 0) return;
+        const hasBatch = Object.keys(this.pendingBatch).length > 0;
 
-        const batch = this.pendingBatch;
-        this.pendingBatch = {}; // swap out atomically
+        if (hasBatch) {
+            const batch = this.pendingBatch;
+            this.pendingBatch = {}; // swap out atomically
+            NetworkManager.send({
+                type: "state_updates_batch",
+                value: batch
+            });
+        }
 
-        NetworkManager.send({
-            type: "state_updates_batch",
-            value: batch
-        });
+        // Flush queued RPCs together with the state batch in the same tick
+        // ponytail: coalesces keydown-rapid RPC bursts (skill spam) into at-most 30Hz sends,
+        // preventing TCP buffer flooding that causes ping spikes during aggressive input.
+        const rpcs = NetworkManager.pendingRPCs.splice(0);
+        for (const rpc of rpcs) {
+            NetworkManager.send(rpc);
+        }
     }
 
     public getState(key: string) {
@@ -85,6 +94,10 @@ export class NetworkManager {
     public static packetsSent = 0;
     public static packetsReceived = 0;
     public static flushTimeouts: Record<string, any> = {};
+
+    // Queued RPCs — flushed together with state batch in the 30Hz pump
+    // ponytail: prevents direct-send RPC bursts from flooding TCP send buffer
+    public static pendingRPCs: any[] = [];
 
     // Clock sync: offset between server unix-ms and client performance.now()
     // serverTs ≈ performance.now() + clockOffset
@@ -543,7 +556,10 @@ export const RPC = {
         NetworkManager["rpcHandlers"].set(name, callback);
     },
     call: (name: string, data: any, mode: RPCMode = "ALL") => {
-        NetworkManager.send({
+        // Enqueue RPC — will be sent in the next 30Hz flush pump tick together with
+        // state_updates_batch. This prevents direct-send bursts (skill spam, rapid input)
+        // from filling the TCP send buffer and causing ping spikes.
+        NetworkManager.pendingRPCs.push({
             type: "rpc",
             name,
             data,

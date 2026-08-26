@@ -48,7 +48,7 @@ window.addEventListener('unhandledrejection', (e) => {
   document.body.appendChild(el);
 });
 
-import { setScene, setCamera } from './graphics/core/scene';
+import { setScene, setCamera, referencePosition } from './graphics/core/scene';
 
 // ── Scene ─────────────────────────────────────────────────────────────────────
 const container = document.getElementById('canvas-container') as HTMLDivElement;
@@ -143,6 +143,7 @@ const colliderMesh = new THREE.Mesh(mergedGeometry);
 // ── Systems ───────────────────────────────────────────────────────────────────
 let character: LocalPlayer | null = null;
 const npcControllers = new Map<string, BaseEnemyController>();
+const npcPathLines = new Map<string, THREE.Line>();
 const playersAndControllers: { player: any; controller: LocalPlayer }[] = [];
 // Pre-built Set of player groups for O(1) friendly-fire check — updated on join/quit
 const playerGroupSet = new Set<THREE.Object3D>();
@@ -177,6 +178,45 @@ function syncNPCs() {
     ctrl.maxHp = data.maxHp;
     ctrl.speed = data.speed;
     ctrl.interpolator.addSnapshot(data.x, data.y, data.z, data.rot, data.action, snapshotServerTs);
+
+    // ── Visual Path Line Rendering ──
+    // Render dynamic path segments if the NPC has waypoints
+    if (data.path && Array.isArray(data.path) && data.path.length > 0) {
+      const points: THREE.Vector3[] = [];
+      // Start path representation from the NPC's current visual position
+      points.push(new THREE.Vector3(ctrl.playerGroup.position.x, 0.05, ctrl.playerGroup.position.z));
+      
+      for (const wpt of data.path) {
+        if (typeof wpt.x === 'number' && typeof wpt.z === 'number') {
+          points.push(new THREE.Vector3(wpt.x, 0.05, wpt.z));
+        }
+      }
+
+      // Escape steering state is 1, normal is 0 or 2
+      const isEscaping = data.fsm && data.fsm.state === 1;
+      const lineColor = isEscaping ? 0xff3333 : 0x33ffff; // Red if escaping, Cyan if normal pathfinding
+
+      let line = npcPathLines.get(id);
+      if (line) {
+        line.geometry.setFromPoints(points);
+        (line.material as THREE.LineBasicMaterial).color.setHex(lineColor);
+      } else {
+        const geom = new THREE.BufferGeometry().setFromPoints(points);
+        const mat = new THREE.LineBasicMaterial({ color: lineColor, linewidth: 2 });
+        line = new THREE.Line(geom, mat);
+        scene.add(line);
+        npcPathLines.set(id, line);
+      }
+    } else {
+      // Clear path if no path returned or empty
+      const line = npcPathLines.get(id);
+      if (line) {
+        scene.remove(line);
+        line.geometry.dispose();
+        (line.material as THREE.Material).dispose();
+        npcPathLines.delete(id);
+      }
+    }
   }
 
   for (const id of npcControllers.keys()) {
@@ -191,6 +231,15 @@ function syncNPCs() {
         ctrl.dispose();
       }
       npcControllers.delete(id);
+
+      // Clean up path lines on remove
+      const line = npcPathLines.get(id);
+      if (line) {
+        scene.remove(line);
+        line.geometry.dispose();
+        (line.material as THREE.Material).dispose();
+        npcPathLines.delete(id);
+      }
     }
   }
 }
@@ -390,12 +439,76 @@ const _remotePos = new THREE.Vector3();
 const _spawnDir  = new THREE.Vector3();
 const _tgtPos    = new THREE.Vector3();
 const _scratchQuat = new THREE.Quaternion();
+const _axisY = new THREE.Vector3(0, 1, 0); // ponytail: pre-alloc, avoids new Vector3 per-frame in fallback path
+
+// LOD sort throttle — sort only runs every 500ms, not every frame
+let _lodSortTimer = 0;
 
 // ── Animate Loop ──────────────────────────────────────────────────────────────
 function animate() {
   requestAnimationFrame(animate);
   const delta = clock.getDelta();
   netDebugger.update();
+
+  // ── Level of Detail (LOD) Calculations ─────────────────────────────────────────
+  // Sort and evaluate LOD levels every 250ms — sorting 20+ entities every frame is wasteful.
+  const refPos = (controllerMode === 'player' && character) ? character.position : camera.position;
+  referencePosition.copy(refPos);
+
+  _lodSortTimer += delta;
+  if (_lodSortTimer >= 0.25) {
+    _lodSortTimer = 0;
+
+    const remotePlayers = playersAndControllers.filter(p => p.player.id !== myPlayer().id).map(p => p.controller);
+    const enemies = Array.from(npcControllers.values());
+    const allEntities = [...remotePlayers, ...enemies];
+    const totalEntities = allEntities.length;
+
+    // 1. Calculate distances to reference position
+    allEntities.forEach(e => {
+      (e as any)._distToLocal = e.position.distanceTo(referencePosition);
+    });
+
+    // 2. Count how many entities are strictly inside the 10m radius
+    let entitiesInside10m = 0;
+    allEntities.forEach(e => {
+      if ((e as any)._distToLocal <= 10.0) {
+        entitiesInside10m++;
+      }
+    });
+
+    // 3. Apply LOD states based on distance and crowd density constraints
+    allEntities.forEach(e => {
+      const dist = (e as any)._distToLocal;
+      
+      if (dist > 40.0) {
+        e.setLODLevel('culled');
+      } else if (dist <= 10.0 || totalEntities <= 10) {
+        e.setLODLevel('full');
+      } else {
+        // Default behavior for entities outside 10m under high crowd conditions
+        e.setLODLevel('name-only');
+      }
+    });
+
+    // If less than 10 entities are within the 10m radius, guarantee that the closest 10
+    // entities in the room (which are <= 40m) are rendered in 'full' detail to maximize visual quality.
+    if (entitiesInside10m <= 10 && totalEntities > 10) {
+      allEntities.sort((a, b) => (a as any)._distToLocal - (b as any)._distToLocal);
+      allEntities.forEach((e, index) => {
+        const dist = (e as any)._distToLocal;
+        if (dist <= 40.0) {
+          if (index < 10) {
+            e.setLODLevel('full');
+          } else if (dist > 10.0) {
+            e.setLODLevel('name-only');
+          }
+        } else {
+          e.setLODLevel('culled');
+        }
+      });
+    }
+  }
 
   if (character && controllerMode === 'player') {
     character.update(delta);
@@ -454,10 +567,27 @@ function animate() {
 
     const pos = player.getState('pos');
     const rot = player.getState('rot') ?? 0;
-    const action = player.getState('action') ?? 'idle';
-    const serverTs = player.getState('_serverTs') ?? 0; // Pilar 4: server-clock timestamp
+    const serverTs = player.getState('_serverTs') ?? 0;
+
+    // Always push snapshot so position buffer stays current even for LOD-off players
     if (pos) {
-      controller.interpolator.addSnapshot(pos.x, pos.y, pos.z, rot, action, serverTs);
+      controller.interpolator.addSnapshot(pos.x, pos.y, pos.z, rot, player.getState('action') ?? 'idle', serverTs);
+    }
+
+    // LOD-off: skip heavy per-frame work (animation blending, slerp calculations, weapon visuals)
+    if (controller.lodLevel === 'culled') {
+      controller.update(delta);
+      continue;
+    }
+
+    if (controller.lodLevel === 'name-only') {
+      if (pos) {
+        controller.position.set(pos.x, pos.y, pos.z);
+        controller.playerGroup.position.copy(controller.position);
+      }
+      controller.update(delta);
+      controller.updateNameTag((player.getState('hp') ?? 100) / 100);
+      continue;
     }
 
     let animTimeScale = 1.0;
@@ -477,9 +607,9 @@ function animate() {
         controller.playerGroup.position.copy(controller.position);
       }
       if (controller.playerMesh) {
-        controller.playerMesh.quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rot);
+        controller.playerMesh.quaternion.setFromAxisAngle(_axisY, rot);
       }
-      controller.playAnimationState(action);
+      controller.playAnimationState(player.getState('action') ?? 'idle');
     }
     controller.update(delta);
     controller.updateNameTag((player.getState('hp') ?? 100) / 100);

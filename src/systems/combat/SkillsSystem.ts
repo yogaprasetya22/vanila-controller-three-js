@@ -2,23 +2,16 @@ import * as THREE from 'three';
 import { CHARACTER_CONFIG } from '../../entities/player/PlayerConfig';
 import { getTerrainHeight } from '../../simulation/constants';
 import { scene } from '../../graphics/core/scene';
-import { spawnArrowVolleyFX } from '../../graphics/effects/ArrowVolleyFX';
-import { spawnDoubleShotFX } from '../../graphics/effects/DoubleShotFX';
-import { spawnEvasiveLeapFX } from '../../graphics/effects/EvasiveLeapFX';
+import { SkillManager } from '../../skills/SkillManager';
+import { SkillRegistry } from '../../skills/SkillRegistry';
+import { SKILL_CONFIGS } from '../../skills/SkillConfig';
 
 export interface VFXInterface {
   spawn: (x: number, y: number, z: number, anchor?: THREE.Object3D, duration?: number) => void;
 }
 
 export class SkillsSystem {
-  private skills: {
-    [key: string]: {
-      name: string;
-      cooldown: number;
-      currentCD: number;
-      trigger: (playerPos: THREE.Vector3, forward: THREE.Vector3, character?: any) => void;
-    };
-  } = {};
+  public skillManager: SkillManager;
 
   // UI overlay representation
   private cdIndicator: HTMLDivElement;
@@ -41,71 +34,10 @@ export class SkillsSystem {
     _flameVFX?: any,
     _tornadoVFX?: any
   ) {
-    // Skill 1: Arrow Volley (Digit 1)
-    const arrowConf = CHARACTER_CONFIG.skills.arrowVolley;
-    this.skills[arrowConf.key] = {
-      name: 'Arrow Volley',
-      cooldown: arrowConf.cooldown,
-      currentCD: 0,
-      trigger: (playerPos, forward, character) => {
-        const target = character ? character.getNearestTarget() : null;
-        let tx = playerPos.x + forward.x * arrowConf.forwardOffset;
-        let tz = playerPos.z + forward.z * arrowConf.forwardOffset;
-        if (target) {
-          tx = target.position.x;
-          tz = target.position.z;
-        }
-        const ty = getTerrainHeight(tx, tz);
-        spawnArrowVolleyFX(scene, tx, tz, ty, arrowConf.radius, 0);
-      }
-    };
-
-    // Skill 2: Double Shot (Digit 2)
-    const doubleConf = CHARACTER_CONFIG.skills.doubleShot;
-    this.skills[doubleConf.key] = {
-      name: 'Double Shot',
-      cooldown: doubleConf.cooldown,
-      currentCD: 0,
-      trigger: (playerPos, forward, character) => {
-        const target = character ? character.getNearestTarget() : null;
-        const fx = playerPos.x;
-        const fy = playerPos.y + 1.1; // Projectile height offset
-        const fz = playerPos.z;
-        let tx = playerPos.x + forward.x * 15.0;
-        let ty = playerPos.y;
-        let tz = playerPos.z + forward.z * 15.0;
-        if (target) {
-          tx = target.position.x;
-          ty = target.position.y;
-          tz = target.position.z;
-        }
-        spawnDoubleShotFX(scene, fx, fy, fz, tx, ty, tz, false, 0);
-      }
-    };
-
-    // Skill 3: Evasive Leap (Digit 3)
-    const leapConf = CHARACTER_CONFIG.skills.evasiveLeap;
-    this.skills[leapConf.key] = {
-      name: 'Evasive Leap',
-      cooldown: leapConf.cooldown,
-      currentCD: 0,
-      trigger: (playerPos, forward, character) => {
-        const fx = playerPos.x;
-        const fy = playerPos.y;
-        const fz = playerPos.z;
-        const tx = playerPos.x - forward.x * leapConf.forwardOffset;
-        const tz = playerPos.z - forward.z * leapConf.forwardOffset;
-        const ty = getTerrainHeight(tx, tz);
-
-        if (character) {
-          character.applySpeedBuff(leapConf.speedMultiplier, leapConf.activeDuration);
-          if (character.velocity) {
-            character.velocity.set(-forward.x * 16.0, 7.5, -forward.z * 16.0);
-          }
-        }
-        spawnEvasiveLeapFX(scene, fx, fy, fz, tx, ty, tz);
-      }
-    };
+    this.skillManager = new SkillManager(null);
+    this.skillManager.registerSkill('Digit1');
+    this.skillManager.registerSkill('Digit2');
+    this.skillManager.registerSkill('Digit3');
 
     // Skill HUD — di atas #controls bar (fixed bottom: 1.25rem)
     this.cdIndicator = document.createElement('div');
@@ -147,25 +79,21 @@ export class SkillsSystem {
     this.cdIndicator.style.position = 'fixed';
     this.cdIndicator.appendChild(label);
 
-    const keys = [
-      CHARACTER_CONFIG.skills.arrowVolley.key,
-      CHARACTER_CONFIG.skills.doubleShot.key,
-      CHARACTER_CONFIG.skills.evasiveLeap.key
-    ];
+    const keys = ['Digit1', 'Digit2', 'Digit3'];
     const keyLabels = keys.map(k => k.replace('Digit', '').replace('Key', ''));
 
     // Custom asset PNG icons mapping for Archer
     const skillIcons: { [key: string]: string } = {
-      [CHARACTER_CONFIG.skills.arrowVolley.key]: '/assets-image-skills/PNG/3.png',
-      [CHARACTER_CONFIG.skills.doubleShot.key]: '/assets-image-skills/PNG/6.png',
-      [CHARACTER_CONFIG.skills.evasiveLeap.key]: '/assets-image-skills/PNG/4.png'
+      Digit1: '/assets-image-skills/PNG/3.png',
+      Digit2: '/assets-image-skills/PNG/6.png',
+      Digit3: '/assets-image-skills/PNG/4.png'
     };
 
     // Custom HUD border colors mapping from character config
     const skillColors: { [key: string]: string } = {
-      [CHARACTER_CONFIG.skills.arrowVolley.key]: CHARACTER_CONFIG.skills.arrowVolley.hudColor,
-      [CHARACTER_CONFIG.skills.doubleShot.key]: CHARACTER_CONFIG.skills.doubleShot.hudColor,
-      [CHARACTER_CONFIG.skills.evasiveLeap.key]: CHARACTER_CONFIG.skills.evasiveLeap.hudColor
+      Digit1: CHARACTER_CONFIG.skills.arrowVolley.hudColor,
+      Digit2: CHARACTER_CONFIG.skills.doubleShot.hudColor,
+      Digit3: CHARACTER_CONFIG.skills.evasiveLeap.hudColor
     };
 
     keys.forEach((key, idx) => {
@@ -288,14 +216,14 @@ export class SkillsSystem {
       right: -7px;
       background: rgba(10, 12, 20, 0.92);
       color: #e2e8f0;
-      border: 1px solid rgba(255,255,255,0.25);
+      border: 1px solid rgba(255, 255, 255, 0.25);
       border-radius: 5px;
       padding: 1px 5px;
       font-size: 9px;
       font-weight: 900;
       z-index: 5;
       font-family: 'Inter', monospace;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.5);
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
     `;
     passiveItem.appendChild(keyLabel);
 
@@ -304,7 +232,7 @@ export class SkillsSystem {
     passiveOverlay.style.cssText = `
       position: absolute;
       inset: 0;
-      background: rgba(0,0,0,0.62);
+      background: rgba(0, 0, 0, 0.62);
       border-radius: 8px;
       display: none;
       align-items: center;
@@ -316,7 +244,7 @@ export class SkillsSystem {
       color: #f87171;
       font-size: 14px;
       font-weight: 900;
-      text-shadow: 0 1px 6px rgba(0,0,0,0.95);
+      text-shadow: 0 1px 6px rgba(0, 0, 0, 0.95);
       font-family: 'Inter', monospace;
     `;
     passiveOverlay.appendChild(passiveCdText);
@@ -338,69 +266,62 @@ export class SkillsSystem {
   }
 
   public triggerNetworkVFX(skillId: string, x: number, z: number, targetMesh?: THREE.Object3D) {
-    const floorY = getTerrainHeight(x, z);
-    const spawnY = Math.max(0, floorY) + 0.1;
-
-    if (skillId === CHARACTER_CONFIG.skills.arrowVolley.key) {
-      spawnArrowVolleyFX(scene, x, z, floorY, CHARACTER_CONFIG.skills.arrowVolley.radius, 0);
-    } else if (skillId === CHARACTER_CONFIG.skills.doubleShot.key) {
-      const tx = x + (targetMesh ? targetMesh.position.x : 0);
-      const tz = z + (targetMesh ? targetMesh.position.z : 0);
-      spawnDoubleShotFX(scene, x, spawnY + 1.1, z, tx, spawnY, tz, false, 0);
-    } else if (skillId === CHARACTER_CONFIG.skills.evasiveLeap.key) {
-      const tx = x - (targetMesh ? targetMesh.position.x : 0);
-      const tz = z - (targetMesh ? targetMesh.position.z : 0);
-      spawnEvasiveLeapFX(scene, x, spawnY, z, tx, floorY, tz);
+    const skill = SkillRegistry.create(skillId);
+    if (skill) {
+      const floorY = getTerrainHeight(x, z);
+      const mockCaster = {
+        position: new THREE.Vector3(x, floorY, z)
+      };
+      skill.cast(mockCaster, {
+        scene,
+        forward: new THREE.Vector3(0, 0, 1),
+        target: targetMesh
+      });
     }
   }
 
   public handleInput(code: string, playerPos: THREE.Vector3, forward: THREE.Vector3, character?: any): boolean {
-    const skill = this.skills[code];
-    if (skill && skill.currentCD <= 0) {
-      if (character) {
-        character.faceNearestTarget();
-        forward = character.getForwardVector();
-        playerPos = character.position;
-      }
+    if (!this.skillManager.isReady(code)) return false;
 
-      skill.trigger(playerPos, forward, character);
-      skill.currentCD = skill.cooldown;
-      this.updateUI();
+    if (character) {
+      character.faceNearestTarget();
+      forward = character.getForwardVector();
+      playerPos = character.position;
+      (this.skillManager as any).caster = character;
+    }
+
+    const target = character ? character.getNearestTarget() : null;
+    const success = this.skillManager.use(code, {
+      scene,
+      forward,
+      target
+    });
+
+    if (success) {
+      this.updateUI(character);
       return true;
     }
     return false;
   }
 
   public update(delta: number, character?: any) {
-    let cdUpdated = false;
-    for (const key in this.skills) {
-      const s = this.skills[key];
-      if (s.currentCD > 0) {
-        s.currentCD -= delta;
-        if (s.currentCD < 0) s.currentCD = 0;
-        cdUpdated = true;
-      }
+    this.skillManager.update(delta);
+    if (character) {
+      (this.skillManager as any).caster = character;
     }
-    if (character && (character.dodgeCooldownLeft !== undefined || character.dodgeCooldownLeft >= 0)) {
-      cdUpdated = true;
-    }
-    if (cdUpdated) {
-      this.updateUI(character);
-    }
+    this.updateUI(character);
   }
 
   private updateUI(character?: any) {
     this.skillElements.forEach((el) => {
-      const s = this.skills[el.key];
-      if (!s) return;
-      
-      const isReady = s.currentCD <= 0;
+      const isReady = this.skillManager.isReady(el.key);
+      const cd = this.skillManager.getCooldown(el.key);
       el.itemEl.style.borderColor = isReady ? el.activeColor : 'rgba(239, 68, 68, 0.5)';
       el.itemEl.style.opacity = isReady ? '1' : '0.65';
       
-      if (s.currentCD > 0) {
+      if (cd > 0) {
         el.overlayEl.style.display = 'flex';
-        el.cdTextEl.innerText = s.currentCD.toFixed(1);
+        el.cdTextEl.innerText = cd.toFixed(1);
       } else {
         el.overlayEl.style.display = 'none';
       }

@@ -121,6 +121,31 @@ export class LocalPlayer {
   public isLocal: boolean;
   public playerId: string = '';
   public interpolator = new MovementInterpolator();
+  public lodLevel: 'full' | 'name-only' | 'culled' = 'full';
+  
+  public setLODLevel(level: 'full' | 'name-only' | 'culled') {
+    if (this.lodLevel === level) return;
+    this.lodLevel = level;
+
+    switch (level) {
+      case 'full':
+        this.playerGroup.visible = true;
+        if (this.playerMesh) this.playerMesh.visible = true;
+        if (this.placeholderMesh) this.placeholderMesh.visible = !this.playerMesh;
+        if (this.nameTagSprite) this.nameTagSprite.visible = true;
+        break;
+      case 'name-only':
+        this.playerGroup.visible = true;
+        if (this.playerMesh) this.playerMesh.visible = false;
+        if (this.placeholderMesh) this.placeholderMesh.visible = false;
+        if (this.nameTagSprite) this.nameTagSprite.visible = true;
+        break;
+      case 'culled':
+        this.playerGroup.visible = false;
+        break;
+    }
+  }
+
   private bowSound: HTMLAudioElement | null = null;
   private lastAttackTime = 0;
 
@@ -267,6 +292,7 @@ export class LocalPlayer {
       // 2. Add Character Mesh to the player group
       this.playerMesh = SkeletonUtils.clone(charGLTF.scene);
       this.playerMesh.scale.setScalar(0.42); // Proporsional scale for Archer
+      this.playerMesh.visible = (this.lodLevel === 'full');
       this.playerGroup.add(this.playerMesh);
 
       // Enable casting/receiving shadows and set hero layer for player meshes
@@ -679,7 +705,9 @@ export class LocalPlayer {
     if (delta > 0.1) delta = 0.1;
 
     if (!this.isLocal) {
-      if (this.mixer) this.mixer.update(delta);
+      if (this.lodLevel === 'full' && this.mixer) {
+        this.mixer.update(delta);
+      }
       this.playerGroup.position.copy(this.position);
       if (this.attackCooldown > 0) {
         this.attackCooldown -= delta;
@@ -1105,6 +1133,7 @@ export class LocalPlayer {
   public nameTagSprite: THREE.Sprite | null = null;
   public username = "Player";
   public hp = 100;
+  private _lastHpRatio = -1; // ponytail: dirty-check to skip canvas redraw when HP unchanged
 
   public initNameTag(username: string) {
     this.username = username;
@@ -1125,6 +1154,12 @@ export class LocalPlayer {
   }
 
   public updateNameTag(hpRatio: number) {
+    if (this.lodLevel === 'culled') return;
+
+    // Dirty check: skip expensive canvas 2D redraw when HP hasn't changed
+    if (Math.abs(hpRatio - this._lastHpRatio) < 0.001) return;
+    this._lastHpRatio = hpRatio;
+
     if (!this.nameTagCanvas || !this.nameTagTexture) return;
     const ctx = this.nameTagCanvas.getContext('2d')!;
     ctx.clearRect(0, 0, 256, 64);

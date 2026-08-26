@@ -57,8 +57,16 @@ export class MovementInterpolator {
     let vx = 0, vy = 0, vz = 0;
     if (this.count > 0) {
       const prev = this._newest();
+      if (ts <= prev.serverTs) {
+        return;
+      }
       const dtMs = ts - prev.serverTs;
-      if (dtMs > 1) {
+      if (dtMs > 1000) {
+        // Time gap too large (e.g., server AoI culling or major lag). 
+        // Reset the buffer so the entity snaps to the new position instantly
+        // instead of freezing or interpolating across the huge stale time gap.
+        this.reset();
+      } else if (dtMs > 1) {
         const dtS = dtMs / 1000;
         vx = (x - prev.position.x) / dtS;
         vy = (y - prev.position.y) / dtS;

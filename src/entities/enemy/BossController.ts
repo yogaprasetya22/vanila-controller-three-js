@@ -14,7 +14,6 @@ const _lightningPoints = [new THREE.Vector3(), new THREE.Vector3()];
 export class BossController extends BaseEnemyController {
     public groundSlamFX: BossGroundSlamFX;
     private hitTimeout: any = null;
-    private hasDamagedThisLoop = false;
 
     constructor(scene: THREE.Scene, npcId: string, npcType: string, npcName: string, maxHp: number, hp: number, skillsSystem: any) {
         super(scene, npcId, npcType, npcName, maxHp, hp);
@@ -23,9 +22,9 @@ export class BossController extends BaseEnemyController {
         const config = CHARACTER_CONFIG.npcs[npcType as 'mob' | 'raid_boss' | 'world_boss'] || CHARACTER_CONFIG.npcs.mob;
         const scaleVal = config.scale;
 
-        // Listen for server-triggered boss skills (ground slam telegraph)
         onBossSkill((data: any) => {
             if (data.npcId !== this.npcId) return;
+            if (this.lodLevel !== 'full') return;
 
             let shapeMode = 0;
             let outlineOnly = false;
@@ -80,40 +79,71 @@ export class BossController extends BaseEnemyController {
                 const by = this.playerGroup.position.y;
                 const handY = by + 4 * scaleVal;
 
-                const local = TargetingManager.getEntity(myPlayer().id);
+                const localId = myPlayer().id;
+                const local = TargetingManager.getEntity(localId);
                 if (!local) return;
 
                 const px = local.position.x;
                 const pz = local.position.z;
 
-                const isHit = this.checkPlayerInArea(local, spawnX, spawnZ, data.radius, shapeMode, rotationY);
+                // Loop over all active players to apply damage and spawn HUD
+                const players = TargetingManager.getAllEntities().filter(e => e.type === 'player');
+                let localHit = false;
 
-                if (data.skill === "groundSlam") {
-                    if (isHit) {
-                        this.applyDamage(local, 35, 'bossSlam');
+                // Find out if local player is hit to configure VFX targets
+                for (const playerEntity of players) {
+                    const isHit = this.checkPlayerInArea(playerEntity, spawnX, spawnZ, data.radius, shapeMode, rotationY);
+                    if (isHit && playerEntity.id === localId) {
+                        localHit = true;
                     }
-                } else if (data.skill === "shieldBash") {
-                    const vfxTargetX = isHit ? px : targetX;
-                    const vfxTargetZ = isHit ? pz : targetZ;
+                }
+
+                // Distance-based VFX throttling
+                const distToLocal = local.position.distanceTo(new THREE.Vector3(targetX, local.position.y, targetZ));
+                const shouldSpawnVFX = localHit || distToLocal < 30.0;
+
+                // Spawn VFX
+                if (data.skill === "shieldBash" && shouldSpawnVFX) {
+                    const vfxTargetX = localHit ? px : targetX;
+                    const vfxTargetZ = localHit ? pz : targetZ;
                     spawnShieldBashFX(this.scene, bx, handY, bz, vfxTargetX, 0, vfxTargetZ, 0, 2.5);
-                    if (isHit) {
-                        this.applyDamage(local, 30, 'bossShieldBash');
-                    }
-                } else if (data.skill === "doubleShot") {
-                    const vfxTargetX = isHit ? px : targetX;
-                    const vfxTargetZ = isHit ? pz : targetZ;
+                } else if (data.skill === "doubleShot" && shouldSpawnVFX) {
+                    const vfxTargetX = localHit ? px : targetX;
+                    const vfxTargetZ = localHit ? pz : targetZ;
                     spawnDoubleShotFX(this.scene, bx, handY, bz, vfxTargetX, 0, vfxTargetZ, false, 0, 2.5);
-                    if (isHit) {
-                        this.applyDamage(local, 25, 'bossDoubleShot');
-                    }
-                } else if (data.skill === "lightning") {
-                    const vfxTargetX = isHit ? px : targetX;
-                    const vfxTargetZ = isHit ? pz : targetZ;
+                } else if (data.skill === "lightning" && shouldSpawnVFX) {
+                    const vfxTargetX = localHit ? px : targetX;
+                    const vfxTargetZ = localHit ? pz : targetZ;
                     _lightningPoints[0].set(bx, handY, bz);
                     _lightningPoints[1].set(vfxTargetX, 1, vfxTargetZ);
                     spawnLightningFX(this.scene, _lightningPoints, 0, 2.5);
+                }
+
+                // Apply damage & spawn HUD for all players hit by the skill
+                for (const playerEntity of players) {
+                    const isHit = this.checkPlayerInArea(playerEntity, spawnX, spawnZ, data.radius, shapeMode, rotationY);
                     if (isHit) {
-                        this.applyDamage(local, 40, 'bossLightning');
+                        if (playerEntity.id === localId) {
+                            let dmgVal = 35;
+                            let skillName = 'bossSlam';
+                            if (data.skill === 'shieldBash') { dmgVal = 30; skillName = 'bossShieldBash'; }
+                            else if (data.skill === 'doubleShot') { dmgVal = 25; skillName = 'bossDoubleShot'; }
+                            else if (data.skill === 'lightning') { dmgVal = 40; skillName = 'bossLightning'; }
+                            this.applyDamage(playerEntity, dmgVal, skillName);
+                        } else {
+                            let dmgVal = 35;
+                            let skillName = 'bossSlam';
+                            if (data.skill === 'shieldBash') { dmgVal = 30; skillName = 'bossShieldBash'; }
+                            else if (data.skill === 'doubleShot') { dmgVal = 25; skillName = 'bossDoubleShot'; }
+                            else if (data.skill === 'lightning') { dmgVal = 40; skillName = 'bossLightning'; }
+                            damageHUDBatcher.spawn({
+                                skill: skillName,
+                                value: dmgVal,
+                                position: [playerEntity.position.x, playerEntity.position.y + 1.0, playerEntity.position.z],
+                                isCrit: Math.random() > 0.8,
+                                isMagic: false,
+                            });
+                        }
                     }
                 }
             };
@@ -135,17 +165,20 @@ export class BossController extends BaseEnemyController {
         const dx = px - centerX;
         const dz = pz - centerZ;
         const distSq = dx * dx + dz * dz;
-        const radiusSq = radius * radius;
+
+        // Scale radius by 0.8 to match the visual shader boundary (length(p) = 1.0 out of 1.25 mesh half-width)
+        const visualRadius = radius * 0.8;
+        const radiusSq = visualRadius * visualRadius;
 
         if (distSq >= radiusSq) return false;
 
-        const cos = Math.cos(-rotationY);
-        const sin = Math.sin(-rotationY);
+        const cos = Math.cos(rotationY);
+        const sin = Math.sin(rotationY);
         const rx = dx * cos - dz * sin;
         const rz = dx * sin + dz * cos;
 
-        const localX = rx / radius;
-        const localZ = rz / radius;
+        const localX = rx / visualRadius;
+        const localZ = rz / visualRadius;
 
         let d = 1.0;
 
@@ -211,20 +244,33 @@ export class BossController extends BaseEnemyController {
             if (relativeTime >= 0.4 && relativeTime <= 0.6) {
                 if (!this.hasDamagedThisLoop) {
                     this.hasDamagedThisLoop = true;
-                    const local = TargetingManager.getEntity(myPlayer().id);
-                    if (local) {
-                        const distSq = local.position.distanceToSquared(this.playerGroup.position);
-                        if (distSq < 20.25) { // 4.5 * 4.5
-                            damageHUDBatcher.spawn({
-                                skill: 'boss',
-                                value: 20,
-                                position: [local.position.x, local.position.y + 1, local.position.z],
-                                isCrit: Math.random() > 0.8,
-                                isMagic: false
-                            });
-                            const localHp = myPlayer().getState('hp') ?? 100;
-                            const nextHp = Math.max(0, localHp - 20);
-                            myPlayer().setState('hp', nextHp === 0 ? 100 : nextHp);
+                    
+                    const localId = myPlayer().id;
+                    const players = TargetingManager.getAllEntities().filter(e => e.type === 'player');
+                    
+                    for (const playerEntity of players) {
+                        const distSq = playerEntity.position.distanceToSquared(this.playerGroup.position);
+                        if (distSq < 20.25) { // 4.5 * 4.5 range
+                            if (playerEntity.id === localId) {
+                                damageHUDBatcher.spawn({
+                                    skill: 'boss',
+                                    value: 20,
+                                    position: [playerEntity.position.x, playerEntity.position.y + 1, playerEntity.position.z],
+                                    isCrit: Math.random() > 0.8,
+                                    isMagic: false
+                                });
+                                const localHp = myPlayer().getState('hp') ?? 100;
+                                const nextHp = Math.max(0, localHp - 20);
+                                myPlayer().setState('hp', nextHp === 0 ? 100 : nextHp);
+                            } else {
+                                damageHUDBatcher.spawn({
+                                    skill: 'boss',
+                                    value: 20,
+                                    position: [playerEntity.position.x, playerEntity.position.y + 1, playerEntity.position.z],
+                                    isCrit: Math.random() > 0.8,
+                                    isMagic: false
+                                });
+                            }
                         }
                     }
                 }

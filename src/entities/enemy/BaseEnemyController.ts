@@ -9,11 +9,12 @@ import { damageHUDBatcher } from '../../graphics/effects/DamageHUDBatcher.ts';
 import { CHARACTER_CONFIG } from '../player/PlayerConfig';
 import { TargetingManager } from '../../systems/targeting/TargetingManager';
 import { MovementInterpolator } from '../../systems/netcode/MovementInterpolator';
+import type { IAttackBehavior } from './behaviors/IAttackBehavior';
 
 const gltfLoader = new GLTFLoader();
 gltfLoader.setMeshoptDecoder(MeshoptDecoder);
 
-export abstract class BaseEnemyController {
+export class BaseEnemyController {
     public playerGroup: THREE.Group;
     public playerMesh: THREE.Object3D | null = null;
     protected scene: THREE.Scene;
@@ -28,9 +29,37 @@ export abstract class BaseEnemyController {
     public targetRot = 0;
     public targetAction = 'idle';
     public interpolator = new MovementInterpolator();
+    public lodLevel: 'full' | 'name-only' | 'culled' = 'full';
+    public attackBehavior?: IAttackBehavior;
+    public rangeIndicator: THREE.LineLoop | null = null;
+
+    public setLODLevel(level: 'full' | 'name-only' | 'culled') {
+        if (this.lodLevel === level) return;
+        this.lodLevel = level;
+
+        switch (level) {
+            case 'full':
+                this.playerGroup.visible = this.hp > 0;
+                if (this.playerMesh) this.playerMesh.visible = true;
+                if (this.placeholderMesh) this.placeholderMesh.visible = !this.playerMesh;
+                if (this.nameTagSprite) this.nameTagSprite.visible = true;
+                if (this.rangeIndicator) this.rangeIndicator.visible = true;
+                break;
+            case 'name-only':
+                this.playerGroup.visible = this.hp > 0;
+                if (this.playerMesh) this.playerMesh.visible = false;
+                if (this.placeholderMesh) this.placeholderMesh.visible = false;
+                if (this.nameTagSprite) this.nameTagSprite.visible = true;
+                if (this.rangeIndicator) this.rangeIndicator.visible = false;
+                break;
+            case 'culled':
+                this.playerGroup.visible = false;
+                break;
+        }
+    }
 
     protected mixer: THREE.AnimationMixer | null = null;
-    protected actions: { [key: string]: THREE.AnimationAction } = {};
+    public actions: { [key: string]: THREE.AnimationAction } = {};
     public currentActionName = '';
 
     protected placeholderMesh: THREE.Mesh;
@@ -42,6 +71,7 @@ export abstract class BaseEnemyController {
     // Flash/damage indicator attributes
     protected flashTime = 0;
     protected flashColor = new THREE.Color(1, 0, 0);
+    protected hasDamagedThisLoop = false;
 
     // Hit batching variables
     private pendingDamage = 0;
@@ -80,6 +110,33 @@ export abstract class BaseEnemyController {
             get hp() { return self.hp; }
         });
 
+        // Add max attack/skill range indicator ring
+        let maxRange = 2.5;
+        let ringColor = 0x10b981; // Green for mob
+        if (npcType === 'raid_boss') {
+            maxRange = 8.0;
+            ringColor = 0xf59e0b; // Orange for Raid Boss
+        } else if (npcType === 'world_boss') {
+            maxRange = 12.0;
+            ringColor = 0xef4444; // Red for World Boss
+        }
+
+        const ringPoints = [];
+        const segments = 64;
+        for (let i = 0; i <= segments; i++) {
+            const theta = (i / segments) * Math.PI * 2;
+            ringPoints.push(new THREE.Vector3(Math.cos(theta) * maxRange, 0.05, Math.sin(theta) * maxRange));
+        }
+        const ringGeo = new THREE.BufferGeometry().setFromPoints(ringPoints);
+        const ringMat = new THREE.LineBasicMaterial({ 
+            color: ringColor, 
+            transparent: true, 
+            opacity: 0.45,
+            linewidth: 1.5
+        });
+        this.rangeIndicator = new THREE.LineLoop(ringGeo, ringMat);
+        this.playerGroup.add(this.rangeIndicator);
+
         this.loadModel();
     }
 
@@ -107,6 +164,7 @@ export abstract class BaseEnemyController {
 
             this.playerMesh = SkeletonUtils.clone(charGLTF.scene);
             this.playerMesh.scale.setScalar(scaleVal);
+            this.playerMesh.visible = (this.lodLevel === 'full');
             this.playerGroup.add(this.playerMesh);
 
             this.playerMesh.traverse((child) => {
@@ -220,7 +278,7 @@ export abstract class BaseEnemyController {
         this.nameTagSprite = new THREE.Sprite(material);
 
         this.nameTagSprite.scale.set(3.6 * Math.min(1.5, scaleVal), 0.9 * Math.min(1.5, scaleVal), 1);
-        this.nameTagSprite.position.set(0, 4.0 * scaleVal + 1.5, 0);
+        this.nameTagSprite.position.set(0, 2.6 * scaleVal + 0.4, 0);
         this.playerGroup.add(this.nameTagSprite);
 
         this.lastHpRatio = -1;
@@ -228,6 +286,7 @@ export abstract class BaseEnemyController {
     }
 
     public updateNameTag(hpRatio: number) {
+        if (this.lodLevel === 'culled') return;
         if (Math.abs(hpRatio - this.lastHpRatio) < 0.001) return;
         this.lastHpRatio = hpRatio;
 
@@ -282,9 +341,16 @@ export abstract class BaseEnemyController {
     }
 
     public update(delta: number) {
-        if (this.mixer) this.mixer.update(delta);
+        if (this.lodLevel === 'full' && this.mixer) {
+            this.mixer.update(delta);
+        }
 
         if (this.hp <= 0) {
+            this.playerGroup.visible = false;
+            return;
+        }
+
+        if (this.lodLevel === 'culled') {
             this.playerGroup.visible = false;
             return;
         }
@@ -294,16 +360,26 @@ export abstract class BaseEnemyController {
         const state = this.interpolator.update(delta, this.position, this.playerMesh ? this.playerMesh.quaternion : new THREE.Quaternion());
         if (state) {
             this.playerGroup.position.copy(this.position);
-            if (state.action === 'walk') {
-                const baseWalkSpeed = 4.0;
-                animTimeScale = Math.max(0.1, state.velocity / baseWalkSpeed);
+            this.targetAction = state.action;
+            if (this.lodLevel === 'full') {
+                if (state.action === 'walk') {
+                    const baseWalkSpeed = 4.0;
+                    animTimeScale = Math.max(0.1, state.velocity / baseWalkSpeed);
+                }
+                this.playAnimationState(state.action, 0.15, animTimeScale);
             }
-            this.playAnimationState(state.action, 0.15, animTimeScale);
         } else {
             // Snappy fallback
             this.playerGroup.position.copy(this.position);
-            this.playAnimationState(this.targetAction);
+            if (this.lodLevel === 'full') {
+                this.playAnimationState(this.targetAction);
+            }
         }
+
+        if (this.attackBehavior && this.hp > 0) {
+            this.attackBehavior.update(delta, null);
+        }
+
 
         this.updateNameTag(this.hp / this.maxHp);
         this.updateFlash();

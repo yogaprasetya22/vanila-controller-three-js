@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { scene, camera } from "../core/scene";
+import { scene, camera, getLODLevelAt } from "../core/scene";
 
 // ─── CONFIG ──────────────────────────────────────────────────────────────────
 const MAX_EVENTS = 96;
@@ -366,6 +366,9 @@ export class DamageHUDBatcher {
     public spawn(event: { skill: string; value?: number; position: number[]; isCrit?: boolean; isMagic?: boolean; isTurret?: boolean }) {
         this.ensureAddedToScene();
         if (!event || !Array.isArray(event.position) || !Number.isFinite(event.position[0])) return;
+
+        _v3.set(event.position[0], event.position[1], event.position[2]);
+        if (getLODLevelAt(_v3) !== 'full') return;
 
         const isMiss   = event.skill === "miss";
         const isCrit   = !isMiss && !!event.isCrit;

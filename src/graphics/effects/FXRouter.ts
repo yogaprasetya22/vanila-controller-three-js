@@ -23,6 +23,7 @@ import { spawnArrowVolleyFX } from "./ArrowVolleyFX";
 import { spawnFireballFX } from "./FireballFX";
 import { spawnDoubleShotFX } from "./DoubleShotFX";
 
+import { getLODLevelAt } from "../core/scene";
 import { getTerrainHeight } from "../../simulation/constants";
 
 // 2. Pre-allocated Reusable Vectors to Prevent GC Spikes (Zero Runtime Allocation)
@@ -42,6 +43,17 @@ const lightningPathList: THREE.Vector3[] = [];
  */
 export function dispatchSkillFX(scene: THREE.Scene, event: { skill: string; [key: string]: any }): void {
     if (!canSpawnFX()) return;
+
+    let px = event.x !== undefined ? event.x : (event.fx !== undefined ? event.fx : (event.tx !== undefined ? event.tx : 0));
+    let py = event.y !== undefined ? event.y : (event.fy !== undefined ? event.fy : (event.ty !== undefined ? event.ty : 0));
+    let pz = event.z !== undefined ? event.z : (event.fz !== undefined ? event.fz : (event.tz !== undefined ? event.tz : 0));
+    if (event.positions && event.positions.length >= 3) {
+        px = event.positions[0];
+        py = event.positions[1];
+        pz = event.positions[2];
+    }
+    tempVec1.set(px, py, pz);
+    if (getLODLevelAt(tempVec1) !== 'full') return;
 
     switch (event.skill) {
         case "arrowVolley": {
