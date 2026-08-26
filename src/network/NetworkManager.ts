@@ -134,7 +134,7 @@ export class NetworkManager {
         }
     }
 
-    public static async insertCoin(): Promise<void> {
+    public static async insertCoin(username?: string, password?: string): Promise<void> {
         // Clean up previous socket connection if it exists to avoid leaks/gaps during reconnects
         if (this.socket) {
             this.socket.onopen = null;
@@ -156,29 +156,42 @@ export class NetworkManager {
         }
 
         // Simple prompt or fallback for username
-        let name = localStorage.getItem("playerName") || "Player-" + Math.floor(100 + Math.random() * 900);
+        let name = username || localStorage.getItem("playerName") || "Player-" + Math.floor(100 + Math.random() * 900);
         localStorage.setItem("playerName", name);
+        let pass = password || "";
 
-        // Fetch JWT token from /login endpoint before connecting
+        // Fetch JWT token from /login endpoint if we have a password.
+        // If password is empty (e.g. active session reload), we bypass /login and rely on the HTTP-only cookie.
         const httpBase = import.meta.env.VITE_API_URL || `${window.location.protocol}//${window.location.hostname}:8080`;
         let token = "";
-        try {
-            const resp = await fetch(`${httpBase}/login`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name }),
-            });
-            if (resp.ok) {
-                const data = await resp.json();
-                token = data.token || "";
+        if (pass) {
+            try {
+                const role = localStorage.getItem("playerRole") || "archer";
+                const resp = await fetch(`${httpBase}/login`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include", // send & receive HTTP-only cookie
+                    body: JSON.stringify({ username: name, password: pass, role }),
+                });
+                if (resp.ok) {
+                    const data = await resp.json();
+                    token = data.token || "";
+                } else {
+                    const errorData = await resp.json().catch(() => ({}));
+                    throw new Error(errorData.error || "Authentication failed");
+                }
+            } catch (e: any) {
+                console.warn("[Auth] Login failed:", e.message);
+                throw e; // propagate to lobby
             }
-        } catch (e) {
-            console.warn("Login failed, connecting without token (server may not require auth):", e);
         }
 
         // Split Handshake: Load initial static game configuration over HTTP instead of WebSocket
         try {
-            const configResp = await fetch(`${httpBase}/room/config`);
+            const role = localStorage.getItem("playerRole") || "archer";
+            const configResp = await fetch(`${httpBase}/room/config?role=${role}`, {
+                credentials: "include",
+            });
             if (configResp.ok) {
                 const configData = await configResp.json();
                 if (configData.config) {
@@ -545,7 +558,7 @@ export class NetworkManager {
 }
 
 // Global Exports mirroring playroomkit
-export const insertCoin = () => NetworkManager.insertCoin();
+export const insertCoin = (username?: string, password?: string) => NetworkManager.insertCoin(username, password);
 export const onPlayerJoin = (cb: (p: Player) => void) => NetworkManager.onPlayerJoin(cb);
 export const myPlayer = () => NetworkManager.myPlayer();
 export const isHost = () => NetworkManager.isHost();

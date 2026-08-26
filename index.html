@@ -132,6 +132,211 @@
   </style>
 </head>
 <body>
+  <!-- Premium MMORPG Lobby — Tailwind v4, ember/stone palette -->
+  <div id="lobby-overlay"
+       class="fixed inset-0 z-[10000] flex items-center justify-center overflow-hidden font-[Outfit,sans-serif]"
+       style="background: radial-gradient(ellipse at 35% 25%, #1c1007 0%, #0a0705 55%, #0d0a04 100%);">
+
+    <!-- subtle cross-hatch texture -->
+    <div class="absolute inset-0 pointer-events-none opacity-[0.04]"
+         style="background-image: url(&quot;data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 40L40 0H20L0 20M40 40V20L20 40' fill='none' stroke='%23f59e0b' stroke-width='1'/%3E%3C/svg%3E&quot;);">
+    </div>
+
+    <!-- card -->
+    <div class="relative z-10 w-[440px] box-border animate-[fadeUp_0.45s_ease-out]"
+         style="background: rgba(18,12,6,0.82); backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px);
+                border: 1px solid rgba(251,146,60,0.14); border-radius: 18px; padding: 40px 44px;
+                box-shadow: 0 32px 80px rgba(0,0,0,0.7), 0 0 60px rgba(251,146,60,0.03) inset;">
+      <style>
+        @keyframes fadeUp { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
+        .lfield input,.lfield select {
+          width:100%; padding:11px 14px; box-sizing:border-box; outline:none;
+          background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);
+          border-radius:10px; color:#f5f0e8; font-size:14px; font-family:inherit;
+          transition:border-color .2s, box-shadow .2s;
+        }
+        .lfield input:focus,.lfield select:focus {
+          border-color:rgba(251,146,60,0.5);
+          box-shadow: 0 0 0 3px rgba(251,146,60,0.1);
+        }
+        .lfield select { background:#120d06; cursor:pointer; }
+        .ltab { flex:1; padding:9px 0; border:none; background:transparent; color:rgba(255,255,255,0.4); font-family:inherit; font-size:13px; font-weight:600; cursor:pointer; border-radius:8px; transition:all .2s; letter-spacing:.5px; }
+        .ltab.active { background:rgba(251,146,60,0.15); color:#fb923c; border:1px solid rgba(251,146,60,0.25); box-shadow:0 0 14px rgba(251,146,60,0.1); }
+        .rcard { padding:10px 6px; border-radius:10px; border:1px solid rgba(255,255,255,0.07); background:rgba(255,255,255,0.03); cursor:pointer; text-align:center; transition:all .2s; }
+        .rcard:hover { border-color:rgba(251,146,60,0.3); background:rgba(251,146,60,0.07); }
+        .rcard.selected { border-color:rgba(251,146,60,0.55); background:rgba(251,146,60,0.12); box-shadow:0 0 16px rgba(251,146,60,0.14); }
+        #lobby-submit-auth, #lobby-submit-session { width:100%; padding:13px; margin-top:6px; background:linear-gradient(135deg,#d97706 0%,#92400e 100%); border:none; border-radius:10px; color:#fff8ee; font-size:14px; font-weight:800; font-family:inherit; cursor:pointer; letter-spacing:2px; box-shadow:0 4px 24px rgba(217,119,6,0.35); transition:transform .12s,box-shadow .2s,opacity .2s; }
+        #lobby-submit-auth:hover, #lobby-submit-session:hover { transform:translateY(-1px); box-shadow:0 8px 32px rgba(217,119,6,0.45); }
+        #lobby-submit-auth:active, #lobby-submit-session:active { transform:translateY(0); }
+        #lobby-submit-auth:disabled, #lobby-submit-session:disabled { opacity:.45; cursor:not-allowed; transform:none; }
+        #lobby-error { margin:12px 0 0; padding:10px 14px; border-radius:8px; font-size:12px; display:none; }
+        #lobby-error.error { background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); color:#fca5a5; }
+        #lobby-error.info  { background:rgba(251,146,60,0.08); border:1px solid rgba(251,146,60,0.2); color:#fcd34d; }
+        #lobby-logout-btn { font-size:11px; color:rgba(255,255,255,0.3); background:none; border:none; cursor:pointer; text-decoration:underline; font-family:inherit; display:block; margin:12px auto 0; transition:color .2s; }
+        #lobby-logout-btn:hover { color:rgba(255,255,255,0.65); }
+        .savatar { width:64px; height:64px; border-radius:50%; margin:0 auto 14px; background:linear-gradient(135deg,#d97706,#7c2d12); display:flex; align-items:center; justify-content:center; font-size:28px; font-weight:800; color:#fff8ee; box-shadow:0 0 28px rgba(217,119,6,0.4); }
+      </style>
+
+      <!-- logo -->
+      <h2 class="m-0 mb-1 text-[28px] font-black tracking-[3px] text-center"
+          style="background:linear-gradient(135deg,#fbbf24 0%,#d97706 50%,#c2410c 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">
+        ⚔ MULTI-TRADE RPG
+      </h2>
+      <p class="text-center text-[11px] tracking-[2px] text-stone-500 mt-0 mb-7">MULTIPLAYER ONLINE BATTLE ARENA</p>
+
+      <!-- Auth panel -->
+      <div id="lobby-auth-panel">
+        <!-- tabs -->
+        <div class="flex gap-0 rounded-[10px] p-1 mb-6" style="background:rgba(255,255,255,0.04);">
+          <button class="ltab active" id="tab-login"    onclick="lobbySetTab('login')">Login</button>
+          <button class="ltab"        id="tab-register" onclick="lobbySetTab('register')">Register</button>
+        </div>
+
+        <div class="lfield mb-4">
+          <label class="block text-[10px] uppercase tracking-[1.5px] text-stone-500 font-semibold mb-1.5">Username</label>
+          <input type="text" id="lobby-username" placeholder="Enter username" autocomplete="username">
+        </div>
+
+        <div class="lfield mb-4">
+          <label class="block text-[10px] uppercase tracking-[1.5px] text-stone-500 font-semibold mb-1.5">Password</label>
+          <input type="password" id="lobby-password" placeholder="Enter password" autocomplete="current-password">
+        </div>
+
+        <!-- Role selection — register only -->
+        <div class="lfield mb-4" id="lobby-role-section" style="display:none;">
+          <label class="block text-[10px] uppercase tracking-[1.5px] text-stone-500 font-semibold mb-2">Choose Your Role</label>
+          <div class="grid grid-cols-3 gap-2">
+            <div class="rcard selected" data-role="archer"   onclick="lobbySelectRole('archer')">
+              <div class="text-xl mb-1">🏹</div>
+              <div class="text-[9px] font-bold tracking-wider text-stone-300">ARCHER</div>
+            </div>
+            <div class="rcard" data-role="knight"   onclick="lobbySelectRole('knight')">
+              <div class="text-xl mb-1">⚔️</div>
+              <div class="text-[9px] font-bold tracking-wider text-stone-300">KNIGHT</div>
+            </div>
+            <div class="rcard" data-role="tank"     onclick="lobbySelectRole('tank')">
+              <div class="text-xl mb-1">🛡️</div>
+              <div class="text-[9px] font-bold tracking-wider text-stone-300">TANK</div>
+            </div>
+            <div class="rcard" data-role="assassin" onclick="lobbySelectRole('assassin')">
+              <div class="text-xl mb-1">🗡️</div>
+              <div class="text-[9px] font-bold tracking-wider text-stone-300">ASSASSIN</div>
+            </div>
+            <div class="rcard" data-role="mage"     onclick="lobbySelectRole('mage')">
+              <div class="text-xl mb-1">🔮</div>
+              <div class="text-[9px] font-bold tracking-wider text-stone-300">MAGE</div>
+            </div>
+          </div>
+          <select id="lobby-role" class="hidden">
+            <option value="archer">archer</option>
+            <option value="knight">knight</option>
+            <option value="tank">tank</option>
+            <option value="assassin">assassin</option>
+            <option value="mage">mage</option>
+          </select>
+        </div>
+
+        <div class="lfield mb-2">
+          <label class="block text-[10px] uppercase tracking-[1.5px] text-stone-500 font-semibold mb-1.5">Room ID</label>
+          <input type="text" id="lobby-room" placeholder="ROOM-XXXX">
+        </div>
+
+        <button id="lobby-submit-auth">LOGIN</button>
+        
+        <button id="lobby-bypass-btn" 
+                class="w-full mt-2 py-2.5 bg-stone-800 hover:bg-stone-700 text-stone-300 font-semibold text-xs rounded-lg tracking-wider transition-all border border-stone-700 cursor-pointer">
+          ⚙ SKIP & TEST VFX (OFFLINE)
+        </button>
+        
+        <p id="lobby-error"></p>
+      </div>
+
+      <!-- Session / welcome panel -->
+      <div id="lobby-session-panel" class="text-center" style="display:none;">
+        <div class="savatar" id="welcome-avatar">?</div>
+        <div class="text-xl font-black text-amber-100" id="welcome-name">Player</div>
+        <div class="text-[11px] tracking-[2px] text-stone-500 mt-1" id="welcome-role">ARCHER</div>
+
+        <div class="flex gap-2.5 my-5">
+          <div class="flex-1 text-center py-2.5 px-2 rounded-xl" style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07);">
+            <div class="text-[9px] uppercase tracking-wider text-stone-600">Level</div>
+            <div class="text-base font-bold text-amber-400 mt-0.5" id="ws-level">1</div>
+          </div>
+          <div class="flex-1 text-center py-2.5 px-2 rounded-xl" style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07);">
+            <div class="text-[9px] uppercase tracking-wider text-stone-600">Role</div>
+            <div class="text-base font-bold text-amber-400 mt-0.5" id="ws-role">-</div>
+          </div>
+          <div class="flex-1 text-center py-2.5 px-2 rounded-xl" style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07);">
+            <div class="text-[9px] uppercase tracking-wider text-stone-600">HP</div>
+            <div class="text-base font-bold text-amber-400 mt-0.5" id="ws-hp">-</div>
+          </div>
+        </div>
+
+        <div class="lfield mb-2 text-left">
+          <label class="block text-[10px] uppercase tracking-[1.5px] text-stone-500 font-semibold mb-1.5">Room ID</label>
+          <input type="text" id="lobby-room-session" placeholder="ROOM-XXXX">
+        </div>
+        <button id="lobby-submit-session">ENTER GAME</button>
+        <button id="lobby-logout-btn">Logout (switch account)</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function lobbySetTab(tab) {
+      document.getElementById('tab-login').classList.toggle('active', tab === 'login');
+      document.getElementById('tab-register').classList.toggle('active', tab === 'register');
+      const rs  = document.getElementById('lobby-role-section');
+      const btn = document.getElementById('lobby-submit-auth');
+      if (tab === 'register') {
+        rs.style.display = 'block';
+        if (btn) btn.textContent = 'CREATE ACCOUNT';
+        document.getElementById('lobby-password').autocomplete = 'new-password';
+      } else {
+        rs.style.display = 'none';
+        if (btn) btn.textContent = 'LOGIN';
+        document.getElementById('lobby-password').autocomplete = 'current-password';
+      }
+      window._lobbyTab = tab;
+    }
+    window._lobbyTab = 'login';
+
+    function lobbySelectRole(role) {
+      document.querySelectorAll('.rcard').forEach(c => c.classList.remove('selected'));
+      document.querySelector(`.rcard[data-role="${role}"]`)?.classList.add('selected');
+      document.getElementById('lobby-role').value = role;
+      localStorage.setItem('playerRole', role);
+    }
+    lobbySelectRole(localStorage.getItem('playerRole') || 'archer');
+
+    (function() {
+      const hash = window.location.hash;
+      const roomVal = (hash && hash !== '#') ? hash.substring(1) : 'ROOM-' + Math.floor(1000 + Math.random() * 9000);
+      const ri  = document.getElementById('lobby-room');
+      const ris = document.getElementById('lobby-room-session');
+      if (ri)  ri.value  = roomVal;
+      if (ris) ris.value = roomVal;
+    })();
+
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        const authBtn = document.getElementById('lobby-submit-auth');
+        const sessBtn = document.getElementById('lobby-submit-session');
+        const overlay = document.getElementById('lobby-overlay');
+        if (overlay && overlay.style.display !== 'none') {
+          const authPanel = document.getElementById('lobby-auth-panel');
+          if (authPanel && authPanel.style.display !== 'none') {
+            authBtn?.click();
+          } else {
+            sessBtn?.click();
+          }
+        }
+      }
+    });
+  </script>
+
+
+
   <div id="ui" style="pointer-events: auto;">
     <h1>Custom VFX Engine</h1>
     <p>Select an effect on the right panel.</p>

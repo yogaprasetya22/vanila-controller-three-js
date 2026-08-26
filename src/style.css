@@ -1,0 +1,20 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ember-50: #fff8f1;
+  --color-ember-100: #ffecd6;
+  --color-ember-200: #ffd4a8;
+  --color-ember-300: #ffb570;
+  --color-ember-400: #ff8c35;
+  --color-ember-500: #f96b0f;
+  --color-ember-600: #ea5004;
+  --color-ember-700: #c23a06;
+  --color-ember-800: #9a2f0d;
+  --color-ember-900: #7d280f;
+
+  --color-smoke-900: #0c0a09;
+  --color-smoke-800: #161412;
+  --color-smoke-700: #1e1c19;
+  --color-smoke-600: #2a2723;
+  --color-smoke-500: #3d3932;
+}

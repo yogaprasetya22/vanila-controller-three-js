@@ -23,6 +23,8 @@ export class BaseEnemyController {
     public npcName: string;
     public maxHp: number;
     public hp: number;
+    public level = 1;
+    protected lastLevel = 0;
     public speed = 0;
 
     public position = new THREE.Vector3();
@@ -307,8 +309,9 @@ export class BaseEnemyController {
 
     public updateNameTag(hpRatio: number) {
         if (this.lodLevel === 'culled') return;
-        if (Math.abs(hpRatio - this.lastHpRatio) < 0.001) return;
+        if (Math.abs(hpRatio - this.lastHpRatio) < 0.001 && this.level === this.lastLevel) return;
         this.lastHpRatio = hpRatio;
+        this.lastLevel = this.level;
 
         if (!this.nameTagCanvas || !this.nameTagTexture) return;
         const ctx = this.nameTagCanvas.getContext("2d")!;
@@ -321,7 +324,9 @@ export class BaseEnemyController {
         ctx.textAlign = "center";
         ctx.shadowColor = "rgba(0, 0, 0, 0.9)";
         ctx.shadowBlur = 4;
-        ctx.fillText(this.npcName, 128, 26);
+        
+        const displayName = `Lv. ${this.level} ${this.npcName}`;
+        ctx.fillText(displayName, 128, 26);
 
         ctx.fillStyle = "rgba(20, 20, 20, 0.85)";
         ctx.fillRect(28, 38, 200, 12);

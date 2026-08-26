@@ -1,3 +1,4 @@
+import './style.css';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
@@ -176,6 +177,9 @@ function syncNPCs() {
     }
     ctrl.hp = data.hp;
     ctrl.maxHp = data.maxHp;
+    if (typeof data.level === 'number') {
+      ctrl.level = data.level;
+    }
     ctrl.speed = data.speed;
     ctrl.interpolator.addSnapshot(data.x, data.y, data.z, data.rot, data.action, snapshotServerTs);
 
@@ -260,9 +264,9 @@ document.querySelectorAll('.vfx-option').forEach(opt => {
 // ── Mode Toggle ───────────────────────────────────────────────────────────────
 const modeButton = document.createElement('button');
 modeButton.innerText = 'Toggle Mode: Player (Active)';
-modeButton.style.cssText = 'position:absolute;top:20px;left:250px;background:rgba(59,130,246,0.85);color:white;border:none;padding:10px 15px;border-radius:5px;font-family:sans-serif;font-weight:bold;cursor:pointer;z-index:9999;transition:background 0.2s';
-modeButton.addEventListener('mouseover', () => modeButton.style.background = '#2563eb');
-modeButton.addEventListener('mouseout',  () => modeButton.style.background = 'rgba(59,130,246,0.85)');
+modeButton.style.cssText = 'position:absolute;top:20px;left:250px;background:linear-gradient(135deg,#d97706 0%,#b45309 100%);color:white;border:none;padding:10px 15px;border-radius:8px;font-family:inherit;font-weight:bold;cursor:pointer;z-index:9999;transition:all 0.2s;box-shadow:0 4px 12px rgba(217,119,6,0.3);border:1px solid rgba(251,146,60,0.2)';
+modeButton.addEventListener('mouseover', () => modeButton.style.transform = 'translateY(-1px)');
+modeButton.addEventListener('mouseout',  () => modeButton.style.transform = 'none');
 document.body.appendChild(modeButton);
 
 const vfxSelectorPanel = document.getElementById('vfx-selector');
@@ -287,13 +291,15 @@ modeButton.addEventListener('click', () => {
     if (character) character.enabled = false;
     isShooting = false;
     modeButton.innerText = 'Toggle Mode: Orbit Camera';
-    modeButton.style.background = 'rgba(107,114,128,0.85)';
+    modeButton.style.background = 'linear-gradient(135deg,#4b5563 0%,#374151 100%)';
+    modeButton.style.boxShadow = 'none';
   } else {
     controllerMode = 'player';
     controls.enabled = false;
     if (character) { character.enabled = true; character.resetInputs(); }
     modeButton.innerText = 'Toggle Mode: Player (Active)';
-    modeButton.style.background = 'rgba(59,130,246,0.85)';
+    modeButton.style.background = 'linear-gradient(135deg,#d97706 0%,#b45309 100%)';
+    modeButton.style.boxShadow = '0 4px 12px rgba(217,119,6,0.3)';
   }
   applyModeLayout();
 });
@@ -912,8 +918,151 @@ async function preloadGameAssets() {
 
 setLoadingProgress(10, 'Memuat aset game...');
 preloadGameAssets().then(async () => {
+  const usernameInput  = document.getElementById("lobby-username") as HTMLInputElement;
+  const passwordInput  = document.getElementById("lobby-password") as HTMLInputElement;
+  const roleSelect     = document.getElementById("lobby-role") as HTMLSelectElement;
+  const roomInput      = document.getElementById("lobby-room") as HTMLInputElement;
+  const roomInputSess  = document.getElementById("lobby-room-session") as HTMLInputElement;
+  const submitButtonAuth = document.getElementById("lobby-submit-auth") as HTMLButtonElement;
+  const submitButtonSess = document.getElementById("lobby-submit-session") as HTMLButtonElement;
+  const lobbyOverlay   = document.getElementById("lobby-overlay");
+  const authPanel      = document.getElementById("lobby-auth-panel");
+  const sessionPanel   = document.getElementById("lobby-session-panel");
+  const errorEl        = document.getElementById("lobby-error");
+  const logoutBtn      = document.getElementById("lobby-logout-btn");
+
+  const showError = (msg: string, type: "error"|"info" = "error") => {
+    if (!errorEl) return;
+    errorEl.textContent = msg;
+    errorEl.className = type;
+    errorEl.style.display = "block";
+  };
+  const hideError = () => { if (errorEl) errorEl.style.display = "none"; };
+
+  const httpBase = import.meta.env.VITE_API_URL || `${window.location.protocol}//${window.location.hostname}:8080`;
+  let hasValidSession = false;
+  let savedName = "";
+  let savedRole = "archer";
+
+  // Check existing session cookie — MUST use credentials: include for cross-origin cookie
+  try {
+    const sessionResp = await fetch(`${httpBase}/auth/session`, { credentials: "include" });
+    if (sessionResp.ok) {
+      const sd = await sessionResp.json();
+      if (sd.authenticated) {
+        hasValidSession = true;
+        savedName = sd.username;
+        savedRole = sd.role;
+        // Populate welcome panel elements
+        const welcomeAvatar = document.getElementById("welcome-avatar");
+        const welcomeName   = document.getElementById("welcome-name");
+        const welcomeRole   = document.getElementById("welcome-role");
+        const wsRole        = document.getElementById("ws-role");
+        if (welcomeAvatar) welcomeAvatar.textContent = savedName.charAt(0).toUpperCase();
+        if (welcomeName)   welcomeName.textContent   = savedName;
+        if (welcomeRole)   welcomeRole.textContent   = savedRole.toUpperCase();
+        if (wsRole)        wsRole.textContent        = savedRole.toUpperCase();
+      }
+    }
+  } catch (e) {
+    console.log("[Auth] No active session cookie:", e);
+  }
+
+  // Switch to correct panel
+  if (hasValidSession && sessionPanel && authPanel) {
+    authPanel.style.display  = "none";
+    sessionPanel.style.display = "block";
+    localStorage.setItem("playerName", savedName);
+    localStorage.setItem("playerRole", savedRole);
+  }
+
+  // Hide loading overlay — show lobby
+  loadingOverlay.style.display = "none";
+
+  let finalUsername = savedName;
+  let finalPassword = "";
+
+  // Logout → reload to reset session
+  logoutBtn?.addEventListener("click", () => {
+    document.cookie = "token=; Max-Age=0; path=/";
+    localStorage.removeItem("playerName");
+    localStorage.removeItem("playerRole");
+    window.location.reload();
+  });
+
+  await new Promise<void>((resolve) => {
+    const handleConnect = async (isSession: boolean) => {
+      hideError();
+      if (submitButtonAuth) submitButtonAuth.disabled = true;
+      if (submitButtonSess) submitButtonSess.disabled = true;
+
+      if (isSession) {
+        finalUsername = savedName;
+        finalPassword = "";
+        const rval = roomInputSess?.value || "";
+        if (rval) window.location.hash = rval;
+        if (lobbyOverlay) lobbyOverlay.style.display = "none";
+        loadingOverlay.style.display = "flex";
+        resolve();
+        return;
+      }
+
+      finalUsername = usernameInput?.value?.trim() || "";
+      finalPassword = passwordInput?.value || "";
+
+      if (!finalUsername || !finalPassword) {
+        showError("Username and password are required.");
+        if (submitButtonAuth) submitButtonAuth.disabled = false;
+        if (submitButtonSess) submitButtonSess.disabled = false;
+        return;
+      }
+
+      if (roleSelect)  localStorage.setItem("playerRole", roleSelect.value);
+      if (usernameInput) localStorage.setItem("playerName", finalUsername);
+      if (roomInput?.value) window.location.hash = roomInput.value;
+
+      if (lobbyOverlay) lobbyOverlay.style.display = "none";
+      loadingOverlay.style.display = "flex";
+      resolve();
+    };
+
+    submitButtonAuth?.addEventListener("click", () => handleConnect(false));
+    submitButtonSess?.addEventListener("click", () => handleConnect(true));
+
+    // Offline VFX Test bypass handler
+    const bypassBtn = document.getElementById("lobby-bypass-btn");
+    bypassBtn?.addEventListener("click", () => {
+      // Force offline orbit mode layout directly
+      controllerMode = 'orbit';
+      controls.enabled = true;
+      if (character) character.enabled = false;
+      applyModeLayout();
+
+      if (lobbyOverlay) lobbyOverlay.style.display = "none";
+      // Skip insertCoin, resolve immediately with empty/mock credentials
+      finalUsername = "VFX_Tester";
+      finalPassword = "";
+      resolve();
+    });
+  });
+
   setLoadingProgress(90, 'Menghubungkan ke server...');
-  await insertCoin();
+  try {
+    // If username is VFX_Tester, bypass the network connection call to support local offline testing
+    if (finalUsername !== "VFX_Tester") {
+      await insertCoin(finalUsername, finalPassword);
+    } else {
+      console.log("[Lobby] Offline VFX Test mode active. Skipping server websocket insertCoin.");
+    }
+  } catch (err: any) {
+    // Show error back in lobby instead of blunt reload
+    loadingOverlay.style.display = "none";
+    if (lobbyOverlay) lobbyOverlay.style.display = "flex";
+    showError(err?.message || "Login failed. Please check your credentials.");
+    if (submitButtonAuth) submitButtonAuth.disabled = false;
+    if (submitButtonSess) submitButtonSess.disabled = false;
+    return;
+  }
   setLoadingProgress(95, 'Memulai game...');
 
   // Brief yield so browser can paint the 95% bar before the heavy setup

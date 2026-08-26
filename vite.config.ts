@@ -1,8 +1,9 @@
 import { defineConfig } from 'vite';
+import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
+  plugins: [tailwindcss()],
   server: {
-    // hmr: false, // Menonaktifkan auto-reload saat file di-save
     headers: {
       'Cross-Origin-Opener-Policy': 'same-origin',
       'Cross-Origin-Embedder-Policy': 'require-corp',
