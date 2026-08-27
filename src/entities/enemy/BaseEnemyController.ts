@@ -34,6 +34,15 @@ export class BaseEnemyController {
     public lodLevel: 'full' | 'name-only' | 'culled' = 'full';
     public attackBehavior?: IAttackBehavior;
     public rangeIndicator: THREE.LineLoop | null = null;
+    public fsmState: number = 3; // Default FSMPatrol (3)
+
+    // Terrain Clamping & Environment Raycasting
+    protected environmentMesh: THREE.Mesh | null = null;
+    protected lastX = 99999;
+    protected lastZ = 99999;
+    protected raycaster = new THREE.Raycaster();
+    protected rayOrigin = new THREE.Vector3();
+    protected rayDir = new THREE.Vector3(0, -1, 0);
 
     public setLODLevel(level: 'full' | 'name-only' | 'culled') {
         if (this.lodLevel === level) return;
@@ -146,7 +155,9 @@ export class BaseEnemyController {
         this.loadModel();
     }
 
-    public setEnvironment(mesh: THREE.Mesh) {}
+    public setEnvironment(mesh: THREE.Mesh) {
+        this.environmentMesh = mesh;
+    }
 
     private async loadModel() {
         const config = CHARACTER_CONFIG.npcs[this.npcType as 'mob' | 'raid_boss' | 'world_boss'] || CHARACTER_CONFIG.npcs.mob;
@@ -228,7 +239,8 @@ export class BaseEnemyController {
             };
 
             const idleClip = pickClip(isRanged ? ["Ranged_Bow_Idle", "Idle_A", "Idle_B", "Idle"] : ["Idle_A", "Idle_B", "Idle"]);
-            const walkClip = pickClip(isRanged ? ["Running_HoldingBow", "Running_B", "Walk"] : ["Running_B", "Walk"]);
+            const walkClip = pickClip(["Walking_C", "Walk"]);
+            const runClip = pickClip(isRanged ? ["Running_HoldingBow", "Running_A", "Running_B", "Run"] : ["Running_A", "Running_B", "Run"]);
             const attackClip = pickClip(isRanged 
                 ? ["Ranged_Bow_Release", "Ranged_Bow_Aiming_Idle", "Shoot", "Attack"] 
                 : ["Melee_Unarmed_Attack_Kick", "Melee_2H_Attack_Chop", "Melee_1H_Attack_Chop", "Melee_2H_Attack_Slice", "Melee_1H_Attack_Slice_Horizontal", "Melee_Unarmed_Attack_Punch_A"]);
@@ -236,6 +248,7 @@ export class BaseEnemyController {
 
             if (idleClip) this.actions["idle"] = this.mixer.clipAction(idleClip);
             if (walkClip) this.actions["walk"] = this.mixer.clipAction(walkClip);
+            if (runClip) this.actions["run"] = this.mixer.clipAction(runClip);
             if (attackClip) this.actions["attack"] = this.mixer.clipAction(attackClip);
             if (hitClip) {
                 const act = this.mixer.clipAction(hitClip);
@@ -383,15 +396,44 @@ export class BaseEnemyController {
 
         let animTimeScale = 1.0;
         const state = this.interpolator.update(delta, this.position, this.playerMesh ? this.playerMesh.quaternion : new THREE.Quaternion());
+        
+        // ── Smooth Client-Side Terrain Clamping (Always enforce, ignore server Y) ──
+        const config = CHARACTER_CONFIG.npcs[this.npcType as 'mob' | 'raid_boss' | 'world_boss'] || CHARACTER_CONFIG.npcs.mob;
+        const yOffset = config.scale * 0.1; // offset so feet sit flush
+
+        let clampedY = getTerrainHeight(this.position.x, this.position.z);
+
+        // Raycast geometry logic if environmentMesh exists
+        if (this.environmentMesh) {
+            this.rayOrigin.set(this.position.x, this.position.y + 12, this.position.z);
+            this.raycaster.set(this.rayOrigin, this.rayDir);
+            const hits = this.raycaster.intersectObject(this.environmentMesh);
+            if (hits.length > 0) {
+                clampedY = hits[0].point.y;
+            }
+        }
+
+        // Snap Y position to prevent interpolator override from causing ground penetration.
+        this.position.y = clampedY + yOffset;
+
         if (state) {
             this.playerGroup.position.copy(this.position);
-            this.targetAction = state.action;
+            
+            let animAction = state.action;
+            if (animAction === 'walk') {
+                // ChasePlayer (0) or RecalculatePath (2) -> run!
+                if (this.fsmState === 0 || this.fsmState === 2) {
+                    animAction = 'run';
+                }
+            }
+
+            this.targetAction = animAction;
             if (this.lodLevel === 'full') {
-                if (state.action === 'walk') {
+                if (animAction === 'walk' || animAction === 'run') {
                     const baseWalkSpeed = 4.0;
                     animTimeScale = Math.max(0.1, state.velocity / baseWalkSpeed);
                 }
-                this.playAnimationState(state.action, 0.15, animTimeScale);
+                this.playAnimationState(animAction, 0.15, animTimeScale);
             }
         } else {
             // Snappy fallback

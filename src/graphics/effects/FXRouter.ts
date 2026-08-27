@@ -22,6 +22,12 @@ import { spawnHolySanctuaryFX } from "./HolySanctuaryFX";
 import { spawnArrowVolleyFX } from "./ArrowVolleyFX";
 import { spawnFireballFX } from "./FireballFX";
 import { spawnDoubleShotFX } from "./DoubleShotFX";
+import { spawnDarkVoidAuraFX } from "./DarkVoidAuraFX";
+import { spawnMeteorStrikeFX } from "./MeteorStrikeFX";
+import { spawnThunderClapFX } from "./ThunderClapFX";
+import { spawnArcaneNovaFX } from "./ArcaneNovaFX";
+import { spawnSoulHarvestFX } from "./SoulHarvestFX";
+import { spawnBlizzardFX } from "./BlizzardFX";
 
 import { getLODLevelAt } from "../core/scene";
 import { getTerrainHeight } from "../../simulation/constants";
@@ -171,6 +177,30 @@ export function dispatchSkillFX(scene: THREE.Scene, event: { skill: string; [key
 
         case "iceShatter":
             spawnIceShatterFX(scene, event.x, event.y, event.z, event.team);
+            break;
+
+        case "darkVoidAura":
+            spawnDarkVoidAuraFX(scene, event.x, event.y, event.z, event.radius || 4.0);
+            break;
+
+        case "meteorStrike":
+            spawnMeteorStrikeFX(scene, event.x, event.y, event.z, event.team);
+            break;
+
+        case "thunderClap":
+            spawnThunderClapFX(scene, event.x, event.y, event.z, event.team);
+            break;
+
+        case "arcaneNova":
+            spawnArcaneNovaFX(scene, event.x, event.y, event.z, event.team);
+            break;
+
+        case "soulHarvest":
+            spawnSoulHarvestFX(scene, event.x, event.y, event.z, event.team);
+            break;
+
+        case "blizzard":
+            spawnBlizzardFX(scene, event.x, event.y, event.z, event.team);
             break;
     }
 }

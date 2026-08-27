@@ -161,9 +161,8 @@ export class NetworkManager {
         let pass = password || "";
 
         // Fetch JWT token from /login endpoint if we have a password.
-        // If password is empty (e.g. active session reload), we bypass /login and rely on the HTTP-only cookie.
         const httpBase = import.meta.env.VITE_API_URL || `${window.location.protocol}//${window.location.hostname}:8080`;
-        let token = "";
+        let token = localStorage.getItem("authToken") || "";
         if (pass) {
             try {
                 const role = localStorage.getItem("playerRole") || "archer";
@@ -176,6 +175,9 @@ export class NetworkManager {
                 if (resp.ok) {
                     const data = await resp.json();
                     token = data.token || "";
+                    if (token) {
+                        localStorage.setItem("authToken", token);
+                    }
                 } else {
                     const errorData = await resp.json().catch(() => ({}));
                     throw new Error(errorData.error || "Authentication failed");
@@ -189,8 +191,13 @@ export class NetworkManager {
         // Split Handshake: Load initial static game configuration over HTTP instead of WebSocket
         try {
             const role = localStorage.getItem("playerRole") || "archer";
+            const headers: Record<string, string> = {};
+            if (token) {
+                headers["Authorization"] = `Bearer ${token}`;
+            }
             const configResp = await fetch(`${httpBase}/room/config?role=${role}`, {
                 credentials: "include",
+                headers
             });
             if (configResp.ok) {
                 const configData = await configResp.json();
@@ -220,7 +227,7 @@ export class NetworkManager {
             sessionStorage.setItem("sessionPlayerId", sessionPlayerId);
         }
 
-        return new Promise((resolve) => {
+        return new Promise<void>((resolve, reject) => {
             let wsBaseUrl = import.meta.env.VITE_WS_URL;
             if (!wsBaseUrl) {
                 const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
@@ -268,10 +275,23 @@ export class NetworkManager {
                 }
             };
 
-            this.socket.onclose = () => {
-                console.warn("WebSocket disconnected.");
+            this.socket.onerror = (err) => {
+                console.error("WebSocket connection error:", err);
+                if (this.resolveInitPromise) {
+                    this.resolveInitPromise = null;
+                    reject(new Error("Connection error: Gagal terhubung ke WebSocket server."));
+                }
+            };
+
+            this.socket.onclose = (event) => {
+                console.warn("WebSocket disconnected. Code:", event.code, "Reason:", event.reason);
                 NetworkManager.stopHeartbeat();
-                NetworkManager.attemptReconnect();
+                if (this.resolveInitPromise) {
+                    this.resolveInitPromise = null;
+                    reject(new Error("Connection closed: Token tidak valid atau handshake ditolak."));
+                } else {
+                    NetworkManager.attemptReconnect();
+                }
             };
         });
     }

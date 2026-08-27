@@ -15,6 +15,14 @@ export default defineConfig({
       'Cross-Origin-Embedder-Policy': 'require-corp',
     },
   },
+  build: {
+    rollupOptions: {
+      input: {
+        main: './index.html',
+        vfx: './vfx.html'
+      }
+    }
+  },
   worker: {
     format: 'es',
   },

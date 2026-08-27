@@ -102,44 +102,15 @@ timeLabel.innerText = 'Waktu: Pagi';
 document.body.appendChild(timeLabel);
 
 // ── Environment & BVH Collider ────────────────────────────────────────────────
-const environmentGeometries: THREE.BufferGeometry[] = [];
+import { World } from './graphics/scenery/World.ts';
 
-const groundGeo = new THREE.BoxGeometry(100, 2, 100);
-const groundMesh = new THREE.Mesh(groundGeo);
-groundMesh.position.y = -1;
-groundMesh.updateMatrixWorld();
-environmentGeometries.push(groundGeo.clone().applyMatrix4(groundMesh.matrixWorld));
-const visualGround = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.8 }));
-visualGround.position.copy(groundMesh.position);
-scene.add(visualGround);
+const gltfLoader = new GLTFLoader();
+gltfLoader.setMeshoptDecoder(MeshoptDecoder);
 
-const obstacleConfigs = [
-  { size: [6, 4, 6],   pos: [10, 2, 10],   color: 0x374151 },
-  { size: [12, 2, 8],  pos: [-12, 1, 5],   color: 0x4b5563 },
-  { size: [4, 6, 4],   pos: [0, 3, -12],   color: 0x1f2937 },
-  { size: [8, 0.5, 8], pos: [15, 0.25, -10],color: 0x4b5563 },
-  { size: [3, 0.5, 3], pos: [-2, 0.25, -2], color: 0x374151 },
-  { size: [3, 1.0, 3], pos: [-2, 0.5, -5],  color: 0x374151 },
-  { size: [3, 1.5, 3], pos: [-2, 0.75, -8], color: 0x374151 },
-];
+const world = new World(scene, gltfLoader, camera);
 
-for (const cfg of obstacleConfigs) {
-  const geo = new THREE.BoxGeometry(cfg.size[0], cfg.size[1], cfg.size[2]);
-  const mesh = new THREE.Mesh(geo);
-  mesh.position.set(cfg.pos[0], cfg.pos[1], cfg.pos[2]);
-  mesh.updateMatrixWorld();
-  environmentGeometries.push(geo.clone().applyMatrix4(mesh.matrixWorld));
-  const vis = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: cfg.color, roughness: 0.6 }));
-  vis.position.copy(mesh.position);
-  scene.add(vis);
-}
-
-scene.add(new THREE.GridHelper(100, 50, 0x374151, 0x1f2937));
-
-
-const mergedGeometry = BufferGeometryUtils.mergeGeometries(environmentGeometries);
-(mergedGeometry as any).computeBoundsTree();
-const colliderMesh = new THREE.Mesh(mergedGeometry);
+// Use Floor terrain geometry for three-mesh-bvh precision raycasting and collision
+const colliderMesh = world.getColliderMesh();
 
 // ── Systems ───────────────────────────────────────────────────────────────────
 let character: LocalPlayer | null = null;
@@ -181,6 +152,9 @@ function syncNPCs() {
       ctrl.level = data.level;
     }
     ctrl.speed = data.speed;
+    if (data.fsm && typeof data.fsm.state === 'number') {
+      ctrl.fsmState = data.fsm.state;
+    }
     ctrl.interpolator.addSnapshot(data.x, data.y, data.z, data.rot, data.action, snapshotServerTs);
 
     // ── Visual Path Line Rendering ──
@@ -251,72 +225,12 @@ function syncNPCs() {
 if (!isMobile) windEffect.start();
 const sceneryWindLines = new SceneryWindLines(scene);
 
-// ── VFX Selection UI ──────────────────────────────────────────────────────────
-let activeVFX = 'gas-native';
-document.querySelectorAll('.vfx-option').forEach(opt => {
-  opt.addEventListener('click', () => {
-    document.querySelectorAll('.vfx-option').forEach(o => o.classList.remove('active'));
-    opt.classList.add('active');
-    activeVFX = opt.getAttribute('data-vfx') || 'gas-native';
-  });
-});
-
-// ── Mode Toggle ───────────────────────────────────────────────────────────────
-const modeButton = document.createElement('button');
-modeButton.innerText = 'Toggle Mode: Player (Active)';
-modeButton.style.cssText = 'position:absolute;top:20px;left:250px;background:linear-gradient(135deg,#d97706 0%,#b45309 100%);color:white;border:none;padding:10px 15px;border-radius:8px;font-family:inherit;font-weight:bold;cursor:pointer;z-index:9999;transition:all 0.2s;box-shadow:0 4px 12px rgba(217,119,6,0.3);border:1px solid rgba(251,146,60,0.2)';
-modeButton.addEventListener('mouseover', () => modeButton.style.transform = 'translateY(-1px)');
-modeButton.addEventListener('mouseout',  () => modeButton.style.transform = 'none');
-document.body.appendChild(modeButton);
-
-const vfxSelectorPanel = document.getElementById('vfx-selector');
-const playerGuide      = document.getElementById('player-guide');
-const orbitGuide       = document.getElementById('orbit-guide');
-
-function applyModeLayout() {
-  const isPlayer = controllerMode === 'player';
-  if (playerGuide)      playerGuide.style.display      = isPlayer ? 'block' : 'none';
-  if (orbitGuide)       orbitGuide.style.display        = isPlayer ? 'none' : 'block';
-  if (vfxSelectorPanel) vfxSelectorPanel.style.display  = isPlayer ? 'none' : 'block';
-  skillsSystem.setVisible(isPlayer);
-  if (character) character.playerGroup.visible = isPlayer;
-}
-applyModeLayout();
-
-modeButton.addEventListener('click', () => {
-  if (controllerMode === 'player') {
-    controllerMode = 'orbit';
-    controls.enabled = true;
-    character?.resetInputs();
-    if (character) character.enabled = false;
-    isShooting = false;
-    modeButton.innerText = 'Toggle Mode: Orbit Camera';
-    modeButton.style.background = 'linear-gradient(135deg,#4b5563 0%,#374151 100%)';
-    modeButton.style.boxShadow = 'none';
-  } else {
-    controllerMode = 'player';
-    controls.enabled = false;
-    if (character) { character.enabled = true; character.resetInputs(); }
-    modeButton.innerText = 'Toggle Mode: Player (Active)';
-    modeButton.style.background = 'linear-gradient(135deg,#d97706 0%,#b45309 100%)';
-    modeButton.style.boxShadow = '0 4px 12px rgba(217,119,6,0.3)';
-  }
-  applyModeLayout();
-});
-
 // ── Input ─────────────────────────────────────────────────────────────────────
-const raycaster = new THREE.Raycaster();
-const mouse     = new THREE.Vector2();
 let isShooting  = false;
 
 renderer.domElement.addEventListener('pointerdown', (e) => {
   if (e.button !== 0) return;
-  if (controllerMode === 'player') { isShooting = true; return; }
-  mouse.x =  (e.clientX / window.innerWidth)  * 2 - 1;
-  mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
-  raycaster.setFromCamera(mouse, camera);
-  const hit = raycaster.intersectObject(colliderMesh)[0];
-  if (hit) spawnActiveVFX(hit.point);
+  isShooting = true;
 });
 window.addEventListener('pointerup', (e) => { if (e.button === 0) isShooting = false; });
 window.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -334,26 +248,6 @@ document.addEventListener('visibilitychange', () => {
     resetLocalPlayerInput();
   }
 });
-
-function spawnActiveVFX(hit: THREE.Vector3) {
-  const x = hit.x, y = hit.y, z = hit.z;
-  switch (activeVFX) {
-    case 'gas-native':          gasExplosionNative.spawn(x, y, z); break;
-    case 'flamethrower-native': flamethrowerNative.spawn(x, y, z); break;
-    case 'subemitter2-native':  subemitter2Native.spawn(x, y, z);  break;
-    case 'tornado-native':      tornadoNative.spawn(x, y, z);      break;
-    case 'skill-ironFortitude':  dispatchSkillFX(scene, { skill: 'ironFortitude',  x, y, z, team: 1, forceShow: true }); break;
-    case 'skill-frostNova':      dispatchSkillFX(scene, { skill: 'frostNova',      x, y, z, team: 1, forceShow: true }); break;
-    case 'skill-divineShield':   dispatchSkillFX(scene, { skill: 'divineShield',   tx: x, ty: y, tz: z, team: 1, forceShow: true }); break;
-    case 'skill-holySanctuary':  dispatchSkillFX(scene, { skill: 'holySanctuary',  x, y, z, team: 1, forceShow: true }); break;
-    case 'skill-taunt':          dispatchSkillFX(scene, { skill: 'taunt',          x: x-2, y, z: z-2, tx: x, ty: y, tz: z, team: 1, forceShow: true }); break;
-    case 'skill-shieldBash':     dispatchSkillFX(scene, { skill: 'shieldBash',     x: x-2, y, z: z-2, tx: x, ty: y, tz: z, team: 1, forceShow: true }); break;
-    case 'skill-chainLightning': dispatchSkillFX(scene, { skill: 'chainLightning', positions: [x, y+4, z, x+1.5, y+1, z+1.5, x-1.5, y+1, z-1.5, x+3, y, z+3], team: 1, forceShow: true }); break;
-    case 'skill-arrowVolley':    dispatchSkillFX(scene, { skill: 'arrowVolley',    x, z, team: 1, forceShow: true }); break;
-    case 'skill-fireball':       dispatchSkillFX(scene, { skill: 'fireball',       fx: x, fy: y+3, fz: z, tx: x, ty: y, tz: z, team: 1, forceShow: true }); break;
-    case 'skill-doubleShot':     dispatchSkillFX(scene, { skill: 'doubleShot',     fx: x-5, fy: y+2, fz: z-5, tx: x, ty: y, tz: z, team: 1, forceShow: true }); break;
-  }
-}
 
 // ── Boss HP Bar UI ────────────────────────────────────────────────────────────
 const bossUiContainer = document.createElement('div');
@@ -713,6 +607,9 @@ function animate() {
     sceneryWindLines.update(delta, clock.getElapsedTime());
   }
 
+  // Update dynamic World elements (water waves, wind lines, turrets)
+  world.update(delta, camera.position, camera, character?.position);
+
   renderer.render(scene, camera);
 
   frameCount++;
@@ -944,9 +841,17 @@ preloadGameAssets().then(async () => {
   let savedName = "";
   let savedRole = "archer";
 
-  // Check existing session cookie — MUST use credentials: include for cross-origin cookie
+  // Check existing session — use credentials: include & Authorization Bearer header fallback
   try {
-    const sessionResp = await fetch(`${httpBase}/auth/session`, { credentials: "include" });
+    const headers: Record<string, string> = {};
+    const localToken = localStorage.getItem("authToken");
+    if (localToken) {
+      headers["Authorization"] = `Bearer ${localToken}`;
+    }
+    const sessionResp = await fetch(`${httpBase}/auth/session`, { 
+      credentials: "include",
+      headers
+    });
     if (sessionResp.ok) {
       const sd = await sessionResp.json();
       if (sd.authenticated) {
@@ -965,7 +870,7 @@ preloadGameAssets().then(async () => {
       }
     }
   } catch (e) {
-    console.log("[Auth] No active session cookie:", e);
+    console.log("[Auth] No active session:", e);
   }
 
   // Switch to correct panel
@@ -985,6 +890,7 @@ preloadGameAssets().then(async () => {
   // Logout → reload to reset session
   logoutBtn?.addEventListener("click", () => {
     document.cookie = "token=; Max-Age=0; path=/";
+    localStorage.removeItem("authToken");
     localStorage.removeItem("playerName");
     localStorage.removeItem("playerRole");
     window.location.reload();
@@ -1029,20 +935,10 @@ preloadGameAssets().then(async () => {
     submitButtonAuth?.addEventListener("click", () => handleConnect(false));
     submitButtonSess?.addEventListener("click", () => handleConnect(true));
 
-    // Offline VFX Test bypass handler
+    // Offline VFX Test bypass handler - redirect to dedicated vfx.html sandbox
     const bypassBtn = document.getElementById("lobby-bypass-btn");
     bypassBtn?.addEventListener("click", () => {
-      // Force offline orbit mode layout directly
-      controllerMode = 'orbit';
-      controls.enabled = true;
-      if (character) character.enabled = false;
-      applyModeLayout();
-
-      if (lobbyOverlay) lobbyOverlay.style.display = "none";
-      // Skip insertCoin, resolve immediately with empty/mock credentials
-      finalUsername = "VFX_Tester";
-      finalPassword = "";
-      resolve();
+      window.location.href = "/vfx.html" + window.location.hash;
     });
   });
 
@@ -1120,7 +1016,6 @@ preloadGameAssets().then(async () => {
     if (isLocal) {
       character = charCtrl;
       player.setState('hp', 100);
-      applyModeLayout();
     }
 
     playerGroupSet.add(charCtrl.playerGroup); // Register in O(1) friendly-fire set
@@ -1151,7 +1046,16 @@ preloadGameAssets().then(async () => {
 
   // Fade out loading overlay now that everything is warm and running
   loadingOverlay.style.opacity = '0';
-  setTimeout(() => loadingOverlay.remove(), 500);
+  setTimeout(() => {
+    loadingOverlay.remove();
+    // Show hidden game UI
+    const uiEl = document.getElementById("ui");
+    const statsEl = document.getElementById("stats");
+    const dpsEl = document.getElementById("dps-panel");
+    if (uiEl) uiEl.style.display = "block";
+    if (statsEl) statsEl.style.display = "block";
+    if (dpsEl) dpsEl.style.display = "block";
+  }, 500);
 });
 
 window.addEventListener('resize', () => {

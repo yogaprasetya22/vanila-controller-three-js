@@ -244,7 +244,9 @@
         <button id="lobby-submit-auth">LOGIN</button>
         
         <button id="lobby-bypass-btn" 
-                class="w-full mt-2 py-2.5 bg-stone-800 hover:bg-stone-700 text-stone-300 font-semibold text-xs rounded-lg tracking-wider transition-all border border-stone-700 cursor-pointer">
+                style="width: 100%; padding: 11px; margin-top: 10px; background: rgba(255,255,255,0.03); border: 1px solid rgba(251,146,60,0.25); border-radius: 10px; color: rgba(255,255,255,0.6); font-size: 11px; font-weight: 700; font-family: inherit; cursor: pointer; letter-spacing: 1px; transition: all 0.2s;"
+                onmouseover="this.style.background='rgba(251,146,60,0.08)'; this.style.color='#fb923c';"
+                onmouseout="this.style.background='rgba(255,255,255,0.03)'; this.style.color='rgba(255,255,255,0.6)';">
           ⚙ SKIP & TEST VFX (OFFLINE)
         </button>
         
@@ -337,166 +339,11 @@
 
 
 
-  <div id="ui" style="pointer-events: auto;">
-    <h1>Custom VFX Engine</h1>
-    <p>Select an effect on the right panel.</p>
-    <div id="controls-guide" style="margin-top: 10px; font-size: 13px; opacity: 0.9; background: rgba(10, 10, 15, 0.75); border: 1px solid rgba(255,255,255,0.15); padding: 12px; border-radius: 6px; line-height: 1.6; max-width: 320px; backdrop-filter: blur(10px);">
-      <div id="player-guide">
-        <strong style="color: #00d2ff;">🎮 Player Mode Controls:</strong><br>
-        • <span style="color: #60a5fa; font-weight: bold;">W, A, S, D</span> / Arrows: Move character<br>
-        • <span style="color: #60a5fa; font-weight: bold;">Space</span>: Jump (Double Jump Flip)<br>
-        • <span style="color: #60a5fa; font-weight: bold;">Shift</span>: Sprint<br>
-        • <span style="color: #60a5fa; font-weight: bold;">Mouse Drag</span>: Look Around<br>
-        • <span style="color: #60a5fa; font-weight: bold;">Left Click</span>: Rapid fire basic attack (ASPD 193)<br>
-        • <span style="color: #00d2ff; font-weight: bold;">Key 1, 2, 3</span>: Cast active RPG Skills<br>
-      </div>
-      <div id="orbit-guide" style="display: none;">
-        <strong style="color: #00d2ff;">🎥 Orbit Mode Controls:</strong><br>
-        • Right click + Drag: Rotate camera<br>
-        • Left click: Spawn active VFX on grid/surfaces<br>
-        • Scroll Wheel: Zoom in/out
-      </div>
-    </div>
-  </div>
-
-  <div id="vfx-selector">
-    <div class="selector-title">Select Active VFX</div>
-    
-    <div class="vfx-option active" data-vfx="gas-native">
-      <div class="option-info">
-        <span class="option-name">Gas Explosion (Native)</span>
-        <span class="option-desc">Highly optimized custom shader implementation</span>
-      </div>
-    </div>
-    
-    <div class="vfx-option" data-vfx="gas-quarks">
-      <div class="option-info">
-        <span class="option-name">Gas Explosion (three.quarks)</span>
-        <span class="option-desc">Direct library loader & batch renderer</span>
-      </div>
-    </div>
-
-    <div class="vfx-option" data-vfx="flamethrower-native">
-      <div class="option-info">
-        <span class="option-name">Flamethrower (Native)</span>
-        <span class="option-desc">Auto-converted from Quarks JSON</span>
-      </div>
-    </div>
-
-    <div class="vfx-option" data-vfx="flamethrower-quarks">
-      <div class="option-info">
-        <span class="option-name">Flamethrower (three.quarks)</span>
-        <span class="option-desc">Direct library loader & batch renderer</span>
-      </div>
-    </div>
-
-    <div class="vfx-option" data-vfx="subemitter2-native">
-      <div class="option-info">
-        <span class="option-name">SubEmitter2 (Native)</span>
-        <span class="option-desc">Complex composite effect auto-converted</span>
-      </div>
-    </div>
-
-    <div class="vfx-option" data-vfx="subemitter2-quarks">
-      <div class="option-info">
-        <span class="option-name">SubEmitter2 (three.quarks)</span>
-        <span class="option-desc">Direct library loader & batch renderer</span>
-      </div>
-    </div>
-
-    <div class="vfx-option" data-vfx="tornado-native">
-      <div class="option-info">
-        <span class="option-name">Cartoon Tornado (Native)</span>
-        <span class="option-desc">Mesh OBJ + Custom Noise Wobble Shader</span>
-      </div>
-    </div>
-
-    <div class="vfx-option" data-vfx="sab-worker">
-      <div class="option-info">
-        <span class="option-name">SAB Particle Physics</span>
-        <span class="option-desc">Web Worker parallel threads simulation</span>
-      </div>
-    </div>
-
-    <div class="selector-title" style="margin-top: 15px; color: #ffae00;">Ported RPG Skills</div>
-
-    <div class="vfx-option" data-vfx="skill-ironFortitude">
-      <div class="option-info">
-        <span class="option-name">Iron Fortitude</span>
-        <span class="option-desc">Glowing defensive ring aura</span>
-      </div>
-    </div>
-
-    <div class="vfx-option" data-vfx="skill-frostNova">
-      <div class="option-info">
-        <span class="option-name">Frost Nova</span>
-        <span class="option-desc">Ice blast ring burst</span>
-      </div>
-    </div>
-
-    <div class="vfx-option" data-vfx="skill-divineShield">
-      <div class="option-info">
-        <span class="option-name">Divine Shield</span>
-        <span class="option-desc">Glowing protective bubble shield</span>
-      </div>
-    </div>
-
-    <div class="vfx-option" data-vfx="skill-holySanctuary">
-      <div class="option-info">
-        <span class="option-name">Holy Sanctuary</span>
-        <span class="option-desc">Sacred golden dome sanctuary</span>
-      </div>
-    </div>
-
-    <div class="vfx-option" data-vfx="skill-taunt">
-      <div class="option-info">
-        <span class="option-name">Taunt</span>
-        <span class="option-desc">Agressive shout and ground ring</span>
-      </div>
-    </div>
-
-    <div class="vfx-option" data-vfx="skill-shieldBash">
-      <div class="option-info">
-        <span class="option-name">Shield Bash</span>
-        <span class="option-desc">Heavy punch impact wave</span>
-      </div>
-    </div>
-
-    <div class="vfx-option" data-vfx="skill-chainLightning">
-      <div class="option-info">
-        <span class="option-name">Chain Lightning</span>
-        <span class="option-desc">Sparks chain between positions</span>
-      </div>
-    </div>
-
-    <div class="vfx-option" data-vfx="skill-arrowVolley">
-      <div class="option-info">
-        <span class="option-name">Arrow Volley</span>
-        <span class="option-desc">Shower of arrows from the sky</span>
-      </div>
-    </div>
-
-    <div class="vfx-option" data-vfx="skill-fireball">
-      <div class="option-info">
-        <span class="option-name">Fireball</span>
-        <span class="option-desc">Spawns a fire projectile</span>
-      </div>
-    </div>
-
-    <div class="vfx-option" data-vfx="skill-doubleShot">
-      <div class="option-info">
-        <span class="option-name">Double Shot</span>
-        <span class="option-desc">Dual shot projectile streams</span>
-      </div>
-    </div>
-  </div>
-
-  <div id="stats">
+  <div id="stats" style="display: none;">
     FPS: <span id="fps">--</span><br>
-    Particles: 50,000 max
   </div>
   <div id="canvas-container"></div>
-  <div id="dps-panel">
+  <div id="dps-panel" style="display: none;">
     <div class="selector-title" style="color: #ff3e3e; margin-bottom: 8px;">DPS Statistics</div>
     <div class="dps-stat">DPS (Current): <span id="dps-val" style="color: #00ffaa; font-weight: bold;">0</span></div>
     <div class="dps-stat">DPS (Average): <span id="dps-avg" style="color: #00d2ff; font-weight: bold;">0</span></div>

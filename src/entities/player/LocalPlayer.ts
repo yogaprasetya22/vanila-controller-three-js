@@ -1118,8 +1118,9 @@ export class LocalPlayer {
 
     const targetCameraPosition = this.smoothedLookAt.clone().add(relativeOffset);
 
-    // Keep camera at least 0.5m above the ground level (Y=0)
-    const minCameraHeight = 0.5;
+    // Keep camera above the terrain height level (prevent penetrating the ground)
+    const terrainHeightAtTarget = getTerrainHeight(targetCameraPosition.x, targetCameraPosition.z);
+    const minCameraHeight = terrainHeightAtTarget + 1.0; // 1.0m safety margin above terrain
     if (targetCameraPosition.y < minCameraHeight) {
       targetCameraPosition.y = minCameraHeight;
     }
@@ -1128,8 +1129,10 @@ export class LocalPlayer {
     this.camera.position.lerp(targetCameraPosition, 8 * delta);
 
     // Double check and apply safety clamp to actual camera position
-    if (this.camera.position.y < minCameraHeight) {
-      this.camera.position.y = minCameraHeight;
+    const actualTerrainHeight = getTerrainHeight(this.camera.position.x, this.camera.position.z);
+    const actualMinCameraHeight = actualTerrainHeight + 1.0;
+    if (this.camera.position.y < actualMinCameraHeight) {
+      this.camera.position.y = actualMinCameraHeight;
     }
 
     // Lock camera orientation onto the focus point (prevents rotation overshoot/jitter)
