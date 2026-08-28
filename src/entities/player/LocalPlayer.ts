@@ -188,11 +188,14 @@ export class LocalPlayer {
     window.addEventListener('keydown', (e) => {
       if (e.repeat) return;
 
+      // ponytail: ignore keyboard movement if pointer is not locked to game canvas
+      const canvas = document.querySelector('canvas');
+      if (document.pointerLockElement !== canvas) return;
+
       if (e.code === 'KeyW' || e.code === 'ArrowUp') this.keys.KeyW = true;
       if (e.code === 'KeyA' || e.code === 'ArrowLeft') this.keys.KeyA = true;
       if (e.code === 'KeyS' || e.code === 'ArrowDown') this.keys.KeyS = true;
       if (e.code === 'KeyD' || e.code === 'ArrowRight') this.keys.KeyD = true;
-      // E key dodge removed per request (now Right-Click triggers dodge)
 
       if (e.code === 'Space') {
         this.keys.Space = true;
@@ -208,6 +211,14 @@ export class LocalPlayer {
       if (e.code === 'KeyD' || e.code === 'ArrowRight') this.keys.KeyD = false;
       if (e.code === 'Space') this.keys.Space = false;
       if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') this.keys.ShiftLeft = false;
+    });
+
+    // Reset player movement state instantly when exiting pointer lock (e.g. by pressing Escape)
+    document.addEventListener('pointerlockchange', () => {
+      const canvas = document.querySelector('canvas');
+      if (document.pointerLockElement !== canvas) {
+        this.resetInputs();
+      }
     });
   }
 
@@ -225,19 +236,22 @@ export class LocalPlayer {
   }
 
   private initMouseLook() {
-    // Lock pointer only on right-click (button === 2) on canvas in Player Mode
     window.addEventListener('mousedown', (e) => {
-      if (e.button !== 2) return;
-      
-      if (this.isLocal) {
-        this.triggerDodgeByKey();
-      }
-
       const canvas = document.querySelector('canvas');
-      if (this.enabled && e.target === canvas) {
+      if (!this.enabled || e.target !== canvas) return;
+
+      // ponytail: first click (Left or Right) only locks the pointer to focus without triggering dodge/attack
+      if (document.pointerLockElement !== canvas) {
+        e.preventDefault();
         (canvas as any)?.requestPointerLock?.()?.catch?.((err: any) => {
           console.warn("Pointer lock request throttled/prevented:", err);
         });
+        return;
+      }
+
+      // If pointer is already locked, right-click (button === 2) triggers dodge/dash
+      if (e.button === 2 && this.isLocal) {
+        this.triggerDodgeByKey();
       }
     });
 
@@ -798,8 +812,59 @@ export class LocalPlayer {
     }
 
     // 3. Integrate horizontal position
+    const lastX = this.position.x;
+    const lastZ = this.position.z;
     this.position.x += this.velocity.x * delta;
     this.position.z += this.velocity.z * delta;
+
+    // Water boundary: adaptive gradient sliding (no jitter, no stuck states).
+    // ponytail: adaptive search EPS solves flat banks, reverting position without killing velocity prevents sticking.
+    const WATER_BLOCK = -2.80;
+    let h = getTerrainHeight(this.position.x, this.position.z);
+    if (h < WATER_BLOCK) {
+      let eps = 0.25;
+      let gx = getTerrainHeight(this.position.x + eps, this.position.z) -
+                getTerrainHeight(this.position.x - eps, this.position.z);
+      const gz = getTerrainHeight(this.position.x, this.position.z + eps) -
+                  getTerrainHeight(this.position.x, this.position.z - eps);
+      let glen = Math.sqrt(gx * gx + gz * gz);
+
+      // Adaptive check: if gradient is too flat, look wider to find the shore slope
+      if (glen < 0.01) {
+        eps = 1.0;
+        const gxW = getTerrainHeight(this.position.x + eps, this.position.z) -
+                    getTerrainHeight(this.position.x - eps, this.position.z);
+        const gzW = getTerrainHeight(this.position.x, this.position.z + eps) -
+                    getTerrainHeight(this.position.x, this.position.z - eps);
+        const glenW = Math.sqrt(gxW * gxW + gzW * gzW);
+        if (glenW > 0.01) {
+          gx = gxW;
+          glen = glenW;
+        }
+      }
+
+      if (glen > 0.01) {
+        const nx = gx / glen;
+        const nz = gz / glen;
+
+        // Project velocity onto shore tangent to allow smooth sliding
+        const vdotn = this.velocity.x * nx + this.velocity.z * nz;
+        if (vdotn < 0) {
+          this.velocity.x -= vdotn * nx;
+          this.velocity.z -= vdotn * nz;
+        }
+
+        // Push out of water smoothly based on exact penetration depth
+        const depthPenetration = WATER_BLOCK - h;
+        this.position.x += nx * (depthPenetration + 0.03);
+        this.position.z += nz * (depthPenetration + 0.03);
+      } else {
+        // Fallback: Revert position to prevent water walk, but keep velocity alive to avoid stickiness
+        this.position.x = lastX;
+        this.position.z = lastZ;
+      }
+    }
+
     this.playerGroup.position.copy(this.position);
     // 4. Rotate Character Mesh towards movement direction
     if (this.isDodging) {
@@ -1159,6 +1224,7 @@ export class LocalPlayer {
     this.nameTagSprite = new THREE.Sprite(material);
     this.nameTagSprite.scale.set(1.8, 0.45, 1);
     this.nameTagSprite.position.set(0, this.height + 0.35, 0);
+    this.nameTagSprite.renderOrder = 999;
     this.playerGroup.add(this.nameTagSprite);
     
     this.updateNameTag(1.0);

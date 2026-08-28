@@ -25,7 +25,7 @@ import { Subemitter2NativeVFX } from './graphics/effects/Subemitter2Native.ts';
 import { CartoonTornadoNativeVFX } from './graphics/effects/CartoonTornadoNative.ts';
 import { updateFX } from './graphics/effects/FXCore';
 import { dispatchSkillFX } from './graphics/effects/FXRouter';
-import { WindEffectManager } from './graphics/effects/WindLines.ts';
+import { WindEffectManager } from './graphics/scenery/WindLines.ts';
 import { SceneryWindLines } from './graphics/effects/SceneryWindLines.ts';
 import { damageHUDBatcher } from './graphics/effects/DamageHUDBatcher.ts';
 
@@ -115,7 +115,7 @@ const colliderMesh = world.getColliderMesh();
 // ── Systems ───────────────────────────────────────────────────────────────────
 let character: LocalPlayer | null = null;
 const npcControllers = new Map<string, BaseEnemyController>();
-const npcPathLines = new Map<string, THREE.Line>();
+
 const playersAndControllers: { player: any; controller: LocalPlayer }[] = [];
 // Pre-built Set of player groups for O(1) friendly-fire check — updated on join/quit
 const playerGroupSet = new Set<THREE.Object3D>();
@@ -130,9 +130,11 @@ const windEffect   = new WindEffectManager(scene);
 
 // Helper to sync NPCs list dynamically — called every frame from render loop
 // NPC state now arrives via world_snapshot (not room_state_update) at 30Hz
+let lastNpcsState: any = null;
 function syncNPCs() {
   const npcsState = getState("npcs");
-  if (!npcsState) return;
+  if (!npcsState || npcsState === lastNpcsState) return;
+  lastNpcsState = npcsState;
 
   // serverTs embedded by broadcastWorldSnapshot() — 0 = fallback to clock offset
   const snapshotServerTs: number = (npcsState as any)._snapshotServerTs ?? 0;
@@ -157,44 +159,6 @@ function syncNPCs() {
     }
     ctrl.interpolator.addSnapshot(data.x, data.y, data.z, data.rot, data.action, snapshotServerTs);
 
-    // ── Visual Path Line Rendering ──
-    // Render dynamic path segments if the NPC has waypoints
-    if (data.path && Array.isArray(data.path) && data.path.length > 0) {
-      const points: THREE.Vector3[] = [];
-      // Start path representation from the NPC's current visual position
-      points.push(new THREE.Vector3(ctrl.playerGroup.position.x, 0.05, ctrl.playerGroup.position.z));
-      
-      for (const wpt of data.path) {
-        if (typeof wpt.x === 'number' && typeof wpt.z === 'number') {
-          points.push(new THREE.Vector3(wpt.x, 0.05, wpt.z));
-        }
-      }
-
-      // Escape steering state is 1, normal is 0 or 2
-      const isEscaping = data.fsm && data.fsm.state === 1;
-      const lineColor = isEscaping ? 0xff3333 : 0x33ffff; // Red if escaping, Cyan if normal pathfinding
-
-      let line = npcPathLines.get(id);
-      if (line) {
-        line.geometry.setFromPoints(points);
-        (line.material as THREE.LineBasicMaterial).color.setHex(lineColor);
-      } else {
-        const geom = new THREE.BufferGeometry().setFromPoints(points);
-        const mat = new THREE.LineBasicMaterial({ color: lineColor, linewidth: 2 });
-        line = new THREE.Line(geom, mat);
-        scene.add(line);
-        npcPathLines.set(id, line);
-      }
-    } else {
-      // Clear path if no path returned or empty
-      const line = npcPathLines.get(id);
-      if (line) {
-        scene.remove(line);
-        line.geometry.dispose();
-        (line.material as THREE.Material).dispose();
-        npcPathLines.delete(id);
-      }
-    }
   }
 
   for (const id of npcControllers.keys()) {
@@ -210,14 +174,7 @@ function syncNPCs() {
       }
       npcControllers.delete(id);
 
-      // Clean up path lines on remove
-      const line = npcPathLines.get(id);
-      if (line) {
-        scene.remove(line);
-        line.geometry.dispose();
-        (line.material as THREE.Material).dispose();
-        npcPathLines.delete(id);
-      }
+
     }
   }
 }
@@ -230,6 +187,11 @@ let isShooting  = false;
 
 renderer.domElement.addEventListener('pointerdown', (e) => {
   if (e.button !== 0) return;
+
+  // ponytail: do not shoot on the initial click that locks the pointer
+  const canvas = document.querySelector('canvas');
+  if (document.pointerLockElement !== canvas) return;
+
   isShooting = true;
 });
 window.addEventListener('pointerup', (e) => { if (e.button === 0) isShooting = false; });
@@ -476,6 +438,10 @@ function animate() {
 
     // LOD-off: skip heavy per-frame work (animation blending, slerp calculations, weapon visuals)
     if (controller.lodLevel === 'culled') {
+      if (pos) {
+        controller.position.set(pos.x, pos.y, pos.z);
+        controller.playerGroup.position.copy(controller.position);
+      }
       controller.update(delta);
       continue;
     }
@@ -514,17 +480,9 @@ function animate() {
     controller.update(delta);
     controller.updateNameTag((player.getState('hp') ?? 100) / 100);
 
-    // Remote player attack visual
-    if (player.getState('isShooting') && controller.triggerAttack()) {
-      const spawnPos = controller.getWeaponWorldPosition('hand_l', 1.0);
-      const target   = controller.getNearestTarget();
-      let dir        = controller.getForwardVector();
-      if (target) {
-        target.getWorldPosition(_tgtPos);
-        _tgtPos.y += 0.5;
-        dir = _tgtPos.sub(spawnPos).normalize();
-      }
-      projectileSystem.spawn(spawnPos, dir, 40, target, -1, player.id);
+    // Remote player attack visual: triggerAttack handles animation, sound, and spawning internally
+    if (player.getState('isShooting')) {
+      controller.triggerAttack();
     }
   }
 
@@ -603,8 +561,8 @@ function animate() {
   updateFX(delta);
   damageHUDBatcher.update(delta);
   if (!isMobile) {
-    windEffect.update(delta);
-    sceneryWindLines.update(delta, clock.getElapsedTime());
+    windEffect.update(delta, clock.getElapsedTime(), camera.position);
+    sceneryWindLines.update(delta, clock.getElapsedTime(), camera.position);
   }
 
   // Update dynamic World elements (water waves, wind lines, turrets)
@@ -685,6 +643,11 @@ function animate() {
 window.addEventListener('keydown', (e) => {
   if (e.repeat) return;
   if (!character || controllerMode !== 'player') return;
+
+  // ponytail: ignore skill hotkeys if pointer is not locked to game canvas
+  const canvas = document.querySelector('canvas');
+  if (document.pointerLockElement !== canvas) return;
+
   const playerPos = character.position;
   const forward   = character.getForwardVector();
   if (skillsSystem.handleInput(e.code, playerPos, forward, character)) {

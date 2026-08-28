@@ -1,33 +1,50 @@
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const ROOT_DIR = path.join(__dirname, '..');
 
 // Define boundaries and zones based on constants.ts
-const MAP_MIN_X = -115; // Ground floor is 240 units wide (-120 to 120), so we stay inside at -115
-const MAP_MAX_X = 115;
-const MAP_MIN_Z = -85;  // Ground floor is 180 units tall (-90 to 90), so we stay inside at -85
-const MAP_MAX_Z = 85;
+const MAP_MIN_X = -230;
+const MAP_MAX_X = 230;
+const MAP_MIN_Z = -170;
+const MAP_MAX_Z = 170;
 
-const BF_HALF_X = 46; // Buffered slightly to prevent trees overlapping onto the battlefield
-const BF_HALF_Z = 42;
+const BF_HALF_X = 92; // Buffered slightly to prevent overlapping onto the battlefield
+const BF_HALF_Z = 82;
 
 const LAKES = [
-  { cx: -68, cz: -62, rx: 22, rz: 15, depth: 1.4 },
-  { cx: 68,  cz: -62, rx: 20, rz: 14, depth: 1.3 },
-  { cx: -68, cz: 62,  rx: 19, rz: 15, depth: 1.2 },
-  { cx: 68,  cz: 62,  rx: 22, rz: 14, depth: 1.5 },
-  { cx: -88, cz: 0,   rx: 14, rz: 11, depth: 1.0 },
-  { cx: 88,  cz: 0,   rx: 14, rz: 11, depth: 1.0 }
+  { cx: -136, cz: -124, rx: 18, rz: 13, depth: 1.4 },
+  { cx: 136,  cz: -124, rx: 17, rz: 12, depth: 1.3 },
+  { cx: -136, cz: 124,  rx: 16, rz: 13, depth: 1.2 },
+  { cx: 136,  cz: 124,  rx: 18, rz: 12, depth: 1.5 },
+  { cx: -176, cz: 0,    rx: 12, rz: 10, depth: 1.0 },
+  { cx: 176,  cz: 0,    rx: 12, rz: 10, depth: 1.0 },
+  { cx: 0,    cz: -148, rx: 11, rz: 8,  depth: 1.1 },
+  { cx: 0,    cz: 148,  rx: 11, rz: 8,  depth: 1.2 },
 ];
 
 const TREE_TYPES = [
-  // Birch trees (Highly optimized and matching the map style)
   'BirchTree_1', 'BirchTree_2', 'BirchTree_3', 'BirchTree_4', 'BirchTree_5',
-  // Maple trees
   'MapleTree_1', 'MapleTree_2', 'MapleTree_3', 'MapleTree_4',
-  // Pine trees
   'Pine_1', 'Pine_2', 'Pine_3', 'Pine_5',
-  // Twisted trees
   'TwistedTree_1', 'TwistedTree_3'
+];
+
+const ROCK_TYPES = [
+  'Rock_Medium_1', 'Rock_Medium_2', 'Rock_Medium_3',
+  'Pebble_Round_1', 'Pebble_Round_2', 'Pebble_Round_3', 'Pebble_Round_4', 'Pebble_Round_5',
+  'Pebble_Square_1', 'Pebble_Square_2', 'Pebble_Square_3', 'Pebble_Square_4', 'Pebble_Square_5', 'Pebble_Square_6'
+];
+
+const VEGETATION_TYPES = [
+  'Bush', 'Bush_Common', 'Bush_Common_Flowers', 'Bush_Flowers', 'Bush_Large', 'Bush_Large_Flowers', 'Bush_Small', 'Bush_Small_Flowers',
+  'Clover_1', 'Clover_2', 'Fern_1',
+  'Flower_1', 'Flower_1_Clump', 'Flower_2', 'Flower_2_Clump', 'Flower_3_Clump', 'Flower_5_Clump',
+  'Mushroom_Common', 'Mushroom_Laetiporus',
+  'Plant_1', 'Plant_1_Big', 'Plant_7', 'Plant_7_Big'
 ];
 
 function isInsideBattlefield(x, z) {
@@ -38,7 +55,7 @@ function isInsideLake(x, z) {
   for (const lake of LAKES) {
     const dx = (x - lake.cx) / lake.rx;
     const dz = (z - lake.cz) / lake.rz;
-    // We add a safety margin of 1.15 to avoid placing trees on the shore/inside water
+    // We add a safety margin of 1.15 to avoid placing items on the shore/inside water
     if (dx * dx + dz * dz < 1.15) {
       return true;
     }
@@ -56,28 +73,30 @@ function mixVal(a, b, t) {
 }
 
 function getTerrainHeight(x, z) {
-  const BF_HALF_X = 42;
-  const BF_HALF_Z = 38;
-  const BF_BLEND = 8;
+  const BF_HALF_X = 84;
+  const BF_HALF_Z = 76;
+  const BF_BLEND = 14;
 
   const dxEdge = Math.max(0, Math.abs(x) - BF_HALF_X);
   const dzEdge = Math.max(0, Math.abs(z) - BF_HALF_Z);
   const edgeDist = Math.sqrt(dxEdge * dxEdge + dzEdge * dzEdge);
   const forestFactor = smoothstep(0, BF_BLEND, edgeDist);
 
-  const mountainH = Math.sin(x * 0.015) * Math.cos(z * 0.018 + 0.3) * 22.0 + Math.cos(x * 0.04) * Math.sin(z * 0.035) * 8.0;
+  const mountainH = Math.sin(x * 0.010) * Math.cos(z * 0.012 + 0.3) * 32.0 + Math.cos(x * 0.025) * Math.sin(z * 0.022) * 14.0;
   const h1 = Math.sin(x * 0.12 + 0.5) * Math.cos(z * 0.12) * 3.5;
   const h2 = Math.sin(x * 0.28) * Math.sin(z * 0.22 + 1.2) * 1.2;
+  const h3 = Math.sin(x * 0.06 + 1.1) * Math.cos(z * 0.055 + 0.8) * 9.0;
+  const h4 = Math.cos(x * 0.09) * Math.sin(z * 0.075 + 2.0) * 5.5;
   
-  const riverPath = Math.sin(x * 0.02) * 45;
+  const riverPath = Math.sin(x * 0.013) * 75;
   const riverDist = Math.abs(z - riverPath);
   let riverDepth = 0;
-  if (riverDist < 18) {
-    const rT = 1.0 - (riverDist / 18);
-    riverDepth = -5.5 * Math.sin(rT * Math.PI * 0.5);
+  if (riverDist < 28) {
+    const rT = 1.0 - (riverDist / 28);
+    riverDepth = -7.0 * Math.sin(rT * Math.PI * 0.5);
   }
 
-  let hills = mountainH + h1 + h2 + riverDepth;
+  let hills = mountainH + h1 + h2 + h3 + h4 + riverDepth;
 
   const WATER_LEVEL = -3.0;
 
@@ -99,80 +118,82 @@ function getTerrainHeight(x, z) {
   return forestTerrain * forestFactor;
 }
 
-function generateTreesGrid() {
-  const targetCount = 10;
-  let cellSize = 6.5;
-  let jitterRange = 2.0;
-  let trees = [];
+function generateScenery(types, spacing, minDistanceSq, scaleMin, scaleMax) {
+  const items = [];
+  const jitterRange = spacing * 0.35;
 
-  for (let attempt = 0; attempt < 100; attempt++) {
-    trees = [];
-    for (let x = MAP_MIN_X + cellSize / 2; x < MAP_MAX_X; x += cellSize) {
-      for (let z = MAP_MIN_Z + cellSize / 2; z < MAP_MAX_Z; z += cellSize) {
-        // Jitter the position within the cell
-        const jx = parseFloat((x + (Math.random() * 2 - 1) * jitterRange).toFixed(1));
-        const jz = parseFloat((z + (Math.random() * 2 - 1) * jitterRange).toFixed(1));
+  for (let x = MAP_MIN_X + spacing / 2; x < MAP_MAX_X; x += spacing) {
+    for (let z = MAP_MIN_Z + spacing / 2; z < MAP_MAX_Z; z += spacing) {
+      // Jitter position within cell
+      const jx = parseFloat((x + (Math.random() * 2 - 1) * jitterRange).toFixed(1));
+      const jz = parseFloat((z + (Math.random() * 2 - 1) * jitterRange).toFixed(1));
 
-        // Must be outside the battlefield, outside any lake, and not in the water (Y >= 0.2)
-        if (isInsideBattlefield(jx, jz) || isInsideLake(jx, jz) || getTerrainHeight(jx, jz) < 0.2) {
-          continue;
-        }
-
-        // Check distance against already generated trees to guarantee spacing
-        let tooClose = false;
-        for (const tree of trees) {
-          const dx = jx - tree.x;
-          const dz = jz - tree.z;
-          if (dx * dx + dz * dz < 12.25) { // Minimum distance of 3.5 units
-            tooClose = true;
-            break;
-          }
-        }
-        if (tooClose) {
-          continue;
-        }
-
-        const type = TREE_TYPES[Math.floor(Math.random() * TREE_TYPES.length)];
-        
-        // Scale range: min 2, max 4 (for TwistedTree max 3)
-        let scale;
-        if (type.startsWith('TwistedTree')) {
-          scale = parseFloat((Math.random() * 1.0 + 2.0).toFixed(2)); // min 2, max 3
-        } else {
-          scale = parseFloat((Math.random() * 2.0 + 2.0).toFixed(2)); // min 2, max 4
-        }
-        
-        // Random rotation in radians (0 to 2*PI)
-        const rotation = parseFloat((Math.random() * Math.PI * 2).toFixed(2));
-
-        trees.push({
-          x: jx,
-          z: jz,
-          type,
-          scale,
-          rotation
-        });
+      // Must be outside the battlefield, outside any lake, and on dry land (Y >= 0.2)
+      if (isInsideBattlefield(jx, jz) || isInsideLake(jx, jz) || getTerrainHeight(jx, jz) < 0.2) {
+        continue;
       }
-    }
 
-    if (Math.abs(trees.length - targetCount) <= 10) {
-      break;
-    }
+      // Check distance against already generated items to guarantee spacing
+      let tooClose = false;
+      for (const item of items) {
+        const dx = jx - item.x;
+        const dz = jz - item.z;
+        if (dx * dx + dz * dz < minDistanceSq) {
+          tooClose = true;
+          break;
+        }
+      }
+      if (tooClose) continue;
 
-    // Adjust cell size dynamically based on deviation from target
-    if (trees.length < targetCount) {
-      cellSize -= 0.05;
-    } else {
-      cellSize += 0.05;
+      const type = types[Math.floor(Math.random() * types.length)];
+      
+      let scale;
+      if (type.startsWith('TwistedTree')) {
+        scale = parseFloat((Math.random() * 1.0 + 2.0).toFixed(2)); // min 2, max 3
+      } else {
+        scale = parseFloat((Math.random() * (scaleMax - scaleMin) + scaleMin).toFixed(2));
+      }
+      
+      const rotation = parseFloat((Math.random() * Math.PI * 2).toFixed(2));
+
+      items.push({
+        x: jx,
+        z: jz,
+        type,
+        scale,
+        rotation
+      });
     }
   }
 
-  console.log(`Generated ${trees.length} trees using grid-jitter layout.`);
-  return trees;
+  return items;
 }
 
-const treesData = generateTreesGrid();
-const outputPath = path.resolve('src/graphics/scenery/treesData.json');
+// 1. Generate Trees (spacing: ~10.0 units, min distance: ~6.0 units)
+const trees = generateScenery(TREE_TYPES, 10.0, 36.0, 2.0, 4.0);
+fs.writeFileSync(
+  path.join(ROOT_DIR, 'src/graphics/scenery/treesData.json'),
+  JSON.stringify(trees, null, 2),
+  'utf-8'
+);
+console.log(`🌲 Generated ${trees.length} trees.`);
 
-fs.writeFileSync(outputPath, JSON.stringify(treesData, null, 2), 'utf-8');
-console.log(`Successfully saved trees data to ${outputPath}`);
+// 2. Generate Rocks (spacing: ~14.0 units, min distance: ~7.5 units)
+const rocks = generateScenery(ROCK_TYPES, 14.0, 56.25, 0.8, 2.2);
+fs.writeFileSync(
+  path.join(ROOT_DIR, 'src/graphics/scenery/rocksData.json'),
+  JSON.stringify(rocks, null, 2),
+  'utf-8'
+);
+console.log(`🪨 Generated ${rocks.length} rocks.`);
+
+// 3. Generate Vegetation (spacing: ~8.0 units, min distance: ~4.5 units)
+const vegetation = generateScenery(VEGETATION_TYPES, 8.0, 20.25, 0.8, 1.8);
+fs.writeFileSync(
+  path.join(ROOT_DIR, 'src/graphics/scenery/vegetationData.json'),
+  JSON.stringify(vegetation, null, 2),
+  'utf-8'
+);
+console.log(`🌿 Generated ${vegetation.length} vegetation.`);
+
+console.log(`\n✨ Successfully generated all environment files in src/graphics/scenery/!`);

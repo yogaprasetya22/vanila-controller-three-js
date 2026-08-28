@@ -17,7 +17,7 @@ interface LeafParticle {
 export class Leaves {
   meshes: THREE.InstancedMesh[];
   particles: LeafParticle[] = [];
-  count = 40; // ponytail: 80→40 — invisible at distance, half the GPU transforms
+  count = 80; // ponytail: scaled from 40 to 80 for 2x map size
   dummy = new THREE.Object3D();
   // ponytail: pre-allocate — avoid new Matrix4() inside update() every frame
   private readonly _deadMatrix = new THREE.Matrix4().makeTranslation(0, -9999, 0);
@@ -42,17 +42,19 @@ export class Leaves {
     }
   }
 
-  private spawnParticle(): LeafParticle {
+  private spawnParticle(camPos?: THREE.Vector3): LeafParticle {
     let x: number, z: number, y: number;
+    const center = camPos || new THREE.Vector3(0, 0, 0);
+
     if (treePositions.length > 0 && Math.random() < 0.7) {
       const treePos = treePositions[Math.floor(Math.random() * treePositions.length)];
       x = treePos.x + (Math.random() - 0.5) * 2.5;
       z = treePos.z + (Math.random() - 0.5) * 2.5;
       y = treePos.y + 1.2 + Math.random() * 1.5;
     } else {
-      x = (Math.random() - 0.5) * 220;
-      z = Math.random() > 0.5 ? 16 + Math.random() * 55 : -16 - Math.random() * 55;
-      y = getTerrainHeight(x, z) + 1.5 + Math.random() * 2.0;
+      x = center.x + (Math.random() - 0.5) * 220;
+      z = center.z + (Math.random() - 0.5) * 220;
+      y = getTerrainHeight(x, z) + 1.5 + Math.random() * 4.0;
     }
     const lifetime = 6.0 + Math.random() * 8.0;
     return {
@@ -66,7 +68,8 @@ export class Leaves {
     };
   }
 
-  update(delta: number, elapsed: number) {
+  update(delta: number, elapsed: number, camPos?: THREE.Vector3) {
+    const center = camPos || new THREE.Vector3(0, 0, 0);
     // ponytail: use cached matrix — was: new THREE.Matrix4() every frame
     this.meshes.forEach(mesh => {
       for (let j = 0; j < this.count; j++) mesh.setMatrixAt(j, this._deadMatrix);
@@ -77,8 +80,14 @@ export class Leaves {
     for (let i = 0; i < this.particles.length; i++) {
       const p = this.particles[i];
       p.lifetime += delta;
-      if (p.lifetime >= p.maxLifetime) {
-        this.particles[i] = this.spawnParticle();
+
+      // Cull and respawn if too far from the camera to avoid wasted calculations
+      const dx = p.position.x - center.x;
+      const dz = p.position.z - center.z;
+      const distSq = dx * dx + dz * dz;
+
+      if (p.lifetime >= p.maxLifetime || distSq > 150.0 * 150.0) {
+        this.particles[i] = this.spawnParticle(center);
         this.particles[i].lifetime = 0;
         continue;
       }

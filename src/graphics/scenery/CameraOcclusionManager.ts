@@ -34,7 +34,7 @@ const DEFAULTS: Required<CameraOcclusionConfig> = {
   coneFalloff: 0.9,
   playerHeightOffset: 1.0,
   excludedNames: ['terrain', 'water', 'floor'],
-  cutoutStyle: 'solid',
+  cutoutStyle: 'stipple',
   leafMinOpacity: 0.12,
   leafFadeRadius: 2.2,
   leafFadeSpeed: 6.0,
@@ -79,19 +79,24 @@ function ptToSegDistSq(P: THREE.Vector3, A: THREE.Vector3, B: THREE.Vector3): nu
 function patchMaterial(
   mat: THREE.Material,
   uniforms: OcclusionUniforms,
-  cutoutStyle: 'solid' | 'stipple'
+  cutoutStyle: 'solid' | 'stipple',
+  isLeafMat: boolean
 ): void {
   const prev = mat.onBeforeCompile;
 
   mat.onBeforeCompile = (shader, renderer) => {
     prev?.call(mat, shader, renderer);
-    Object.assign(shader.uniforms, uniforms);
+    Object.assign(shader.uniforms, uniforms, {
+      uIsLeaf: { value: isLeafMat ? 1.0 : 0.0 }
+    });
 
-    // ── Vertex shader: pass world-space position to fragment ──
+    // ── Vertex shader: pass world-space position, object center, and scale to fragment ──
     shader.vertexShader = shader.vertexShader.replace(
       '#include <common>',
       `#include <common>
-       varying vec3 vHoloWorldPos;`
+       varying vec3 vHoloWorldPos;
+       varying vec3 vObjCenter;
+       varying float vScale;`
     );
     shader.vertexShader = shader.vertexShader.replace(
       '#include <project_vertex>',
@@ -99,6 +104,11 @@ function patchMaterial(
        vec4 _tmpWP = vec4(transformed, 1.0);
        #ifdef USE_INSTANCING
          _tmpWP = instanceMatrix * _tmpWP;
+         vObjCenter = (modelMatrix * vec4(instanceMatrix[3].xyz, 1.0)).xyz;
+         vScale = length(instanceMatrix[0].xyz);
+       #else
+         vObjCenter = (modelMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+         vScale = 1.0;
        #endif
        _tmpWP = modelMatrix * _tmpWP;
        vHoloWorldPos = _tmpWP.xyz;`
@@ -118,7 +128,10 @@ function patchMaterial(
        uniform float uNearConeRadius;
        uniform float uNearClipDistance;
        uniform float uConeFalloff;
+       uniform float uIsLeaf;
        varying vec3  vHoloWorldPos;
+       varying vec3  vObjCenter;
+       varying float vScale;
        ${stippleFn}`
     );
 
@@ -131,8 +144,16 @@ function patchMaterial(
       `#include <dithering_fragment>
        {
          vec3 pa=vHoloWorldPos-uCamPos;
-         float distCam=length(pa);
-         if(distCam<uNearClipDistance){${discard}}
+         
+         // Deteksi masuk ke volume daun secara adaptif berdasarkan posisi horizontal (X-Z) kamera ke pusat pohon
+         float distCamToCenterXZ = length(uCamPos.xz - vObjCenter.xz);
+         // Radius culling dedaunan disesuaikan secara dinamis dengan skala pohon (TwistedTree besar -> radius culling besar)
+         float leafCullRadius = vScale * 4.2;
+
+         if(uIsLeaf > 0.5 && distCamToCenterXZ < leafCullRadius) {
+             discard;
+         }
+
          vec3 ba=uPlayerPos-uCamPos;
          float baSq=max(dot(ba,ba),1e-5);
          float hRaw=dot(pa,ba)/baSq;
@@ -243,7 +264,8 @@ export class CameraOcclusionManager {
     // Drain patch queue at budget
     let patched = 0;
     while (this.patchQueue.length > 0 && patched < this.PATCH_BUDGET) {
-      patchMaterial(this.patchQueue.shift()!, this.uniforms, this.cfg.cutoutStyle);
+      const mat = this.patchQueue.shift()!;
+      patchMaterial(mat, this.uniforms, this.cfg.cutoutStyle, isLeaf(mat));
       patched++;
     }
 

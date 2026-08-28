@@ -1,0 +1,1864 @@
+[
+  {
+    "x": -221.3,
+    "z": -161.7,
+    "type": "Rock_Medium_3",
+    "scale": 0.95,
+    "rotation": 0.03
+  },
+  {
+    "x": -222.5,
+    "z": 78,
+    "type": "Rock_Medium_3",
+    "scale": 1.51,
+    "rotation": 2.56
+  },
+  {
+    "x": -218.6,
+    "z": 90.1,
+    "type": "Rock_Medium_3",
+    "scale": 0.88,
+    "rotation": 3.93
+  },
+  {
+    "x": -225.6,
+    "z": 104.2,
+    "type": "Pebble_Round_1",
+    "scale": 1.22,
+    "rotation": 4.2
+  },
+  {
+    "x": -218.3,
+    "z": 119.2,
+    "type": "Pebble_Square_3",
+    "scale": 1.26,
+    "rotation": 4.45
+  },
+  {
+    "x": -227.5,
+    "z": 147.4,
+    "type": "Rock_Medium_2",
+    "scale": 1.92,
+    "rotation": 0.69
+  },
+  {
+    "x": -219.9,
+    "z": 160.9,
+    "type": "Rock_Medium_2",
+    "scale": 1.45,
+    "rotation": 0.56
+  },
+  {
+    "x": -211.2,
+    "z": -160.9,
+    "type": "Rock_Medium_1",
+    "scale": 1.33,
+    "rotation": 5.4
+  },
+  {
+    "x": -205.3,
+    "z": -151,
+    "type": "Pebble_Square_5",
+    "scale": 1.39,
+    "rotation": 3.77
+  },
+  {
+    "x": -205.7,
+    "z": 104.4,
+    "type": "Pebble_Round_2",
+    "scale": 1.35,
+    "rotation": 4.4
+  },
+  {
+    "x": -205.5,
+    "z": 117.8,
+    "type": "Pebble_Square_2",
+    "scale": 1.89,
+    "rotation": 5.43
+  },
+  {
+    "x": -209.4,
+    "z": 132,
+    "type": "Pebble_Square_1",
+    "scale": 1.77,
+    "rotation": 4.68
+  },
+  {
+    "x": -209.8,
+    "z": 146.9,
+    "type": "Pebble_Square_1",
+    "scale": 1.67,
+    "rotation": 4.76
+  },
+  {
+    "x": -204.9,
+    "z": 159.6,
+    "type": "Rock_Medium_3",
+    "scale": 1.12,
+    "rotation": 2.7
+  },
+  {
+    "x": -199.8,
+    "z": -166.4,
+    "type": "Pebble_Square_4",
+    "scale": 1.24,
+    "rotation": 6.25
+  },
+  {
+    "x": -194.3,
+    "z": -147,
+    "type": "Rock_Medium_1",
+    "scale": 1.82,
+    "rotation": 2.19
+  },
+  {
+    "x": -199.4,
+    "z": 86.2,
+    "type": "Pebble_Square_6",
+    "scale": 1.72,
+    "rotation": 2.77
+  },
+  {
+    "x": -199.4,
+    "z": 129.4,
+    "type": "Pebble_Round_4",
+    "scale": 1.87,
+    "rotation": 6.27
+  },
+  {
+    "x": -192.3,
+    "z": 145.9,
+    "type": "Rock_Medium_1",
+    "scale": 0.88,
+    "rotation": 1.3
+  },
+  {
+    "x": -193.9,
+    "z": 159.9,
+    "type": "Pebble_Round_4",
+    "scale": 1.83,
+    "rotation": 2.42
+  },
+  {
+    "x": -180.7,
+    "z": -130.2,
+    "type": "Rock_Medium_1",
+    "scale": 1.34,
+    "rotation": 5.89
+  },
+  {
+    "x": -184.6,
+    "z": 107.9,
+    "type": "Pebble_Square_3",
+    "scale": 2.14,
+    "rotation": 1.78
+  },
+  {
+    "x": -180,
+    "z": 116.4,
+    "type": "Pebble_Round_1",
+    "scale": 1.61,
+    "rotation": 3.28
+  },
+  {
+    "x": -181.6,
+    "z": 126.7,
+    "type": "Pebble_Square_5",
+    "scale": 1.14,
+    "rotation": 4.92
+  },
+  {
+    "x": -181.3,
+    "z": 149.1,
+    "type": "Pebble_Square_2",
+    "scale": 1.34,
+    "rotation": 2.16
+  },
+  {
+    "x": -169.7,
+    "z": 117,
+    "type": "Pebble_Round_2",
+    "scale": 1.02,
+    "rotation": 4.67
+  },
+  {
+    "x": -162.4,
+    "z": 128,
+    "type": "Pebble_Round_5",
+    "scale": 0.85,
+    "rotation": 1.69
+  },
+  {
+    "x": -170.5,
+    "z": 149.1,
+    "type": "Pebble_Square_1",
+    "scale": 2.02,
+    "rotation": 4.97
+  },
+  {
+    "x": -165.3,
+    "z": 161.3,
+    "type": "Pebble_Round_5",
+    "scale": 1.39,
+    "rotation": 0.15
+  },
+  {
+    "x": -153.4,
+    "z": -166.5,
+    "type": "Rock_Medium_1",
+    "scale": 0.98,
+    "rotation": 3.16
+  },
+  {
+    "x": -151.8,
+    "z": 146.6,
+    "type": "Pebble_Square_5",
+    "scale": 0.95,
+    "rotation": 1.99
+  },
+  {
+    "x": -152.4,
+    "z": 161.6,
+    "type": "Rock_Medium_1",
+    "scale": 1.68,
+    "rotation": 1.81
+  },
+  {
+    "x": -138.6,
+    "z": -159.8,
+    "type": "Pebble_Round_1",
+    "scale": 1.36,
+    "rotation": 1.35
+  },
+  {
+    "x": -141.5,
+    "z": 145.1,
+    "type": "Pebble_Square_3",
+    "scale": 2.16,
+    "rotation": 4.3
+  },
+  {
+    "x": -143.1,
+    "z": 161.7,
+    "type": "Rock_Medium_1",
+    "scale": 2.15,
+    "rotation": 2.12
+  },
+  {
+    "x": -126.1,
+    "z": 145.2,
+    "type": "Pebble_Square_5",
+    "scale": 0.97,
+    "rotation": 3.86
+  },
+  {
+    "x": -123.2,
+    "z": 156.2,
+    "type": "Pebble_Square_3",
+    "scale": 1.6,
+    "rotation": 1.33
+  },
+  {
+    "x": -110.4,
+    "z": -145.5,
+    "type": "Rock_Medium_3",
+    "scale": 2.01,
+    "rotation": 1.25
+  },
+  {
+    "x": -109.3,
+    "z": 135.1,
+    "type": "Pebble_Round_1",
+    "scale": 1.94,
+    "rotation": 2.46
+  },
+  {
+    "x": -108.6,
+    "z": 145.6,
+    "type": "Pebble_Square_3",
+    "scale": 2.05,
+    "rotation": 5.96
+  },
+  {
+    "x": -114.8,
+    "z": 157.8,
+    "type": "Pebble_Round_3",
+    "scale": 1.76,
+    "rotation": 2.06
+  },
+  {
+    "x": -95.7,
+    "z": -148.4,
+    "type": "Rock_Medium_2",
+    "scale": 1.62,
+    "rotation": 5.2
+  },
+  {
+    "x": -93.2,
+    "z": -138.8,
+    "type": "Pebble_Square_4",
+    "scale": 2.11,
+    "rotation": 0.38
+  },
+  {
+    "x": -95.1,
+    "z": -120.1,
+    "type": "Pebble_Round_5",
+    "scale": 1.57,
+    "rotation": 5.72
+  },
+  {
+    "x": -99.9,
+    "z": 100,
+    "type": "Pebble_Square_1",
+    "scale": 1.33,
+    "rotation": 0.7
+  },
+  {
+    "x": -99.2,
+    "z": 118,
+    "type": "Rock_Medium_2",
+    "scale": 1.77,
+    "rotation": 0.98
+  },
+  {
+    "x": -101.7,
+    "z": 135.4,
+    "type": "Rock_Medium_3",
+    "scale": 1.75,
+    "rotation": 4.69
+  },
+  {
+    "x": -97.4,
+    "z": 146.7,
+    "type": "Pebble_Round_3",
+    "scale": 1.7,
+    "rotation": 4.88
+  },
+  {
+    "x": -96.4,
+    "z": 161.7,
+    "type": "Pebble_Square_3",
+    "scale": 1.71,
+    "rotation": 0.36
+  },
+  {
+    "x": -82.1,
+    "z": 116.7,
+    "type": "Pebble_Square_6",
+    "scale": 1.35,
+    "rotation": 2.58
+  },
+  {
+    "x": -82.6,
+    "z": 133.7,
+    "type": "Pebble_Square_3",
+    "scale": 1.28,
+    "rotation": 2.32
+  },
+  {
+    "x": -84.2,
+    "z": 146.6,
+    "type": "Rock_Medium_2",
+    "scale": 2.16,
+    "rotation": 2.06
+  },
+  {
+    "x": -85.9,
+    "z": 157.2,
+    "type": "Pebble_Square_1",
+    "scale": 1.16,
+    "rotation": 3.81
+  },
+  {
+    "x": -70.9,
+    "z": -164.8,
+    "type": "Pebble_Square_6",
+    "scale": 1.67,
+    "rotation": 4.2
+  },
+  {
+    "x": -72.3,
+    "z": 132.5,
+    "type": "Pebble_Square_3",
+    "scale": 1.16,
+    "rotation": 1.88
+  },
+  {
+    "x": -64.5,
+    "z": 147.9,
+    "type": "Pebble_Round_1",
+    "scale": 1.79,
+    "rotation": 0.58
+  },
+  {
+    "x": -69.3,
+    "z": 163.5,
+    "type": "Pebble_Square_2",
+    "scale": 1.84,
+    "rotation": 0.16
+  },
+  {
+    "x": -52.3,
+    "z": -162.4,
+    "type": "Pebble_Square_2",
+    "scale": 1.56,
+    "rotation": 1.99
+  },
+  {
+    "x": -56.6,
+    "z": 128.4,
+    "type": "Rock_Medium_2",
+    "scale": 1.44,
+    "rotation": 6.15
+  },
+  {
+    "x": -54.6,
+    "z": 146.4,
+    "type": "Pebble_Square_5",
+    "scale": 1.7,
+    "rotation": 5.23
+  },
+  {
+    "x": -55,
+    "z": 155.7,
+    "type": "Rock_Medium_3",
+    "scale": 1.71,
+    "rotation": 5.32
+  },
+  {
+    "x": -36.2,
+    "z": -167.8,
+    "type": "Pebble_Round_3",
+    "scale": 1.46,
+    "rotation": 5.65
+  },
+  {
+    "x": -44.1,
+    "z": 103.9,
+    "type": "Pebble_Round_2",
+    "scale": 2.04,
+    "rotation": 4.74
+  },
+  {
+    "x": -43.9,
+    "z": 114.5,
+    "type": "Pebble_Square_1",
+    "scale": 1.14,
+    "rotation": 5.66
+  },
+  {
+    "x": -38.3,
+    "z": 135.7,
+    "type": "Rock_Medium_2",
+    "scale": 1.64,
+    "rotation": 1.39
+  },
+  {
+    "x": -39.2,
+    "z": 158.8,
+    "type": "Rock_Medium_1",
+    "scale": 1.72,
+    "rotation": 5.56
+  },
+  {
+    "x": -24.2,
+    "z": 84.4,
+    "type": "Pebble_Square_6",
+    "scale": 2.05,
+    "rotation": 0.24
+  },
+  {
+    "x": -31.2,
+    "z": 101.4,
+    "type": "Pebble_Round_3",
+    "scale": 1.94,
+    "rotation": 6.03
+  },
+  {
+    "x": -26,
+    "z": 115.5,
+    "type": "Pebble_Square_1",
+    "scale": 1.55,
+    "rotation": 2.03
+  },
+  {
+    "x": -24.4,
+    "z": 134.3,
+    "type": "Pebble_Square_4",
+    "scale": 1.15,
+    "rotation": 2.95
+  },
+  {
+    "x": -25.4,
+    "z": 146.7,
+    "type": "Rock_Medium_1",
+    "scale": 2.05,
+    "rotation": 5.94
+  },
+  {
+    "x": -28.4,
+    "z": 160.1,
+    "type": "Pebble_Square_2",
+    "scale": 1.54,
+    "rotation": 3.4
+  },
+  {
+    "x": -13.1,
+    "z": -164,
+    "type": "Rock_Medium_2",
+    "scale": 1.08,
+    "rotation": 2.49
+  },
+  {
+    "x": -13.8,
+    "z": 85.2,
+    "type": "Pebble_Square_5",
+    "scale": 1.6,
+    "rotation": 1.75
+  },
+  {
+    "x": -10.7,
+    "z": 104.9,
+    "type": "Pebble_Round_1",
+    "scale": 1.48,
+    "rotation": 4.99
+  },
+  {
+    "x": -10.2,
+    "z": 120.1,
+    "type": "Rock_Medium_2",
+    "scale": 1.96,
+    "rotation": 5.84
+  },
+  {
+    "x": -15.1,
+    "z": 131.3,
+    "type": "Pebble_Round_5",
+    "scale": 2,
+    "rotation": 5.57
+  },
+  {
+    "x": -2.8,
+    "z": -163.5,
+    "type": "Pebble_Round_4",
+    "scale": 1.92,
+    "rotation": 2.03
+  },
+  {
+    "x": 0.2,
+    "z": 88.9,
+    "type": "Rock_Medium_2",
+    "scale": 1.39,
+    "rotation": 2.71
+  },
+  {
+    "x": 2.5,
+    "z": 105.3,
+    "type": "Pebble_Round_1",
+    "scale": 1.94,
+    "rotation": 1.88
+  },
+  {
+    "x": -1.7,
+    "z": 117.1,
+    "type": "Pebble_Round_1",
+    "scale": 1.02,
+    "rotation": 2.68
+  },
+  {
+    "x": 10.9,
+    "z": -163.5,
+    "type": "Pebble_Square_3",
+    "scale": 0.91,
+    "rotation": 3.79
+  },
+  {
+    "x": 19,
+    "z": -152.2,
+    "type": "Pebble_Square_4",
+    "scale": 0.94,
+    "rotation": 3.3
+  },
+  {
+    "x": 16.9,
+    "z": -135.6,
+    "type": "Rock_Medium_2",
+    "scale": 2.08,
+    "rotation": 1.66
+  },
+  {
+    "x": 19.2,
+    "z": -124.5,
+    "type": "Pebble_Square_1",
+    "scale": 2.1,
+    "rotation": 2.97
+  },
+  {
+    "x": 13.2,
+    "z": 85.3,
+    "type": "Pebble_Round_3",
+    "scale": 1.67,
+    "rotation": 0.79
+  },
+  {
+    "x": 15.5,
+    "z": 107.1,
+    "type": "Pebble_Square_5",
+    "scale": 1.63,
+    "rotation": 3.6
+  },
+  {
+    "x": 12.8,
+    "z": 120.3,
+    "type": "Pebble_Round_2",
+    "scale": 1.68,
+    "rotation": 3.6
+  },
+  {
+    "x": 18.2,
+    "z": 126.3,
+    "type": "Pebble_Round_3",
+    "scale": 1.88,
+    "rotation": 4.84
+  },
+  {
+    "x": 27.9,
+    "z": -130.5,
+    "type": "Rock_Medium_2",
+    "scale": 1.57,
+    "rotation": 1.57
+  },
+  {
+    "x": 27.9,
+    "z": -122,
+    "type": "Pebble_Square_6",
+    "scale": 1.99,
+    "rotation": 3.58
+  },
+  {
+    "x": 32.9,
+    "z": 91.7,
+    "type": "Pebble_Square_1",
+    "scale": 0.9,
+    "rotation": 2.74
+  },
+  {
+    "x": 25.5,
+    "z": 106.6,
+    "type": "Pebble_Round_2",
+    "scale": 1.62,
+    "rotation": 3.49
+  },
+  {
+    "x": 30.5,
+    "z": 113.7,
+    "type": "Pebble_Square_6",
+    "scale": 0.83,
+    "rotation": 1.88
+  },
+  {
+    "x": 32.9,
+    "z": 134.6,
+    "type": "Pebble_Square_2",
+    "scale": 1.67,
+    "rotation": 5.88
+  },
+  {
+    "x": 42.3,
+    "z": -137.4,
+    "type": "Pebble_Square_2",
+    "scale": 1.93,
+    "rotation": 4.47
+  },
+  {
+    "x": 39.7,
+    "z": 88.5,
+    "type": "Rock_Medium_2",
+    "scale": 1.47,
+    "rotation": 0.22
+  },
+  {
+    "x": 46.6,
+    "z": 121.2,
+    "type": "Pebble_Round_2",
+    "scale": 1.22,
+    "rotation": 5.28
+  },
+  {
+    "x": 43.3,
+    "z": 133.9,
+    "type": "Pebble_Square_1",
+    "scale": 2.01,
+    "rotation": 5.42
+  },
+  {
+    "x": 52.6,
+    "z": -163,
+    "type": "Pebble_Round_5",
+    "scale": 1.39,
+    "rotation": 5.28
+  },
+  {
+    "x": 60.6,
+    "z": -106.2,
+    "type": "Pebble_Square_3",
+    "scale": 1.82,
+    "rotation": 1.58
+  },
+  {
+    "x": 59.2,
+    "z": -95.1,
+    "type": "Pebble_Square_3",
+    "scale": 1.25,
+    "rotation": 2.12
+  },
+  {
+    "x": 61.3,
+    "z": 148.3,
+    "type": "Pebble_Round_4",
+    "scale": 1.67,
+    "rotation": 5.91
+  },
+  {
+    "x": 59.2,
+    "z": 162.1,
+    "type": "Pebble_Round_2",
+    "scale": 0.97,
+    "rotation": 3.81
+  },
+  {
+    "x": 72.8,
+    "z": -164.5,
+    "type": "Pebble_Square_2",
+    "scale": 1.33,
+    "rotation": 5.4
+  },
+  {
+    "x": 71.5,
+    "z": -108.2,
+    "type": "Pebble_Round_5",
+    "scale": 0.89,
+    "rotation": 2.32
+  },
+  {
+    "x": 68.7,
+    "z": -90.7,
+    "type": "Pebble_Square_3",
+    "scale": 2.06,
+    "rotation": 1.94
+  },
+  {
+    "x": 70.8,
+    "z": -82.7,
+    "type": "Pebble_Round_2",
+    "scale": 1.43,
+    "rotation": 4.31
+  },
+  {
+    "x": 69,
+    "z": 155.6,
+    "type": "Rock_Medium_1",
+    "scale": 2,
+    "rotation": 4.14
+  },
+  {
+    "x": 89.2,
+    "z": -147.9,
+    "type": "Pebble_Square_1",
+    "scale": 1.93,
+    "rotation": 5.93
+  },
+  {
+    "x": 80.9,
+    "z": -139.6,
+    "type": "Pebble_Round_1",
+    "scale": 1.46,
+    "rotation": 0.54
+  },
+  {
+    "x": 81.4,
+    "z": -119.4,
+    "type": "Pebble_Square_1",
+    "scale": 1.42,
+    "rotation": 5.14
+  },
+  {
+    "x": 81.3,
+    "z": -103.6,
+    "type": "Rock_Medium_2",
+    "scale": 1.86,
+    "rotation": 0.86
+  },
+  {
+    "x": 84.8,
+    "z": -92.9,
+    "type": "Rock_Medium_2",
+    "scale": 1.58,
+    "rotation": 4.54
+  },
+  {
+    "x": 99.4,
+    "z": -136.3,
+    "type": "Pebble_Square_4",
+    "scale": 1.29,
+    "rotation": 1.67
+  },
+  {
+    "x": 101.1,
+    "z": -117.9,
+    "type": "Pebble_Round_3",
+    "scale": 0.95,
+    "rotation": 5.2
+  },
+  {
+    "x": 98.7,
+    "z": -102.2,
+    "type": "Pebble_Round_3",
+    "scale": 1.7,
+    "rotation": 4.61
+  },
+  {
+    "x": 97.5,
+    "z": -91,
+    "type": "Pebble_Square_3",
+    "scale": 1.85,
+    "rotation": 4.45
+  },
+  {
+    "x": 103.8,
+    "z": -81.2,
+    "type": "Pebble_Round_4",
+    "scale": 2.13,
+    "rotation": 3.48
+  },
+  {
+    "x": 94.6,
+    "z": -67.8,
+    "type": "Pebble_Round_5",
+    "scale": 1.61,
+    "rotation": 3.99
+  },
+  {
+    "x": 103,
+    "z": -46.2,
+    "type": "Pebble_Square_3",
+    "scale": 2,
+    "rotation": 3.04
+  },
+  {
+    "x": 100.8,
+    "z": -34.6,
+    "type": "Pebble_Square_5",
+    "scale": 1.31,
+    "rotation": 3.94
+  },
+  {
+    "x": 103.7,
+    "z": -19,
+    "type": "Pebble_Square_3",
+    "scale": 1.2,
+    "rotation": 1.8
+  },
+  {
+    "x": 103.4,
+    "z": -6.1,
+    "type": "Pebble_Square_2",
+    "scale": 1.13,
+    "rotation": 1.53
+  },
+  {
+    "x": 98.7,
+    "z": 1.6,
+    "type": "Rock_Medium_2",
+    "scale": 1.93,
+    "rotation": 4.7
+  },
+  {
+    "x": 102.8,
+    "z": 14.2,
+    "type": "Pebble_Square_3",
+    "scale": 1.26,
+    "rotation": 1.27
+  },
+  {
+    "x": 101.2,
+    "z": 28.3,
+    "type": "Pebble_Round_4",
+    "scale": 1.32,
+    "rotation": 5.97
+  },
+  {
+    "x": 99.6,
+    "z": 42.5,
+    "type": "Rock_Medium_2",
+    "scale": 2.07,
+    "rotation": 5.66
+  },
+  {
+    "x": 109,
+    "z": -152.2,
+    "type": "Pebble_Round_3",
+    "scale": 1.35,
+    "rotation": 0.26
+  },
+  {
+    "x": 114.8,
+    "z": -139.3,
+    "type": "Pebble_Square_6",
+    "scale": 1.06,
+    "rotation": 3.13
+  },
+  {
+    "x": 116.7,
+    "z": -123.3,
+    "type": "Pebble_Square_3",
+    "scale": 1.18,
+    "rotation": 0.88
+  },
+  {
+    "x": 111.5,
+    "z": -103.1,
+    "type": "Pebble_Round_5",
+    "scale": 1.25,
+    "rotation": 0.91
+  },
+  {
+    "x": 112.8,
+    "z": -95.7,
+    "type": "Pebble_Round_2",
+    "scale": 0.94,
+    "rotation": 0.97
+  },
+  {
+    "x": 110.4,
+    "z": -60.7,
+    "type": "Pebble_Round_1",
+    "scale": 1.03,
+    "rotation": 2.53
+  },
+  {
+    "x": 109.1,
+    "z": -52,
+    "type": "Rock_Medium_2",
+    "scale": 1.92,
+    "rotation": 2.45
+  },
+  {
+    "x": 116.4,
+    "z": -34.5,
+    "type": "Pebble_Square_6",
+    "scale": 0.97,
+    "rotation": 2.3
+  },
+  {
+    "x": 109.8,
+    "z": -27.3,
+    "type": "Pebble_Square_6",
+    "scale": 1.61,
+    "rotation": 3.04
+  },
+  {
+    "x": 117.6,
+    "z": -10.4,
+    "type": "Pebble_Square_3",
+    "scale": 1.96,
+    "rotation": 4.61
+  },
+  {
+    "x": 109.5,
+    "z": 22,
+    "type": "Rock_Medium_1",
+    "scale": 1.22,
+    "rotation": 3.07
+  },
+  {
+    "x": 114.2,
+    "z": 33.3,
+    "type": "Pebble_Square_2",
+    "scale": 1.46,
+    "rotation": 4.94
+  },
+  {
+    "x": 116.5,
+    "z": 45.5,
+    "type": "Pebble_Round_1",
+    "scale": 1.62,
+    "rotation": 2.32
+  },
+  {
+    "x": 113,
+    "z": 103.2,
+    "type": "Pebble_Round_5",
+    "scale": 1.09,
+    "rotation": 3.21
+  },
+  {
+    "x": 122.7,
+    "z": -138,
+    "type": "Pebble_Square_5",
+    "scale": 1.16,
+    "rotation": 1.63
+  },
+  {
+    "x": 123.3,
+    "z": -105.9,
+    "type": "Rock_Medium_1",
+    "scale": 1.39,
+    "rotation": 2.2
+  },
+  {
+    "x": 126.2,
+    "z": -94.8,
+    "type": "Pebble_Square_2",
+    "scale": 0.92,
+    "rotation": 2.5
+  },
+  {
+    "x": 130.4,
+    "z": -76.4,
+    "type": "Pebble_Square_2",
+    "scale": 0.82,
+    "rotation": 4.07
+  },
+  {
+    "x": 122.5,
+    "z": -64.8,
+    "type": "Pebble_Square_1",
+    "scale": 1.93,
+    "rotation": 0.45
+  },
+  {
+    "x": 131.4,
+    "z": -46.2,
+    "type": "Pebble_Round_3",
+    "scale": 1.37,
+    "rotation": 5.08
+  },
+  {
+    "x": 126.2,
+    "z": -37.2,
+    "type": "Pebble_Square_1",
+    "scale": 0.82,
+    "rotation": 0.55
+  },
+  {
+    "x": 129.6,
+    "z": -27.1,
+    "type": "Pebble_Square_1",
+    "scale": 1.27,
+    "rotation": 0.71
+  },
+  {
+    "x": 129,
+    "z": -6.8,
+    "type": "Pebble_Square_5",
+    "scale": 2.04,
+    "rotation": 2.15
+  },
+  {
+    "x": 125.6,
+    "z": 8.5,
+    "type": "Pebble_Square_6",
+    "scale": 1.09,
+    "rotation": 0.4
+  },
+  {
+    "x": 129.5,
+    "z": 16.6,
+    "type": "Pebble_Square_3",
+    "scale": 1.07,
+    "rotation": 2.95
+  },
+  {
+    "x": 127.3,
+    "z": 29.5,
+    "type": "Pebble_Square_2",
+    "scale": 1.72,
+    "rotation": 3.57
+  },
+  {
+    "x": 137.2,
+    "z": -106.2,
+    "type": "Pebble_Square_2",
+    "scale": 1.32,
+    "rotation": 3.64
+  },
+  {
+    "x": 144.7,
+    "z": -96.5,
+    "type": "Pebble_Square_1",
+    "scale": 2.08,
+    "rotation": 3.54
+  },
+  {
+    "x": 143.9,
+    "z": -61,
+    "type": "Rock_Medium_3",
+    "scale": 1.29,
+    "rotation": 0.45
+  },
+  {
+    "x": 145.7,
+    "z": -50.6,
+    "type": "Pebble_Square_4",
+    "scale": 1.22,
+    "rotation": 3.83
+  },
+  {
+    "x": 140.9,
+    "z": -35.1,
+    "type": "Pebble_Square_4",
+    "scale": 1.31,
+    "rotation": 2.16
+  },
+  {
+    "x": 137.7,
+    "z": -20.2,
+    "type": "Pebble_Round_2",
+    "scale": 1.47,
+    "rotation": 3.32
+  },
+  {
+    "x": 137.5,
+    "z": -5.2,
+    "type": "Pebble_Square_4",
+    "scale": 2.02,
+    "rotation": 3.69
+  },
+  {
+    "x": 145.7,
+    "z": 8.5,
+    "type": "Pebble_Square_4",
+    "scale": 1.81,
+    "rotation": 5.35
+  },
+  {
+    "x": 139.6,
+    "z": 14.2,
+    "type": "Pebble_Square_4",
+    "scale": 1.09,
+    "rotation": 2.01
+  },
+  {
+    "x": 137.6,
+    "z": 33.5,
+    "type": "Pebble_Round_2",
+    "scale": 0.8,
+    "rotation": 3.7
+  },
+  {
+    "x": 142.6,
+    "z": 50.6,
+    "type": "Pebble_Round_3",
+    "scale": 1.21,
+    "rotation": 2.37
+  },
+  {
+    "x": 158.8,
+    "z": -118.6,
+    "type": "Pebble_Round_2",
+    "scale": 2.12,
+    "rotation": 3.06
+  },
+  {
+    "x": 150.5,
+    "z": -103.2,
+    "type": "Pebble_Square_4",
+    "scale": 1.03,
+    "rotation": 1.48
+  },
+  {
+    "x": 152.8,
+    "z": -92.8,
+    "type": "Pebble_Square_1",
+    "scale": 1.08,
+    "rotation": 1.26
+  },
+  {
+    "x": 153.4,
+    "z": -80.3,
+    "type": "Pebble_Square_6",
+    "scale": 2.09,
+    "rotation": 5.35
+  },
+  {
+    "x": 152.8,
+    "z": -61.6,
+    "type": "Rock_Medium_2",
+    "scale": 1.13,
+    "rotation": 1.27
+  },
+  {
+    "x": 152.7,
+    "z": -38.3,
+    "type": "Pebble_Square_4",
+    "scale": 1.02,
+    "rotation": 4.42
+  },
+  {
+    "x": 150.4,
+    "z": -20.4,
+    "type": "Pebble_Round_5",
+    "scale": 1.62,
+    "rotation": 0.86
+  },
+  {
+    "x": 159.8,
+    "z": -7.2,
+    "type": "Pebble_Square_2",
+    "scale": 2.18,
+    "rotation": 0.24
+  },
+  {
+    "x": 158.5,
+    "z": 3.6,
+    "type": "Pebble_Round_5",
+    "scale": 2.01,
+    "rotation": 5.11
+  },
+  {
+    "x": 153.8,
+    "z": 18.9,
+    "type": "Rock_Medium_2",
+    "scale": 1.93,
+    "rotation": 0.63
+  },
+  {
+    "x": 158.4,
+    "z": 31.8,
+    "type": "Pebble_Round_4",
+    "scale": 1.48,
+    "rotation": 1.73
+  },
+  {
+    "x": 156.7,
+    "z": 51.8,
+    "type": "Pebble_Square_2",
+    "scale": 1.61,
+    "rotation": 5.44
+  },
+  {
+    "x": 166.9,
+    "z": -131.3,
+    "type": "Pebble_Square_5",
+    "scale": 1.4,
+    "rotation": 6.08
+  },
+  {
+    "x": 171.2,
+    "z": -124.5,
+    "type": "Pebble_Round_5",
+    "scale": 1.11,
+    "rotation": 3.09
+  },
+  {
+    "x": 172.6,
+    "z": -105.1,
+    "type": "Rock_Medium_3",
+    "scale": 0.92,
+    "rotation": 2.93
+  },
+  {
+    "x": 171.2,
+    "z": -96,
+    "type": "Pebble_Round_3",
+    "scale": 1.46,
+    "rotation": 4.15
+  },
+  {
+    "x": 169.6,
+    "z": -79.1,
+    "type": "Pebble_Round_5",
+    "scale": 1.55,
+    "rotation": 1.45
+  },
+  {
+    "x": 172.5,
+    "z": -61.7,
+    "type": "Pebble_Round_5",
+    "scale": 1.1,
+    "rotation": 5.47
+  },
+  {
+    "x": 168.8,
+    "z": -51.3,
+    "type": "Rock_Medium_2",
+    "scale": 2.15,
+    "rotation": 3.67
+  },
+  {
+    "x": 164.3,
+    "z": -33.3,
+    "type": "Rock_Medium_3",
+    "scale": 2.07,
+    "rotation": 3.3
+  },
+  {
+    "x": 170.9,
+    "z": -26,
+    "type": "Pebble_Round_2",
+    "scale": 1.02,
+    "rotation": 4.71
+  },
+  {
+    "x": 172.7,
+    "z": -11.8,
+    "type": "Pebble_Square_4",
+    "scale": 1.25,
+    "rotation": 2.63
+  },
+  {
+    "x": 165.4,
+    "z": 20.9,
+    "type": "Rock_Medium_2",
+    "scale": 1.1,
+    "rotation": 0.29
+  },
+  {
+    "x": 168.9,
+    "z": 29.5,
+    "type": "Pebble_Round_4",
+    "scale": 2.08,
+    "rotation": 3.2
+  },
+  {
+    "x": 171.2,
+    "z": 50.6,
+    "type": "Pebble_Square_5",
+    "scale": 0.91,
+    "rotation": 1.78
+  },
+  {
+    "x": 172.2,
+    "z": 62.3,
+    "type": "Pebble_Square_6",
+    "scale": 0.96,
+    "rotation": 4.14
+  },
+  {
+    "x": 178.2,
+    "z": -146,
+    "type": "Pebble_Round_5",
+    "scale": 1.8,
+    "rotation": 2.29
+  },
+  {
+    "x": 178.3,
+    "z": -134.7,
+    "type": "Pebble_Square_2",
+    "scale": 1.64,
+    "rotation": 0.21
+  },
+  {
+    "x": 185.1,
+    "z": -125.3,
+    "type": "Pebble_Square_5",
+    "scale": 1.91,
+    "rotation": 2.06
+  },
+  {
+    "x": 181.8,
+    "z": -103.6,
+    "type": "Pebble_Square_3",
+    "scale": 2.08,
+    "rotation": 3.11
+  },
+  {
+    "x": 185,
+    "z": -91.7,
+    "type": "Rock_Medium_1",
+    "scale": 2.17,
+    "rotation": 0.81
+  },
+  {
+    "x": 181.1,
+    "z": -74.3,
+    "type": "Pebble_Square_3",
+    "scale": 2.19,
+    "rotation": 5.87
+  },
+  {
+    "x": 180.2,
+    "z": -49.9,
+    "type": "Pebble_Round_5",
+    "scale": 1.26,
+    "rotation": 5.6
+  },
+  {
+    "x": 183.7,
+    "z": -39,
+    "type": "Pebble_Square_2",
+    "scale": 0.96,
+    "rotation": 0.45
+  },
+  {
+    "x": 180,
+    "z": -19.4,
+    "type": "Rock_Medium_3",
+    "scale": 1.39,
+    "rotation": 0.76
+  },
+  {
+    "x": 185.7,
+    "z": 20.2,
+    "type": "Pebble_Square_6",
+    "scale": 1.03,
+    "rotation": 1.78
+  },
+  {
+    "x": 183.9,
+    "z": 31.5,
+    "type": "Pebble_Round_3",
+    "scale": 2.18,
+    "rotation": 4.29
+  },
+  {
+    "x": 182.7,
+    "z": 42.7,
+    "type": "Pebble_Square_3",
+    "scale": 1.3,
+    "rotation": 3.25
+  },
+  {
+    "x": 179.2,
+    "z": 57.9,
+    "type": "Pebble_Round_3",
+    "scale": 1.68,
+    "rotation": 1.29
+  },
+  {
+    "x": 181.3,
+    "z": 76.1,
+    "type": "Pebble_Square_4",
+    "scale": 2.06,
+    "rotation": 4.11
+  },
+  {
+    "x": 193.4,
+    "z": -145.6,
+    "type": "Pebble_Square_4",
+    "scale": 1.98,
+    "rotation": 2.08
+  },
+  {
+    "x": 196,
+    "z": -130.8,
+    "type": "Rock_Medium_1",
+    "scale": 0.82,
+    "rotation": 3.43
+  },
+  {
+    "x": 200.6,
+    "z": -116.6,
+    "type": "Pebble_Square_6",
+    "scale": 1.47,
+    "rotation": 0.74
+  },
+  {
+    "x": 198.8,
+    "z": -103.7,
+    "type": "Pebble_Square_2",
+    "scale": 1.01,
+    "rotation": 2.45
+  },
+  {
+    "x": 194.4,
+    "z": -92.5,
+    "type": "Pebble_Round_5",
+    "scale": 1.62,
+    "rotation": 4.5
+  },
+  {
+    "x": 194,
+    "z": -76,
+    "type": "Rock_Medium_2",
+    "scale": 1.91,
+    "rotation": 3.96
+  },
+  {
+    "x": 198,
+    "z": -63,
+    "type": "Pebble_Round_5",
+    "scale": 2.04,
+    "rotation": 2.78
+  },
+  {
+    "x": 200.3,
+    "z": -51.8,
+    "type": "Pebble_Square_1",
+    "scale": 1.23,
+    "rotation": 1.07
+  },
+  {
+    "x": 199.9,
+    "z": -40.5,
+    "type": "Pebble_Round_1",
+    "scale": 0.86,
+    "rotation": 3.66
+  },
+  {
+    "x": 201.8,
+    "z": -21.9,
+    "type": "Rock_Medium_1",
+    "scale": 2.19,
+    "rotation": 6.24
+  },
+  {
+    "x": 201.8,
+    "z": -7.4,
+    "type": "Pebble_Round_1",
+    "scale": 1.79,
+    "rotation": 3.43
+  },
+  {
+    "x": 198.1,
+    "z": 7,
+    "type": "Pebble_Round_4",
+    "scale": 1.6,
+    "rotation": 4.99
+  },
+  {
+    "x": 193.4,
+    "z": 22,
+    "type": "Pebble_Square_1",
+    "scale": 1.37,
+    "rotation": 5.05
+  },
+  {
+    "x": 192.8,
+    "z": 34.7,
+    "type": "Pebble_Square_2",
+    "scale": 2.11,
+    "rotation": 5.39
+  },
+  {
+    "x": 200.4,
+    "z": 48.5,
+    "type": "Pebble_Square_2",
+    "scale": 1,
+    "rotation": 5.68
+  },
+  {
+    "x": 194.6,
+    "z": 64,
+    "type": "Pebble_Square_5",
+    "scale": 2.08,
+    "rotation": 4.71
+  },
+  {
+    "x": 200.7,
+    "z": 72.8,
+    "type": "Rock_Medium_2",
+    "scale": 1.28,
+    "rotation": 1.27
+  },
+  {
+    "x": 197.2,
+    "z": 88.6,
+    "type": "Pebble_Square_1",
+    "scale": 1.12,
+    "rotation": 1.95
+  },
+  {
+    "x": 198.6,
+    "z": 98.3,
+    "type": "Pebble_Square_1",
+    "scale": 2.2,
+    "rotation": 5.17
+  },
+  {
+    "x": 207.8,
+    "z": -160.2,
+    "type": "Rock_Medium_1",
+    "scale": 0.94,
+    "rotation": 0.7
+  },
+  {
+    "x": 211.4,
+    "z": -150.7,
+    "type": "Pebble_Square_5",
+    "scale": 1.55,
+    "rotation": 0.78
+  },
+  {
+    "x": 214.5,
+    "z": -133.6,
+    "type": "Rock_Medium_1",
+    "scale": 1.24,
+    "rotation": 0.69
+  },
+  {
+    "x": 208.6,
+    "z": -123.8,
+    "type": "Pebble_Round_5",
+    "scale": 1.75,
+    "rotation": 1.82
+  },
+  {
+    "x": 215.5,
+    "z": -104.8,
+    "type": "Pebble_Round_3",
+    "scale": 1.08,
+    "rotation": 4.65
+  },
+  {
+    "x": 208.6,
+    "z": -96,
+    "type": "Pebble_Square_4",
+    "scale": 2.18,
+    "rotation": 5.37
+  },
+  {
+    "x": 213.4,
+    "z": -80.4,
+    "type": "Pebble_Square_5",
+    "scale": 2.17,
+    "rotation": 1.6
+  },
+  {
+    "x": 215.7,
+    "z": -65,
+    "type": "Pebble_Round_2",
+    "scale": 1.25,
+    "rotation": 3.9
+  },
+  {
+    "x": 211.2,
+    "z": -48,
+    "type": "Pebble_Square_3",
+    "scale": 1.44,
+    "rotation": 3.22
+  },
+  {
+    "x": 214,
+    "z": -40.2,
+    "type": "Rock_Medium_1",
+    "scale": 1.53,
+    "rotation": 1.84
+  },
+  {
+    "x": 211.2,
+    "z": -22.3,
+    "type": "Pebble_Round_3",
+    "scale": 0.96,
+    "rotation": 5.21
+  },
+  {
+    "x": 214.4,
+    "z": -13.8,
+    "type": "Pebble_Square_3",
+    "scale": 0.96,
+    "rotation": 5.86
+  },
+  {
+    "x": 211.6,
+    "z": 6.3,
+    "type": "Rock_Medium_2",
+    "scale": 1.18,
+    "rotation": 1.08
+  },
+  {
+    "x": 212.8,
+    "z": 16,
+    "type": "Pebble_Square_6",
+    "scale": 0.82,
+    "rotation": 3.38
+  },
+  {
+    "x": 212.9,
+    "z": 29.6,
+    "type": "Pebble_Square_3",
+    "scale": 1.29,
+    "rotation": 1.43
+  },
+  {
+    "x": 213.7,
+    "z": 51.1,
+    "type": "Pebble_Square_5",
+    "scale": 1.38,
+    "rotation": 3.74
+  },
+  {
+    "x": 206.3,
+    "z": 60.1,
+    "type": "Rock_Medium_2",
+    "scale": 2,
+    "rotation": 4.28
+  },
+  {
+    "x": 211,
+    "z": 73.5,
+    "type": "Pebble_Square_1",
+    "scale": 1.02,
+    "rotation": 0.71
+  },
+  {
+    "x": 209.6,
+    "z": 85.5,
+    "type": "Pebble_Round_2",
+    "scale": 1.5,
+    "rotation": 0.61
+  },
+  {
+    "x": 207.8,
+    "z": 102.1,
+    "type": "Pebble_Square_1",
+    "scale": 1.48,
+    "rotation": 1.89
+  },
+  {
+    "x": 207.2,
+    "z": 116.1,
+    "type": "Rock_Medium_3",
+    "scale": 1.48,
+    "rotation": 1.02
+  },
+  {
+    "x": 223.9,
+    "z": -163.2,
+    "type": "Pebble_Square_3",
+    "scale": 2.15,
+    "rotation": 2.16
+  },
+  {
+    "x": 223.6,
+    "z": -152.7,
+    "type": "Pebble_Square_6",
+    "scale": 1.42,
+    "rotation": 2.66
+  },
+  {
+    "x": 220.4,
+    "z": -139,
+    "type": "Pebble_Square_6",
+    "scale": 2.03,
+    "rotation": 5.79
+  },
+  {
+    "x": 223,
+    "z": -125.6,
+    "type": "Pebble_Square_6",
+    "scale": 2.08,
+    "rotation": 5.13
+  },
+  {
+    "x": 227.6,
+    "z": -103.2,
+    "type": "Rock_Medium_2",
+    "scale": 1.18,
+    "rotation": 2.93
+  },
+  {
+    "x": 224.4,
+    "z": -90.1,
+    "type": "Pebble_Square_3",
+    "scale": 2.05,
+    "rotation": 2.1
+  },
+  {
+    "x": 228.8,
+    "z": -80.5,
+    "type": "Pebble_Square_6",
+    "scale": 1.22,
+    "rotation": 5.65
+  },
+  {
+    "x": 226.7,
+    "z": -67.4,
+    "type": "Rock_Medium_1",
+    "scale": 1.83,
+    "rotation": 3.59
+  },
+  {
+    "x": 227.2,
+    "z": -47.1,
+    "type": "Pebble_Square_1",
+    "scale": 1.12,
+    "rotation": 3.64
+  },
+  {
+    "x": 228.3,
+    "z": -37.6,
+    "type": "Pebble_Round_2",
+    "scale": 1.05,
+    "rotation": 0.51
+  },
+  {
+    "x": 224.1,
+    "z": -19.5,
+    "type": "Rock_Medium_3",
+    "scale": 1.85,
+    "rotation": 4.95
+  },
+  {
+    "x": 226.2,
+    "z": -9.3,
+    "type": "Pebble_Square_1",
+    "scale": 0.81,
+    "rotation": 4.62
+  },
+  {
+    "x": 224.6,
+    "z": 5.5,
+    "type": "Pebble_Square_6",
+    "scale": 1.29,
+    "rotation": 3.86
+  },
+  {
+    "x": 221.7,
+    "z": 14.8,
+    "type": "Pebble_Round_5",
+    "scale": 2.2,
+    "rotation": 0.79
+  },
+  {
+    "x": 225.9,
+    "z": 33.4,
+    "type": "Pebble_Square_4",
+    "scale": 1.55,
+    "rotation": 2.99
+  },
+  {
+    "x": 226,
+    "z": 45.5,
+    "type": "Rock_Medium_3",
+    "scale": 0.91,
+    "rotation": 5.28
+  },
+  {
+    "x": 223.1,
+    "z": 65.2,
+    "type": "Pebble_Square_2",
+    "scale": 1.35,
+    "rotation": 2.56
+  },
+  {
+    "x": 222.8,
+    "z": 75.7,
+    "type": "Pebble_Round_5",
+    "scale": 1.81,
+    "rotation": 1.04
+  },
+  {
+    "x": 221.8,
+    "z": 85.3,
+    "type": "Rock_Medium_3",
+    "scale": 1.25,
+    "rotation": 2.52
+  },
+  {
+    "x": 227.3,
+    "z": 106.9,
+    "type": "Pebble_Square_2",
+    "scale": 1.98,
+    "rotation": 4.12
+  },
+  {
+    "x": 223.3,
+    "z": 117.2,
+    "type": "Pebble_Round_1",
+    "scale": 1.89,
+    "rotation": 4.59
+  }
+]

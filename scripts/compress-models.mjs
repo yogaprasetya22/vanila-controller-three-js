@@ -188,8 +188,51 @@ async function start() {
         console.warn(`⚠️ Folder animasi tidak ditemukan: ${ANIMATIONS_FOLDER}`);
     }
 
+    // 4. Proses Environment Models (trees, rocks, vegetation) secara in-place
+    const ENV_SUBDIRS = ["trees", "rocks", "vegetation"];
+    for (const subdir of ENV_SUBDIRS) {
+        const folderPath = path.join(ROOT_DIR, "public", "environment", subdir);
+        if (existsSync(folderPath)) {
+            const files = (await readdir(folderPath)).filter(
+                (f) => f.toLowerCase().endsWith(".glb") && !f.includes("_temp")
+            );
+
+            console.log(`\n🌴 Memproses Environment: ${subdir} (${files.length} file)...`);
+            for (const file of files) {
+                const inputPath = path.join(folderPath, file);
+                const tempPath = path.join(folderPath, file.replace(".glb", "_temp.glb"));
+
+                process.stdout.write(`  📦 [${processedCount + 1}] Mengompresi ${subdir}/${file} (gltfpack)... `);
+
+                try {
+                    // Objek lingkungan adalah static mesh, aman menggunakan -cc dan -si 0.5 untuk kompresi maksimal
+                    await runCommand("npx", [
+                        "gltfpack",
+                        "-i", inputPath,
+                        "-o", tempPath,
+                        "-c",
+                        "-cc",
+                        "-si", "0.5"
+                    ]);
+                    if (existsSync(tempPath)) {
+                        await rename(tempPath, inputPath);
+                        process.stdout.write("✅ BERHASIL\n");
+                        processedCount++;
+                    } else {
+                        process.stdout.write("❌ GAGAL (file temp tidak terbentuk)\n");
+                    }
+                } catch (err) {
+                    process.stdout.write("❌ GAGAL\n");
+                    console.error(`     Error: ${err.message}`);
+                }
+            }
+        } else {
+            console.warn(`⚠️ Folder lingkungan ${subdir} tidak ditemukan: ${folderPath}`);
+        }
+    }
+
     console.log("--------------------------------------------------");
-    console.log(`✨ REVERT SELESAI! Berhasil memulihkan ${processedCount} file.`);
+    console.log(`✨ REVERT/KOMPRESI SELESAI! Berhasil memproses ${processedCount} file.`);
 }
 
 start();

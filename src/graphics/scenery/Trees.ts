@@ -49,7 +49,7 @@ export class Trees {
     const promises = uniqueTypes.map(name => {
       return new Promise<THREE.Group>((resolve) => {
         const baseUrl = import.meta.env.BASE_URL;
-        gltfLoader.load(`${baseUrl}trees/${name}.glb`, (gltf) => {
+        gltfLoader.load(`${baseUrl}environment/trees/${name}.glb`, (gltf) => {
           gltf.scene.traverse((child) => {
             if ((child as THREE.Mesh).isMesh) {
               const mesh = child as THREE.Mesh;
@@ -120,6 +120,7 @@ export class Trees {
           instancedMesh.userData.isTree = true;
           instancedMesh.castShadow = false;
           instancedMesh.receiveShadow = false;
+          instancedMesh.frustumCulled = false; // Disable frustum culling since we handle LOD distance culling manually in update()
 
           // Temp variables to compose instance matrices
           const position = new THREE.Vector3();
@@ -156,7 +157,19 @@ export class Trees {
     relativeMatrix: THREE.Matrix4;
   }> = [];
 
+  private lastUpdatePos = new THREE.Vector3(9999, 9999, 9999);
+  private needsFirstUpdate = true;
+
   public update(cameraPos: THREE.Vector3) {
+    if (this.instancedMeshes.length === 0) return;
+
+    // ponytail: throttle LOD calculations to avoid doing matrix composition for all 350+ trees every frame
+    if (!this.needsFirstUpdate && this.lastUpdatePos.distanceToSquared(cameraPos) < 0.25) {
+      return;
+    }
+    this.needsFirstUpdate = false;
+    this.lastUpdatePos.copy(cameraPos);
+
     // ponytail: Dynamic LOD tree distance culling (100m)
     const MAX_DIST_SQ = 100 * 100; // 100 meters
     const FADE_START_SQ = 85 * 85;
@@ -169,16 +182,13 @@ export class Trees {
     const finalMatrix = new THREE.Matrix4();
 
     for (const group of this.instancedMeshes) {
-      let needsUpdate = false;
       const mesh = group.meshList;
+      const activeInstances: { data: typeof group.instances[0]; currentScale: number }[] = [];
 
-      group.instances.forEach((data, index) => {
+      group.instances.forEach((data) => {
         const dx = data.x - cameraPos.x;
         const dz = data.z - cameraPos.z;
         const distSq = dx * dx + dz * dz;
-
-        // Fetch current matrix
-        mesh.getMatrixAt(index, finalMatrix);
         
         const cullRadius = 2.0 + data.scale * 1.5; // dynamically scale cull radius with tree scale
         const cullRadiusSq = cullRadius * cullRadius;
@@ -194,21 +204,30 @@ export class Trees {
           currentScale *= fade; // Fade
         }
 
+        if (currentScale > 0.0) {
+          activeInstances.push({ data, currentScale });
+        }
+      });
+
+      // Write visible instances first
+      activeInstances.forEach((inst, index) => {
+        const data = inst.data;
         const groundY = getTerrainHeight(data.x, data.z);
         position.set(data.x, groundY, data.z);
         rotation.set(0, data.rotation, 0);
         quaternion.setFromEuler(rotation);
-        scale.set(currentScale, currentScale, currentScale);
+        scale.set(inst.currentScale, inst.currentScale, inst.currentScale);
 
         instanceMatrix.compose(position, quaternion, scale);
         finalMatrix.multiplyMatrices(instanceMatrix, group.relativeMatrix);
         mesh.setMatrixAt(index, finalMatrix);
-        needsUpdate = true;
       });
 
-      if (needsUpdate) {
-        mesh.instanceMatrix.needsUpdate = true;
+      // Set mesh.count so the GPU draw call skips all culled trees (cuts triangles count from 1.5M to ~80k!)
+      if (mesh.count !== activeInstances.length) {
+        mesh.count = activeInstances.length;
       }
+      mesh.instanceMatrix.needsUpdate = true;
     }
   }
 }

@@ -82,17 +82,19 @@ export interface LakeDef {
 }
 
 export const LAKES: LakeDef[] = [
-    { cx: -68, cz: -62, rx: 22, rz: 15, depth: 1.4 },
-    { cx: 68, cz: -62, rx: 20, rz: 14, depth: 1.3 },
-    { cx: -68, cz: 62, rx: 19, rz: 15, depth: 1.2 },
-    { cx: 68, cz: 62, rx: 22, rz: 14, depth: 1.5 },
-    { cx: -88, cz: 0, rx: 14, rz: 11, depth: 1.0 },
-    { cx: 88, cz: 0, rx: 14, rz: 11, depth: 1.0 },
+    { cx: -136, cz: -124, rx: 18, rz: 13, depth: 1.4 },
+    { cx: 136,  cz: -124, rx: 17, rz: 12, depth: 1.3 },
+    { cx: -136, cz: 124,  rx: 16, rz: 13, depth: 1.2 },
+    { cx: 136,  cz: 124,  rx: 18, rz: 12, depth: 1.5 },
+    { cx: -176, cz: 0,    rx: 12, rz: 10, depth: 1.0 },
+    { cx: 176,  cz: 0,    rx: 12, rz: 10, depth: 1.0 },
+    { cx: 0,    cz: -148, rx: 11, rz: 8,  depth: 1.1 },
+    { cx: 0,    cz: 148,  rx: 11, rz: 8,  depth: 1.2 },
 ];
 
-export const BF_HALF_X = 42;
-export const BF_HALF_Z = 38;
-export const BF_BLEND = 8;
+export const BF_HALF_X = 84;
+export const BF_HALF_Z = 76;
+export const BF_BLEND = 14;
 
 const _keyRef = { key: 0 };
 
@@ -108,22 +110,25 @@ export function getTerrainHeight(x: number, z: number): number {
     const edgeDist = Math.sqrt(dxEdge * dxEdge + dzEdge * dzEdge);
     const forestFactor = smoothstep(0, BF_BLEND, edgeDist);
 
-    // High mountain ridges (low frequency, high amplitude) + fine hills detail
-    const mountainH = Math.sin(x * 0.015) * Math.cos(z * 0.018 + 0.3) * 22.0 + Math.cos(x * 0.04) * Math.sin(z * 0.035) * 8.0;
+    // Primary mountain ridges (low frequency, high amplitude)
+    const mountainH = Math.sin(x * 0.010) * Math.cos(z * 0.012 + 0.3) * 32.0 +
+                      Math.cos(x * 0.025) * Math.sin(z * 0.022) * 14.0;
+    // Secondary plateau layers for more plains variety
     const h1 = Math.sin(x * 0.12 + 0.5) * Math.cos(z * 0.12) * 3.5;
     const h2 = Math.sin(x * 0.28) * Math.sin(z * 0.22 + 1.2) * 1.2;
-    
-    // Winding River Bed: a sine curve winding across the terrain
-    const riverPath = Math.sin(x * 0.02) * 45; // amplitude of wind
+    const h3 = Math.sin(x * 0.06 + 1.1) * Math.cos(z * 0.055 + 0.8) * 9.0; // wide rolling plateau
+    const h4 = Math.cos(x * 0.09) * Math.sin(z * 0.075 + 2.0) * 5.5;       // medium undulation
+
+    // Winding River Bed: wider and deeper for 2x map
+    const riverPath = Math.sin(x * 0.013) * 75; // wider winding amplitude
     const riverDist = Math.abs(z - riverPath);
     let riverDepth = 0;
-    if (riverDist < 18) {
-        // carve a deep river channel
-        const rT = 1.0 - (riverDist / 18); // 0 at edges, 1 at river center
-        riverDepth = -5.5 * Math.sin(rT * Math.PI * 0.5);
+    if (riverDist < 28) {
+        const rT = 1.0 - (riverDist / 28);
+        riverDepth = -7.0 * Math.sin(rT * Math.PI * 0.5);
     }
 
-    let hills = mountainH + h1 + h2 + riverDepth;
+    let hills = mountainH + h1 + h2 + h3 + h4 + riverDepth;
 
     const WATER_LEVEL = -3.0;
 

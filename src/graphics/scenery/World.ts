@@ -5,6 +5,8 @@ import { Floor } from './Floor';
 import { WaterSurface } from './WaterSurface';
 import { Turrets } from './Turret';
 import { Trees } from './Trees';
+import { Rocks } from './Rocks';
+import { Vegetation } from './Vegetation';
 import { Flowers } from './Flowers';
 import { SceneryWindLines } from './SceneryWindLines';
 import { Grass } from './Grass';
@@ -16,6 +18,8 @@ export class World {
   floor: Floor;
   waterSurface?: WaterSurface;
   trees?: Trees;
+  rocks?: Rocks;
+  vegetation?: Vegetation;
   grass?: Grass;
   flowers?: Flowers;
   windLines: SceneryWindLines;
@@ -33,6 +37,8 @@ export class World {
     this.floor        = new Floor(scene);
     this.waterSurface = new WaterSurface(scene, this.uniforms);
     this.trees        = new Trees(scene, gltfLoader);
+    this.rocks        = new Rocks(scene, gltfLoader);
+    this.vegetation   = new Vegetation(scene, gltfLoader);
     this.grass        = new Grass(scene, this.uniforms);
     // this.flowers      = new Flowers(scene, this.uniforms);
     this.windLines    = new SceneryWindLines(scene);
@@ -46,12 +52,19 @@ export class World {
   update(delta: number, camPos: THREE.Vector3, camera?: THREE.Camera, playerPos?: THREE.Vector3) {
     this.elapsed += delta;
     this.uniforms.uTime.value = this.elapsed;
-    this.windLines.update(delta, this.elapsed);
+    this.windLines.update(delta, this.elapsed, camPos);
+    this.leaves.update(delta, this.elapsed, camPos);
     this.waterSurface?.update(camPos);
     
-    // ponytail: Dynamic LOD culling for trees
+    // ponytail: Dynamic LOD culling for trees, rocks, and vegetation
     if (this.trees) {
       this.trees.update(camPos);
+    }
+    if (this.rocks) {
+      this.rocks.update(camPos);
+    }
+    if (this.vegetation) {
+      this.vegetation.update(camPos);
     }
 
     if (camera) {

@@ -1,0 +1,5427 @@
+[
+  {
+    "x": -226.9,
+    "z": -164.8,
+    "type": "Bush_Small_Flowers",
+    "scale": 1.48,
+    "rotation": 4.03
+  },
+  {
+    "x": -227.8,
+    "z": -156.2,
+    "type": "Flower_2",
+    "scale": 1.41,
+    "rotation": 5.26
+  },
+  {
+    "x": -227.2,
+    "z": 75.6,
+    "type": "Bush_Large_Flowers",
+    "scale": 1.77,
+    "rotation": 1.26
+  },
+  {
+    "x": -227.3,
+    "z": 84.2,
+    "type": "Clover_1",
+    "scale": 1.51,
+    "rotation": 0.74
+  },
+  {
+    "x": -228.4,
+    "z": 89,
+    "type": "Bush",
+    "scale": 1.37,
+    "rotation": 3.77
+  },
+  {
+    "x": -226.9,
+    "z": 98.4,
+    "type": "Flower_2_Clump",
+    "scale": 0.87,
+    "rotation": 1.89
+  },
+  {
+    "x": -224.2,
+    "z": 104.3,
+    "type": "Plant_1_Big",
+    "scale": 1.08,
+    "rotation": 0.57
+  },
+  {
+    "x": -223.5,
+    "z": 116.1,
+    "type": "Bush_Flowers",
+    "scale": 1.43,
+    "rotation": 2.13
+  },
+  {
+    "x": -223.5,
+    "z": 122.3,
+    "type": "Clover_2",
+    "scale": 1.28,
+    "rotation": 1.78
+  },
+  {
+    "x": -227.7,
+    "z": 130.4,
+    "type": "Flower_3_Clump",
+    "scale": 0.84,
+    "rotation": 2.57
+  },
+  {
+    "x": -228.4,
+    "z": 139.7,
+    "type": "Fern_1",
+    "scale": 1.67,
+    "rotation": 1.34
+  },
+  {
+    "x": -224.3,
+    "z": 148,
+    "type": "Bush_Small",
+    "scale": 1.06,
+    "rotation": 1.01
+  },
+  {
+    "x": -226.4,
+    "z": 152.3,
+    "type": "Clover_1",
+    "scale": 1.8,
+    "rotation": 2.88
+  },
+  {
+    "x": -223.7,
+    "z": 163.4,
+    "type": "Bush_Large",
+    "scale": 1.78,
+    "rotation": 3.27
+  },
+  {
+    "x": -218.1,
+    "z": -164.6,
+    "type": "Mushroom_Laetiporus",
+    "scale": 1.35,
+    "rotation": 2.33
+  },
+  {
+    "x": -217.8,
+    "z": -155.2,
+    "type": "Flower_3_Clump",
+    "scale": 1.15,
+    "rotation": 5.39
+  },
+  {
+    "x": -220.1,
+    "z": 76.8,
+    "type": "Flower_2",
+    "scale": 1.32,
+    "rotation": 3.29
+  },
+  {
+    "x": -220.4,
+    "z": 89.5,
+    "type": "Fern_1",
+    "scale": 1.48,
+    "rotation": 1.85
+  },
+  {
+    "x": -217.3,
+    "z": 95.3,
+    "type": "Plant_7_Big",
+    "scale": 1.77,
+    "rotation": 5.25
+  },
+  {
+    "x": -219,
+    "z": 107.2,
+    "type": "Fern_1",
+    "scale": 1.32,
+    "rotation": 2.26
+  },
+  {
+    "x": -215.6,
+    "z": 114.7,
+    "type": "Plant_7_Big",
+    "scale": 1.34,
+    "rotation": 5.21
+  },
+  {
+    "x": -216.9,
+    "z": 119.6,
+    "type": "Bush_Large_Flowers",
+    "scale": 1.27,
+    "rotation": 3.98
+  },
+  {
+    "x": -216.7,
+    "z": 130.5,
+    "type": "Bush_Small_Flowers",
+    "scale": 1.69,
+    "rotation": 5.53
+  },
+  {
+    "x": -216.6,
+    "z": 137.5,
+    "type": "Plant_1",
+    "scale": 1.42,
+    "rotation": 2.99
+  },
+  {
+    "x": -219.7,
+    "z": 146.2,
+    "type": "Flower_5_Clump",
+    "scale": 1.62,
+    "rotation": 0.59
+  },
+  {
+    "x": -218.3,
+    "z": 153.3,
+    "type": "Mushroom_Common",
+    "scale": 1.02,
+    "rotation": 0.49
+  },
+  {
+    "x": -216.1,
+    "z": 164.3,
+    "type": "Bush_Large",
+    "scale": 1.23,
+    "rotation": 4.58
+  },
+  {
+    "x": -211.3,
+    "z": -166.7,
+    "type": "Bush",
+    "scale": 1.45,
+    "rotation": 0.89
+  },
+  {
+    "x": -212.7,
+    "z": -156.5,
+    "type": "Clover_2",
+    "scale": 1.11,
+    "rotation": 5.4
+  },
+  {
+    "x": -208.3,
+    "z": -149.3,
+    "type": "Bush_Flowers",
+    "scale": 1.26,
+    "rotation": 3.23
+  },
+  {
+    "x": -209.6,
+    "z": 72.1,
+    "type": "Bush_Common",
+    "scale": 1.61,
+    "rotation": 5.63
+  },
+  {
+    "x": -211.5,
+    "z": 79.5,
+    "type": "Plant_1_Big",
+    "scale": 1.32,
+    "rotation": 5.86
+  },
+  {
+    "x": -208.1,
+    "z": 89.6,
+    "type": "Plant_1",
+    "scale": 1.04,
+    "rotation": 0.36
+  },
+  {
+    "x": -210.5,
+    "z": 98.5,
+    "type": "Bush_Common_Flowers",
+    "scale": 0.99,
+    "rotation": 1.22
+  },
+  {
+    "x": -212.2,
+    "z": 107.6,
+    "type": "Bush_Large_Flowers",
+    "scale": 1.32,
+    "rotation": 6.1
+  },
+  {
+    "x": -211.8,
+    "z": 121.2,
+    "type": "Bush_Common",
+    "scale": 0.92,
+    "rotation": 0.96
+  },
+  {
+    "x": -209.2,
+    "z": 129.6,
+    "type": "Flower_3_Clump",
+    "scale": 1.7,
+    "rotation": 3.42
+  },
+  {
+    "x": -212.8,
+    "z": 145.5,
+    "type": "Flower_2",
+    "scale": 1.03,
+    "rotation": 2.88
+  },
+  {
+    "x": -210.6,
+    "z": 152.9,
+    "type": "Plant_7",
+    "scale": 1.09,
+    "rotation": 3.21
+  },
+  {
+    "x": -208.3,
+    "z": 164.6,
+    "type": "Bush_Small_Flowers",
+    "scale": 1.02,
+    "rotation": 1.33
+  },
+  {
+    "x": -199.8,
+    "z": -165,
+    "type": "Bush_Small_Flowers",
+    "scale": 1.42,
+    "rotation": 4.05
+  },
+  {
+    "x": -203.6,
+    "z": -155.7,
+    "type": "Flower_2_Clump",
+    "scale": 1.47,
+    "rotation": 0.17
+  },
+  {
+    "x": -202.4,
+    "z": -147.2,
+    "type": "Flower_2",
+    "scale": 1.32,
+    "rotation": 3.57
+  },
+  {
+    "x": -202.3,
+    "z": 83.2,
+    "type": "Fern_1",
+    "scale": 0.99,
+    "rotation": 1.39
+  },
+  {
+    "x": -200.5,
+    "z": 88.3,
+    "type": "Bush_Common_Flowers",
+    "scale": 0.88,
+    "rotation": 6.18
+  },
+  {
+    "x": -202.6,
+    "z": 95.4,
+    "type": "Plant_1_Big",
+    "scale": 1.25,
+    "rotation": 4.33
+  },
+  {
+    "x": -203.3,
+    "z": 107.5,
+    "type": "Bush_Small",
+    "scale": 1.26,
+    "rotation": 4.1
+  },
+  {
+    "x": -204.7,
+    "z": 114.9,
+    "type": "Bush_Small_Flowers",
+    "scale": 1.31,
+    "rotation": 1.93
+  },
+  {
+    "x": -200.7,
+    "z": 123.2,
+    "type": "Mushroom_Laetiporus",
+    "scale": 0.83,
+    "rotation": 0.96
+  },
+  {
+    "x": -204,
+    "z": 127.2,
+    "type": "Mushroom_Laetiporus",
+    "scale": 1.01,
+    "rotation": 2.86
+  },
+  {
+    "x": -202.2,
+    "z": 135.4,
+    "type": "Bush_Small",
+    "scale": 0.91,
+    "rotation": 1.96
+  },
+  {
+    "x": -202.3,
+    "z": 145.5,
+    "type": "Bush_Flowers",
+    "scale": 0.93,
+    "rotation": 0.96
+  },
+  {
+    "x": -201.8,
+    "z": 154,
+    "type": "Flower_5_Clump",
+    "scale": 1.24,
+    "rotation": 0.53
+  },
+  {
+    "x": -201.5,
+    "z": 164.5,
+    "type": "Fern_1",
+    "scale": 1.42,
+    "rotation": 5.65
+  },
+  {
+    "x": -195.9,
+    "z": -157.4,
+    "type": "Flower_1",
+    "scale": 1.72,
+    "rotation": 1.83
+  },
+  {
+    "x": -196.6,
+    "z": -150.3,
+    "type": "Clover_1",
+    "scale": 1.31,
+    "rotation": 1.99
+  },
+  {
+    "x": -192.5,
+    "z": 87.5,
+    "type": "Plant_1_Big",
+    "scale": 1.53,
+    "rotation": 2.88
+  },
+  {
+    "x": -196.7,
+    "z": 100.1,
+    "type": "Flower_1",
+    "scale": 0.85,
+    "rotation": 1.61
+  },
+  {
+    "x": -194.4,
+    "z": 106.4,
+    "type": "Plant_7_Big",
+    "scale": 1.73,
+    "rotation": 4.81
+  },
+  {
+    "x": -196,
+    "z": 116.3,
+    "type": "Clover_1",
+    "scale": 1.44,
+    "rotation": 3.69
+  },
+  {
+    "x": -193.8,
+    "z": 130.8,
+    "type": "Plant_7",
+    "scale": 1.42,
+    "rotation": 5.8
+  },
+  {
+    "x": -194.3,
+    "z": 140,
+    "type": "Fern_1",
+    "scale": 1.02,
+    "rotation": 3.37
+  },
+  {
+    "x": -196.2,
+    "z": 148.4,
+    "type": "Flower_2_Clump",
+    "scale": 1.63,
+    "rotation": 0.15
+  },
+  {
+    "x": -192.3,
+    "z": 156.6,
+    "type": "Flower_2_Clump",
+    "scale": 1.74,
+    "rotation": 1.45
+  },
+  {
+    "x": -192.4,
+    "z": 164.1,
+    "type": "Flower_2",
+    "scale": 1.79,
+    "rotation": 1.21
+  },
+  {
+    "x": -188.1,
+    "z": -148.6,
+    "type": "Clover_2",
+    "scale": 1.34,
+    "rotation": 2.6
+  },
+  {
+    "x": -185.3,
+    "z": -135.3,
+    "type": "Bush_Large",
+    "scale": 1.58,
+    "rotation": 3.8
+  },
+  {
+    "x": -186.2,
+    "z": 108.5,
+    "type": "Bush_Common_Flowers",
+    "scale": 1.28,
+    "rotation": 2.59
+  },
+  {
+    "x": -187.9,
+    "z": 115.3,
+    "type": "Plant_7_Big",
+    "scale": 0.94,
+    "rotation": 2.08
+  },
+  {
+    "x": -188.8,
+    "z": 122.9,
+    "type": "Bush",
+    "scale": 1.14,
+    "rotation": 1.08
+  },
+  {
+    "x": -188.1,
+    "z": 128.6,
+    "type": "Bush_Small",
+    "scale": 1.54,
+    "rotation": 1.94
+  },
+  {
+    "x": -186.9,
+    "z": 136.8,
+    "type": "Bush_Small_Flowers",
+    "scale": 1.66,
+    "rotation": 2.33
+  },
+  {
+    "x": -184.7,
+    "z": 148.5,
+    "type": "Bush_Common",
+    "scale": 1.71,
+    "rotation": 3.25
+  },
+  {
+    "x": -185.9,
+    "z": 155.2,
+    "type": "Clover_1",
+    "scale": 1.25,
+    "rotation": 3.72
+  },
+  {
+    "x": -186.9,
+    "z": 161.8,
+    "type": "Bush",
+    "scale": 0.81,
+    "rotation": 1.45
+  },
+  {
+    "x": -179.3,
+    "z": -142.6,
+    "type": "Clover_2",
+    "scale": 1.45,
+    "rotation": 5.48
+  },
+  {
+    "x": -177.9,
+    "z": -132.8,
+    "type": "Plant_7",
+    "scale": 0.99,
+    "rotation": 0.37
+  },
+  {
+    "x": -176.8,
+    "z": 112.7,
+    "type": "Flower_1_Clump",
+    "scale": 1.12,
+    "rotation": 3.58
+  },
+  {
+    "x": -179.8,
+    "z": 120.7,
+    "type": "Bush_Common",
+    "scale": 1.77,
+    "rotation": 0.1
+  },
+  {
+    "x": -178.4,
+    "z": 127.6,
+    "type": "Fern_1",
+    "scale": 1.37,
+    "rotation": 0.36
+  },
+  {
+    "x": -179.6,
+    "z": 136.5,
+    "type": "Clover_1",
+    "scale": 0.8,
+    "rotation": 5.72
+  },
+  {
+    "x": -177.9,
+    "z": 145.1,
+    "type": "Bush",
+    "scale": 1.79,
+    "rotation": 3.36
+  },
+  {
+    "x": -179.8,
+    "z": 154.3,
+    "type": "Bush_Large_Flowers",
+    "scale": 1.56,
+    "rotation": 3.29
+  },
+  {
+    "x": -179.9,
+    "z": 162.1,
+    "type": "Bush_Small_Flowers",
+    "scale": 1.46,
+    "rotation": 2.06
+  },
+  {
+    "x": -170.6,
+    "z": 116.5,
+    "type": "Fern_1",
+    "scale": 1.16,
+    "rotation": 0.08
+  },
+  {
+    "x": -169.7,
+    "z": 121.9,
+    "type": "Mushroom_Laetiporus",
+    "scale": 0.9,
+    "rotation": 5.09
+  },
+  {
+    "x": -169.5,
+    "z": 129.4,
+    "type": "Plant_1_Big",
+    "scale": 1.59,
+    "rotation": 4.99
+  },
+  {
+    "x": -170.8,
+    "z": 139.6,
+    "type": "Fern_1",
+    "scale": 1.3,
+    "rotation": 5.96
+  },
+  {
+    "x": -171.3,
+    "z": 144.8,
+    "type": "Bush_Small_Flowers",
+    "scale": 1.66,
+    "rotation": 6.15
+  },
+  {
+    "x": -169.8,
+    "z": 156.2,
+    "type": "Flower_3_Clump",
+    "scale": 1.58,
+    "rotation": 2.04
+  },
+  {
+    "x": -163.9,
+    "z": 124.3,
+    "type": "Plant_1",
+    "scale": 0.92,
+    "rotation": 1.77
+  },
+  {
+    "x": -161.4,
+    "z": 132.1,
+    "type": "Bush_Common",
+    "scale": 0.93,
+    "rotation": 2.47
+  },
+  {
+    "x": -162.1,
+    "z": 140.2,
+    "type": "Bush_Large_Flowers",
+    "scale": 1.28,
+    "rotation": 3.14
+  },
+  {
+    "x": -161.4,
+    "z": 147.5,
+    "type": "Clover_2",
+    "scale": 1.48,
+    "rotation": 3.67
+  },
+  {
+    "x": -159.9,
+    "z": 156,
+    "type": "Bush_Small",
+    "scale": 1.34,
+    "rotation": 3.85
+  },
+  {
+    "x": -159.6,
+    "z": 162.3,
+    "type": "Bush_Common",
+    "scale": 1.27,
+    "rotation": 1.11
+  },
+  {
+    "x": -152.5,
+    "z": -164.4,
+    "type": "Plant_1",
+    "scale": 1.35,
+    "rotation": 3.97
+  },
+  {
+    "x": -151.4,
+    "z": 136.2,
+    "type": "Clover_2",
+    "scale": 1.37,
+    "rotation": 0.89
+  },
+  {
+    "x": -153.4,
+    "z": 144.6,
+    "type": "Mushroom_Laetiporus",
+    "scale": 1.49,
+    "rotation": 0.75
+  },
+  {
+    "x": -153.8,
+    "z": 152.1,
+    "type": "Bush",
+    "scale": 1.45,
+    "rotation": 3.47
+  },
+  {
+    "x": -151.7,
+    "z": 159.9,
+    "type": "Mushroom_Laetiporus",
+    "scale": 1.43,
+    "rotation": 5.5
+  },
+  {
+    "x": -148.4,
+    "z": -167.6,
+    "type": "Flower_1",
+    "scale": 1.58,
+    "rotation": 0.17
+  },
+  {
+    "x": -143.7,
+    "z": -157.7,
+    "type": "Mushroom_Laetiporus",
+    "scale": 1.03,
+    "rotation": 2.21
+  },
+  {
+    "x": -145.9,
+    "z": 137.8,
+    "type": "Bush",
+    "scale": 1.39,
+    "rotation": 2.73
+  },
+  {
+    "x": -146.7,
+    "z": 147.4,
+    "type": "Bush",
+    "scale": 0.96,
+    "rotation": 1.78
+  },
+  {
+    "x": -147.5,
+    "z": 154.5,
+    "type": "Bush_Common",
+    "scale": 1.43,
+    "rotation": 2.77
+  },
+  {
+    "x": -144.5,
+    "z": 162.7,
+    "type": "Bush_Large",
+    "scale": 1,
+    "rotation": 1.34
+  },
+  {
+    "x": -135.8,
+    "z": -167.5,
+    "type": "Bush_Large_Flowers",
+    "scale": 1.17,
+    "rotation": 5.39
+  },
+  {
+    "x": -137.7,
+    "z": 139.8,
+    "type": "Bush_Small",
+    "scale": 1.75,
+    "rotation": 3.82
+  },
+  {
+    "x": -138.2,
+    "z": 147,
+    "type": "Flower_2_Clump",
+    "scale": 1.34,
+    "rotation": 1.75
+  },
+  {
+    "x": -139.1,
+    "z": 153.5,
+    "type": "Bush_Flowers",
+    "scale": 0.86,
+    "rotation": 2.61
+  },
+  {
+    "x": -130.4,
+    "z": 145.2,
+    "type": "Mushroom_Common",
+    "scale": 0.87,
+    "rotation": 0.33
+  },
+  {
+    "x": -128.1,
+    "z": 155.9,
+    "type": "Bush_Common_Flowers",
+    "scale": 0.86,
+    "rotation": 2.49
+  },
+  {
+    "x": -127.6,
+    "z": 162.1,
+    "type": "Bush_Large_Flowers",
+    "scale": 0.99,
+    "rotation": 3.33
+  },
+  {
+    "x": -121.5,
+    "z": 138.3,
+    "type": "Flower_3_Clump",
+    "scale": 1.26,
+    "rotation": 5.38
+  },
+  {
+    "x": -121.2,
+    "z": 144.2,
+    "type": "Mushroom_Laetiporus",
+    "scale": 1.41,
+    "rotation": 4.15
+  },
+  {
+    "x": -120.4,
+    "z": 152.6,
+    "type": "Flower_1_Clump",
+    "scale": 1.32,
+    "rotation": 1.04
+  },
+  {
+    "x": -122.7,
+    "z": 162.2,
+    "type": "Bush_Large",
+    "scale": 1.48,
+    "rotation": 4.39
+  },
+  {
+    "x": -113.1,
+    "z": -139.9,
+    "type": "Flower_2_Clump",
+    "scale": 1.61,
+    "rotation": 4.17
+  },
+  {
+    "x": -111.8,
+    "z": 119.8,
+    "type": "Bush_Large_Flowers",
+    "scale": 1.39,
+    "rotation": 4.41
+  },
+  {
+    "x": -113.5,
+    "z": 131.1,
+    "type": "Plant_1",
+    "scale": 1.11,
+    "rotation": 1.78
+  },
+  {
+    "x": -113.2,
+    "z": 140,
+    "type": "Flower_2",
+    "scale": 0.93,
+    "rotation": 5.72
+  },
+  {
+    "x": -111.9,
+    "z": 146.6,
+    "type": "Flower_5_Clump",
+    "scale": 1.69,
+    "rotation": 5.29
+  },
+  {
+    "x": -112.1,
+    "z": 152.1,
+    "type": "Fern_1",
+    "scale": 1.74,
+    "rotation": 2.98
+  },
+  {
+    "x": -113.2,
+    "z": 163.9,
+    "type": "Bush_Small_Flowers",
+    "scale": 1.13,
+    "rotation": 3.19
+  },
+  {
+    "x": -105.5,
+    "z": -139.9,
+    "type": "Bush_Common_Flowers",
+    "scale": 1.56,
+    "rotation": 3.73
+  },
+  {
+    "x": -108.7,
+    "z": -134.2,
+    "type": "Flower_1",
+    "scale": 1.57,
+    "rotation": 0.41
+  },
+  {
+    "x": -108.6,
+    "z": -128,
+    "type": "Bush_Small",
+    "scale": 0.98,
+    "rotation": 5.31
+  },
+  {
+    "x": -104.1,
+    "z": -120.7,
+    "type": "Plant_1",
+    "scale": 1.71,
+    "rotation": 4.79
+  },
+  {
+    "x": -103.4,
+    "z": 104.1,
+    "type": "Bush_Large_Flowers",
+    "scale": 1.36,
+    "rotation": 5.22
+  },
+  {
+    "x": -103.8,
+    "z": 115,
+    "type": "Plant_7_Big",
+    "scale": 0.88,
+    "rotation": 1.74
+  },
+  {
+    "x": -108.7,
+    "z": 132,
+    "type": "Clover_1",
+    "scale": 0.97,
+    "rotation": 0.77
+  },
+  {
+    "x": -103.9,
+    "z": 138.1,
+    "type": "Fern_1",
+    "scale": 1.06,
+    "rotation": 4.62
+  },
+  {
+    "x": -103.3,
+    "z": 144.6,
+    "type": "Bush_Common",
+    "scale": 1.16,
+    "rotation": 4.96
+  },
+  {
+    "x": -106.6,
+    "z": 155.8,
+    "type": "Plant_7_Big",
+    "scale": 1.13,
+    "rotation": 2.79
+  },
+  {
+    "x": -106.5,
+    "z": 163,
+    "type": "Plant_7",
+    "scale": 1.53,
+    "rotation": 0.18
+  },
+  {
+    "x": -98.4,
+    "z": -152.7,
+    "type": "Clover_2",
+    "scale": 1.39,
+    "rotation": 0.04
+  },
+  {
+    "x": -100.5,
+    "z": -143.4,
+    "type": "Bush_Common_Flowers",
+    "scale": 1.49,
+    "rotation": 0.02
+  },
+  {
+    "x": -98.7,
+    "z": -132.5,
+    "type": "Bush_Large",
+    "scale": 1.77,
+    "rotation": 1.27
+  },
+  {
+    "x": -95.9,
+    "z": -125.5,
+    "type": "Flower_1_Clump",
+    "scale": 1.65,
+    "rotation": 4.64
+  },
+  {
+    "x": -97.6,
+    "z": -115.5,
+    "type": "Mushroom_Common",
+    "scale": 1.03,
+    "rotation": 2.33
+  },
+  {
+    "x": -95.3,
+    "z": 97.6,
+    "type": "Bush_Common",
+    "scale": 1.51,
+    "rotation": 1.9
+  },
+  {
+    "x": -97.3,
+    "z": 113.5,
+    "type": "Bush_Small",
+    "scale": 1.24,
+    "rotation": 5.56
+  },
+  {
+    "x": -95.7,
+    "z": 119.8,
+    "type": "Plant_1",
+    "scale": 1.42,
+    "rotation": 3.91
+  },
+  {
+    "x": -99.8,
+    "z": 129.1,
+    "type": "Flower_1_Clump",
+    "scale": 1.22,
+    "rotation": 4.27
+  },
+  {
+    "x": -98.1,
+    "z": 139.3,
+    "type": "Bush_Small",
+    "scale": 1.47,
+    "rotation": 2.01
+  },
+  {
+    "x": -98.3,
+    "z": 147.7,
+    "type": "Flower_2_Clump",
+    "scale": 1.14,
+    "rotation": 2.41
+  },
+  {
+    "x": -96.7,
+    "z": 155.1,
+    "type": "Flower_5_Clump",
+    "scale": 0.95,
+    "rotation": 0.76
+  },
+  {
+    "x": -95.8,
+    "z": 163.1,
+    "type": "Mushroom_Laetiporus",
+    "scale": 1.43,
+    "rotation": 0.85
+  },
+  {
+    "x": -91.9,
+    "z": -151.5,
+    "type": "Bush_Common",
+    "scale": 1.55,
+    "rotation": 5.58
+  },
+  {
+    "x": -88.2,
+    "z": -143.7,
+    "type": "Mushroom_Laetiporus",
+    "scale": 1.73,
+    "rotation": 2.47
+  },
+  {
+    "x": -89.7,
+    "z": -136,
+    "type": "Bush_Small",
+    "scale": 1.38,
+    "rotation": 5.91
+  },
+  {
+    "x": -90.2,
+    "z": -123.8,
+    "type": "Bush_Small_Flowers",
+    "scale": 1.51,
+    "rotation": 6.11
+  },
+  {
+    "x": -91.3,
+    "z": 100.4,
+    "type": "Bush_Common",
+    "scale": 0.92,
+    "rotation": 4.27
+  },
+  {
+    "x": -87.4,
+    "z": 106.3,
+    "type": "Mushroom_Laetiporus",
+    "scale": 1.09,
+    "rotation": 0.1
+  },
+  {
+    "x": -87.6,
+    "z": 116.3,
+    "type": "Bush_Common_Flowers",
+    "scale": 1.63,
+    "rotation": 0.64
+  },
+  {
+    "x": -91,
+    "z": 122.2,
+    "type": "Flower_5_Clump",
+    "scale": 1.64,
+    "rotation": 0.97
+  },
+  {
+    "x": -91.8,
+    "z": 128,
+    "type": "Bush",
+    "scale": 1.11,
+    "rotation": 4.42
+  },
+  {
+    "x": -87.6,
+    "z": 135.3,
+    "type": "Bush",
+    "scale": 1.36,
+    "rotation": 0.21
+  },
+  {
+    "x": -89.8,
+    "z": 144.2,
+    "type": "Plant_1_Big",
+    "scale": 1,
+    "rotation": 2.99
+  },
+  {
+    "x": -89.4,
+    "z": 151.7,
+    "type": "Bush_Large_Flowers",
+    "scale": 1.15,
+    "rotation": 6.13
+  },
+  {
+    "x": -90,
+    "z": 159.9,
+    "type": "Bush_Common_Flowers",
+    "scale": 1.66,
+    "rotation": 1.99
+  },
+  {
+    "x": -81.5,
+    "z": 114.9,
+    "type": "Flower_3_Clump",
+    "scale": 1.36,
+    "rotation": 4.27
+  },
+  {
+    "x": -80.7,
+    "z": 119.5,
+    "type": "Bush_Common",
+    "scale": 1.2,
+    "rotation": 3.98
+  },
+  {
+    "x": -80.8,
+    "z": 128.1,
+    "type": "Flower_5_Clump",
+    "scale": 1.22,
+    "rotation": 3.81
+  },
+  {
+    "x": -81.3,
+    "z": 137.3,
+    "type": "Flower_5_Clump",
+    "scale": 1.51,
+    "rotation": 1.09
+  },
+  {
+    "x": -84.3,
+    "z": 145.9,
+    "type": "Clover_1",
+    "scale": 1.6,
+    "rotation": 4.75
+  },
+  {
+    "x": -81.8,
+    "z": 152.2,
+    "type": "Mushroom_Laetiporus",
+    "scale": 1.07,
+    "rotation": 0.36
+  },
+  {
+    "x": -80.2,
+    "z": 164.6,
+    "type": "Bush_Large_Flowers",
+    "scale": 1.7,
+    "rotation": 3.92
+  },
+  {
+    "x": -76.6,
+    "z": -164.9,
+    "type": "Flower_5_Clump",
+    "scale": 1.47,
+    "rotation": 4.52
+  },
+  {
+    "x": -75.6,
+    "z": 127.8,
+    "type": "Bush_Large",
+    "scale": 1.45,
+    "rotation": 5.54
+  },
+  {
+    "x": -73.7,
+    "z": 138.3,
+    "type": "Flower_1_Clump",
+    "scale": 1.05,
+    "rotation": 4.14
+  },
+  {
+    "x": -75.6,
+    "z": 143.8,
+    "type": "Flower_2",
+    "scale": 1.62,
+    "rotation": 4.19
+  },
+  {
+    "x": -74.3,
+    "z": 151.8,
+    "type": "Clover_2",
+    "scale": 1.71,
+    "rotation": 2.65
+  },
+  {
+    "x": -74.6,
+    "z": 159.3,
+    "type": "Plant_1_Big",
+    "scale": 1.74,
+    "rotation": 1.58
+  },
+  {
+    "x": -66.1,
+    "z": -165.1,
+    "type": "Bush_Small",
+    "scale": 0.93,
+    "rotation": 3.49
+  },
+  {
+    "x": -68.5,
+    "z": -160.3,
+    "type": "Bush",
+    "scale": 1.8,
+    "rotation": 1.31
+  },
+  {
+    "x": -65,
+    "z": 128.6,
+    "type": "Plant_1_Big",
+    "scale": 0.88,
+    "rotation": 3.92
+  },
+  {
+    "x": -64,
+    "z": 138.5,
+    "type": "Plant_1_Big",
+    "scale": 1.52,
+    "rotation": 5.12
+  },
+  {
+    "x": -67.4,
+    "z": 145.5,
+    "type": "Bush",
+    "scale": 1.29,
+    "rotation": 4.5
+  },
+  {
+    "x": -68.4,
+    "z": 153.4,
+    "type": "Bush_Large_Flowers",
+    "scale": 1.22,
+    "rotation": 1.9
+  },
+  {
+    "x": -65.5,
+    "z": 164,
+    "type": "Flower_1",
+    "scale": 1.31,
+    "rotation": 2.53
+  },
+  {
+    "x": -58.5,
+    "z": -163.4,
+    "type": "Flower_5_Clump",
+    "scale": 1.57,
+    "rotation": 1.57
+  },
+  {
+    "x": -58,
+    "z": 131.6,
+    "type": "Flower_1_Clump",
+    "scale": 0.99,
+    "rotation": 2.64
+  },
+  {
+    "x": -57.9,
+    "z": 138.8,
+    "type": "Plant_1_Big",
+    "scale": 1.1,
+    "rotation": 0.87
+  },
+  {
+    "x": -57.6,
+    "z": 145.6,
+    "type": "Bush_Flowers",
+    "scale": 1.44,
+    "rotation": 2.95
+  },
+  {
+    "x": -60.4,
+    "z": 155,
+    "type": "Flower_1",
+    "scale": 1.7,
+    "rotation": 3.67
+  },
+  {
+    "x": -58.3,
+    "z": 163.7,
+    "type": "Flower_5_Clump",
+    "scale": 1.18,
+    "rotation": 2.7
+  },
+  {
+    "x": -52.3,
+    "z": -164,
+    "type": "Bush_Small",
+    "scale": 0.94,
+    "rotation": 2.71
+  },
+  {
+    "x": -47.7,
+    "z": -155.7,
+    "type": "Flower_1_Clump",
+    "scale": 1.76,
+    "rotation": 4.73
+  },
+  {
+    "x": -47.3,
+    "z": 114.1,
+    "type": "Bush_Large",
+    "scale": 0.92,
+    "rotation": 0
+  },
+  {
+    "x": -50.5,
+    "z": 121.8,
+    "type": "Flower_2",
+    "scale": 0.94,
+    "rotation": 0.5
+  },
+  {
+    "x": -51.9,
+    "z": 130.5,
+    "type": "Clover_1",
+    "scale": 1.33,
+    "rotation": 1.19
+  },
+  {
+    "x": -52.7,
+    "z": 137.5,
+    "type": "Plant_7_Big",
+    "scale": 0.8,
+    "rotation": 2.69
+  },
+  {
+    "x": -48.8,
+    "z": 146.4,
+    "type": "Flower_1_Clump",
+    "scale": 1.28,
+    "rotation": 1.28
+  },
+  {
+    "x": -51.9,
+    "z": 153.9,
+    "type": "Clover_1",
+    "scale": 1.16,
+    "rotation": 1.93
+  },
+  {
+    "x": -47.6,
+    "z": 159.4,
+    "type": "Plant_7",
+    "scale": 1.33,
+    "rotation": 4.61
+  },
+  {
+    "x": -42,
+    "z": -166.1,
+    "type": "Flower_5_Clump",
+    "scale": 1.47,
+    "rotation": 0.43
+  },
+  {
+    "x": -41.8,
+    "z": -155.6,
+    "type": "Bush_Flowers",
+    "scale": 1.37,
+    "rotation": 2.34
+  },
+  {
+    "x": -44.4,
+    "z": 106.1,
+    "type": "Flower_2_Clump",
+    "scale": 0.96,
+    "rotation": 0.65
+  },
+  {
+    "x": -43.4,
+    "z": 123.8,
+    "type": "Plant_7",
+    "scale": 1.29,
+    "rotation": 0.02
+  },
+  {
+    "x": -40.2,
+    "z": 127.5,
+    "type": "Clover_2",
+    "scale": 1.55,
+    "rotation": 4.99
+  },
+  {
+    "x": -40.8,
+    "z": 140.7,
+    "type": "Bush_Common",
+    "scale": 1.25,
+    "rotation": 0.14
+  },
+  {
+    "x": -43.1,
+    "z": 153.7,
+    "type": "Plant_7",
+    "scale": 1.18,
+    "rotation": 2.42
+  },
+  {
+    "x": -42.6,
+    "z": 160.7,
+    "type": "Bush_Small_Flowers",
+    "scale": 1.76,
+    "rotation": 2.58
+  },
+  {
+    "x": -36.4,
+    "z": -168.2,
+    "type": "Plant_7",
+    "scale": 1.22,
+    "rotation": 0.97
+  },
+  {
+    "x": -32.7,
+    "z": -159.8,
+    "type": "Bush_Small",
+    "scale": 1.37,
+    "rotation": 5.12
+  },
+  {
+    "x": -31.3,
+    "z": 98.2,
+    "type": "Bush_Flowers",
+    "scale": 1.65,
+    "rotation": 6.02
+  },
+  {
+    "x": -31.2,
+    "z": 104.8,
+    "type": "Bush_Common",
+    "scale": 1.04,
+    "rotation": 3.09
+  },
+  {
+    "x": -35.6,
+    "z": 115.6,
+    "type": "Bush_Large_Flowers",
+    "scale": 1.49,
+    "rotation": 1.45
+  },
+  {
+    "x": -32.1,
+    "z": 122.3,
+    "type": "Flower_1",
+    "scale": 1.08,
+    "rotation": 4.2
+  },
+  {
+    "x": -36.6,
+    "z": 130.3,
+    "type": "Flower_2_Clump",
+    "scale": 1.69,
+    "rotation": 4.85
+  },
+  {
+    "x": -34.8,
+    "z": 136.5,
+    "type": "Mushroom_Common",
+    "scale": 1.04,
+    "rotation": 1.92
+  },
+  {
+    "x": -35.5,
+    "z": 148.8,
+    "type": "Bush_Large",
+    "scale": 1.79,
+    "rotation": 4.23
+  },
+  {
+    "x": -34.1,
+    "z": 153.5,
+    "type": "Flower_3_Clump",
+    "scale": 0.96,
+    "rotation": 3.2
+  },
+  {
+    "x": -31.9,
+    "z": 160.2,
+    "type": "Bush_Large_Flowers",
+    "scale": 1.09,
+    "rotation": 4.31
+  },
+  {
+    "x": -28.1,
+    "z": -165.9,
+    "type": "Mushroom_Common",
+    "scale": 1.72,
+    "rotation": 4.06
+  },
+  {
+    "x": -26.9,
+    "z": -155.3,
+    "type": "Flower_5_Clump",
+    "scale": 1.62,
+    "rotation": 5.4
+  },
+  {
+    "x": -27.6,
+    "z": 88.1,
+    "type": "Fern_1",
+    "scale": 0.9,
+    "rotation": 1.28
+  },
+  {
+    "x": -26.4,
+    "z": 112,
+    "type": "Plant_1",
+    "scale": 1.65,
+    "rotation": 0.38
+  },
+  {
+    "x": -27.5,
+    "z": 121.1,
+    "type": "Flower_5_Clump",
+    "scale": 1.19,
+    "rotation": 4.56
+  },
+  {
+    "x": -25.1,
+    "z": 131.4,
+    "type": "Bush_Flowers",
+    "scale": 1.36,
+    "rotation": 4.97
+  },
+  {
+    "x": -27.2,
+    "z": 136,
+    "type": "Plant_1_Big",
+    "scale": 1.01,
+    "rotation": 0.43
+  },
+  {
+    "x": -27.5,
+    "z": 143.4,
+    "type": "Mushroom_Laetiporus",
+    "scale": 0.81,
+    "rotation": 0.1
+  },
+  {
+    "x": -26,
+    "z": 151.8,
+    "type": "Flower_1",
+    "scale": 1.72,
+    "rotation": 4.3
+  },
+  {
+    "x": -15.5,
+    "z": -166.1,
+    "type": "Bush_Large_Flowers",
+    "scale": 0.87,
+    "rotation": 4.85
+  },
+  {
+    "x": -18.1,
+    "z": 82.3,
+    "type": "Bush_Large",
+    "scale": 0.96,
+    "rotation": 6.08
+  },
+  {
+    "x": -18.6,
+    "z": 89.4,
+    "type": "Mushroom_Common",
+    "scale": 1.62,
+    "rotation": 1.05
+  },
+  {
+    "x": -17.6,
+    "z": 100.3,
+    "type": "Bush_Common",
+    "scale": 1.45,
+    "rotation": 6.25
+  },
+  {
+    "x": -20.7,
+    "z": 108.3,
+    "type": "Flower_2_Clump",
+    "scale": 1.02,
+    "rotation": 5.34
+  },
+  {
+    "x": -18.5,
+    "z": 116.1,
+    "type": "Bush",
+    "scale": 1.14,
+    "rotation": 0.5
+  },
+  {
+    "x": -17.2,
+    "z": 121.2,
+    "type": "Mushroom_Common",
+    "scale": 0.9,
+    "rotation": 4.62
+  },
+  {
+    "x": -16.9,
+    "z": 129.5,
+    "type": "Flower_2",
+    "scale": 1.54,
+    "rotation": 0.66
+  },
+  {
+    "x": -18.6,
+    "z": 140.4,
+    "type": "Flower_1",
+    "scale": 1.76,
+    "rotation": 3.58
+  },
+  {
+    "x": -11,
+    "z": -167.5,
+    "type": "Clover_2",
+    "scale": 1.25,
+    "rotation": 2.96
+  },
+  {
+    "x": -12.8,
+    "z": 83.7,
+    "type": "Flower_3_Clump",
+    "scale": 0.81,
+    "rotation": 3.62
+  },
+  {
+    "x": -12.3,
+    "z": 90.9,
+    "type": "Mushroom_Common",
+    "scale": 1.43,
+    "rotation": 6.25
+  },
+  {
+    "x": -8.9,
+    "z": 99.4,
+    "type": "Flower_3_Clump",
+    "scale": 1.3,
+    "rotation": 4.63
+  },
+  {
+    "x": -8,
+    "z": 105.3,
+    "type": "Bush_Large_Flowers",
+    "scale": 0.97,
+    "rotation": 3.15
+  },
+  {
+    "x": -11.6,
+    "z": 111.8,
+    "type": "Plant_1",
+    "scale": 0.92,
+    "rotation": 3.49
+  },
+  {
+    "x": -10.9,
+    "z": 120.3,
+    "type": "Mushroom_Laetiporus",
+    "scale": 1.61,
+    "rotation": 5.05
+  },
+  {
+    "x": -7.6,
+    "z": 131,
+    "type": "Bush",
+    "scale": 0.95,
+    "rotation": 4.59
+  },
+  {
+    "x": -0.5,
+    "z": -164.3,
+    "type": "Flower_5_Clump",
+    "scale": 1.1,
+    "rotation": 4.71
+  },
+  {
+    "x": -1.4,
+    "z": 83,
+    "type": "Flower_1_Clump",
+    "scale": 1.29,
+    "rotation": 2.12
+  },
+  {
+    "x": -1.9,
+    "z": 87.9,
+    "type": "Clover_2",
+    "scale": 0.89,
+    "rotation": 0.53
+  },
+  {
+    "x": -3.3,
+    "z": 98.4,
+    "type": "Bush_Flowers",
+    "scale": 0.98,
+    "rotation": 5.65
+  },
+  {
+    "x": 0.5,
+    "z": 113.5,
+    "type": "Fern_1",
+    "scale": 1.62,
+    "rotation": 4.42
+  },
+  {
+    "x": -1.2,
+    "z": 124.3,
+    "type": "Bush_Large_Flowers",
+    "scale": 1.47,
+    "rotation": 3.11
+  },
+  {
+    "x": 6.5,
+    "z": -165.5,
+    "type": "Bush_Large_Flowers",
+    "scale": 1.72,
+    "rotation": 4.2
+  },
+  {
+    "x": 6.9,
+    "z": -158.3,
+    "type": "Bush_Small_Flowers",
+    "scale": 1.24,
+    "rotation": 0.7
+  },
+  {
+    "x": 7.3,
+    "z": -110.6,
+    "type": "Bush_Large_Flowers",
+    "scale": 1.25,
+    "rotation": 4
+  },
+  {
+    "x": 7.5,
+    "z": 88.4,
+    "type": "Flower_2",
+    "scale": 1.7,
+    "rotation": 3.56
+  },
+  {
+    "x": 7.1,
+    "z": 96.1,
+    "type": "Clover_2",
+    "scale": 0.95,
+    "rotation": 6.2
+  },
+  {
+    "x": 4.9,
+    "z": 108.7,
+    "type": "Mushroom_Laetiporus",
+    "scale": 1.05,
+    "rotation": 4.23
+  },
+  {
+    "x": 5.1,
+    "z": 123.3,
+    "type": "Bush_Large_Flowers",
+    "scale": 1.14,
+    "rotation": 1.78
+  },
+  {
+    "x": 12.1,
+    "z": -163.7,
+    "type": "Flower_3_Clump",
+    "scale": 1.7,
+    "rotation": 5.58
+  },
+  {
+    "x": 15.6,
+    "z": -158.3,
+    "type": "Plant_7",
+    "scale": 0.82,
+    "rotation": 4.08
+  },
+  {
+    "x": 15.2,
+    "z": -149.1,
+    "type": "Bush_Large",
+    "scale": 1.27,
+    "rotation": 3.97
+  },
+  {
+    "x": 11.5,
+    "z": -134.5,
+    "type": "Bush_Small",
+    "scale": 0.98,
+    "rotation": 2.49
+  },
+  {
+    "x": 14.9,
+    "z": -126.1,
+    "type": "Flower_1_Clump",
+    "scale": 1.18,
+    "rotation": 3.54
+  },
+  {
+    "x": 16.2,
+    "z": -120,
+    "type": "Bush_Large",
+    "scale": 1.31,
+    "rotation": 4.75
+  },
+  {
+    "x": 11.9,
+    "z": 90.9,
+    "type": "Flower_5_Clump",
+    "scale": 1.67,
+    "rotation": 1.02
+  },
+  {
+    "x": 13.1,
+    "z": 99.7,
+    "type": "Plant_1",
+    "scale": 1.68,
+    "rotation": 0.7
+  },
+  {
+    "x": 14.2,
+    "z": 105.3,
+    "type": "Bush_Large",
+    "scale": 1.08,
+    "rotation": 2.4
+  },
+  {
+    "x": 12.7,
+    "z": 115.3,
+    "type": "Plant_7_Big",
+    "scale": 1.04,
+    "rotation": 3.02
+  },
+  {
+    "x": 11.6,
+    "z": 121.3,
+    "type": "Bush",
+    "scale": 1.71,
+    "rotation": 5.23
+  },
+  {
+    "x": 22,
+    "z": -164.3,
+    "type": "Flower_2_Clump",
+    "scale": 1.45,
+    "rotation": 0.9
+  },
+  {
+    "x": 22.4,
+    "z": -150,
+    "type": "Plant_7_Big",
+    "scale": 1.65,
+    "rotation": 5.45
+  },
+  {
+    "x": 20.5,
+    "z": -141.2,
+    "type": "Flower_2",
+    "scale": 1.39,
+    "rotation": 0.48
+  },
+  {
+    "x": 24.3,
+    "z": -133.7,
+    "type": "Flower_1_Clump",
+    "scale": 1.07,
+    "rotation": 4.26
+  },
+  {
+    "x": 21.7,
+    "z": -125.2,
+    "type": "Bush_Large_Flowers",
+    "scale": 1.55,
+    "rotation": 0.96
+  },
+  {
+    "x": 23.8,
+    "z": -115.7,
+    "type": "Plant_7",
+    "scale": 1.47,
+    "rotation": 2.89
+  },
+  {
+    "x": 23,
+    "z": 89.7,
+    "type": "Mushroom_Common",
+    "scale": 0.96,
+    "rotation": 5.28
+  },
+  {
+    "x": 23.1,
+    "z": 96.3,
+    "type": "Bush_Small",
+    "scale": 1.42,
+    "rotation": 4.18
+  },
+  {
+    "x": 22.4,
+    "z": 106.3,
+    "type": "Flower_2_Clump",
+    "scale": 0.96,
+    "rotation": 2.09
+  },
+  {
+    "x": 21.3,
+    "z": 112,
+    "type": "Flower_2",
+    "scale": 0.99,
+    "rotation": 3.6
+  },
+  {
+    "x": 22,
+    "z": 123.3,
+    "type": "Flower_1",
+    "scale": 1.38,
+    "rotation": 1.93
+  },
+  {
+    "x": 22.9,
+    "z": 129.6,
+    "type": "Flower_1",
+    "scale": 1.55,
+    "rotation": 5.27
+  },
+  {
+    "x": 30.9,
+    "z": -150.9,
+    "type": "Flower_2",
+    "scale": 1.8,
+    "rotation": 1.18
+  },
+  {
+    "x": 27.5,
+    "z": -143.2,
+    "type": "Bush_Common_Flowers",
+    "scale": 0.89,
+    "rotation": 5.17
+  },
+  {
+    "x": 32.5,
+    "z": -131.4,
+    "type": "Fern_1",
+    "scale": 1.5,
+    "rotation": 4.1
+  },
+  {
+    "x": 31.6,
+    "z": -125,
+    "type": "Bush_Small_Flowers",
+    "scale": 0.93,
+    "rotation": 1.9
+  },
+  {
+    "x": 29,
+    "z": -115.5,
+    "type": "Plant_1_Big",
+    "scale": 0.82,
+    "rotation": 3.32
+  },
+  {
+    "x": 32.2,
+    "z": 82.8,
+    "type": "Fern_1",
+    "scale": 1.06,
+    "rotation": 1.89
+  },
+  {
+    "x": 30.9,
+    "z": 89.2,
+    "type": "Clover_1",
+    "scale": 1.51,
+    "rotation": 4.8
+  },
+  {
+    "x": 28.7,
+    "z": 95.3,
+    "type": "Bush_Flowers",
+    "scale": 0.98,
+    "rotation": 5.82
+  },
+  {
+    "x": 28.7,
+    "z": 108.7,
+    "type": "Bush_Flowers",
+    "scale": 1.14,
+    "rotation": 1.3
+  },
+  {
+    "x": 30.4,
+    "z": 116.1,
+    "type": "Bush_Large_Flowers",
+    "scale": 1.47,
+    "rotation": 2.33
+  },
+  {
+    "x": 30.6,
+    "z": 128.4,
+    "type": "Bush_Small",
+    "scale": 1.51,
+    "rotation": 1.83
+  },
+  {
+    "x": 37.2,
+    "z": -144.1,
+    "type": "Bush_Large_Flowers",
+    "scale": 1.6,
+    "rotation": 5.58
+  },
+  {
+    "x": 40.5,
+    "z": -127.6,
+    "type": "Flower_2_Clump",
+    "scale": 1.61,
+    "rotation": 4.74
+  },
+  {
+    "x": 37.8,
+    "z": -118.9,
+    "type": "Mushroom_Common",
+    "scale": 1.22,
+    "rotation": 6
+  },
+  {
+    "x": 37,
+    "z": 89.6,
+    "type": "Flower_5_Clump",
+    "scale": 1.15,
+    "rotation": 2.57
+  },
+  {
+    "x": 37.8,
+    "z": 96,
+    "type": "Clover_1",
+    "scale": 0.97,
+    "rotation": 0.22
+  },
+  {
+    "x": 38.3,
+    "z": 107.4,
+    "type": "Bush_Flowers",
+    "scale": 0.84,
+    "rotation": 2.25
+  },
+  {
+    "x": 38.2,
+    "z": 113.5,
+    "type": "Flower_2",
+    "scale": 1.13,
+    "rotation": 6.11
+  },
+  {
+    "x": 37.9,
+    "z": 120.9,
+    "type": "Mushroom_Laetiporus",
+    "scale": 1.3,
+    "rotation": 0.5
+  },
+  {
+    "x": 38.3,
+    "z": 132.5,
+    "type": "Flower_1",
+    "scale": 1.73,
+    "rotation": 5.07
+  },
+  {
+    "x": 47.2,
+    "z": -166.8,
+    "type": "Plant_1",
+    "scale": 0.82,
+    "rotation": 2.41
+  },
+  {
+    "x": 46.1,
+    "z": -139.6,
+    "type": "Flower_2_Clump",
+    "scale": 1.56,
+    "rotation": 3.77
+  },
+  {
+    "x": 45.6,
+    "z": -131.3,
+    "type": "Mushroom_Common",
+    "scale": 0.91,
+    "rotation": 2.09
+  },
+  {
+    "x": 44.8,
+    "z": -117.6,
+    "type": "Flower_1_Clump",
+    "scale": 1.39,
+    "rotation": 6.26
+  },
+  {
+    "x": 47.2,
+    "z": -107.9,
+    "type": "Mushroom_Laetiporus",
+    "scale": 1.4,
+    "rotation": 3.09
+  },
+  {
+    "x": 47.5,
+    "z": -92.1,
+    "type": "Bush_Common",
+    "scale": 1.71,
+    "rotation": 4.42
+  },
+  {
+    "x": 47.3,
+    "z": -84.3,
+    "type": "Mushroom_Laetiporus",
+    "scale": 1.51,
+    "rotation": 4.94
+  },
+  {
+    "x": 45.7,
+    "z": 91.1,
+    "type": "Bush_Common_Flowers",
+    "scale": 1.18,
+    "rotation": 6.11
+  },
+  {
+    "x": 45,
+    "z": 111.5,
+    "type": "Bush_Large",
+    "scale": 1.27,
+    "rotation": 4.93
+  },
+  {
+    "x": 46.6,
+    "z": 123.5,
+    "type": "Plant_7",
+    "scale": 1.39,
+    "rotation": 1.65
+  },
+  {
+    "x": 44.3,
+    "z": 127.5,
+    "type": "Clover_1",
+    "scale": 1.53,
+    "rotation": 1.91
+  },
+  {
+    "x": 55.5,
+    "z": -166.3,
+    "type": "Bush_Small",
+    "scale": 1.28,
+    "rotation": 5.95
+  },
+  {
+    "x": 56,
+    "z": -156.4,
+    "type": "Fern_1",
+    "scale": 1.01,
+    "rotation": 3.85
+  },
+  {
+    "x": 55.5,
+    "z": -112,
+    "type": "Flower_5_Clump",
+    "scale": 0.98,
+    "rotation": 5.98
+  },
+  {
+    "x": 54.8,
+    "z": -100.5,
+    "type": "Bush_Common",
+    "scale": 1.55,
+    "rotation": 3.67
+  },
+  {
+    "x": 51.9,
+    "z": -83.9,
+    "type": "Plant_7_Big",
+    "scale": 1.09,
+    "rotation": 5.1
+  },
+  {
+    "x": 51.5,
+    "z": 83.7,
+    "type": "Mushroom_Laetiporus",
+    "scale": 1.46,
+    "rotation": 0.74
+  },
+  {
+    "x": 54.2,
+    "z": 152.2,
+    "type": "Flower_1",
+    "scale": 1.17,
+    "rotation": 2.73
+  },
+  {
+    "x": 61.8,
+    "z": -166,
+    "type": "Flower_3_Clump",
+    "scale": 1.52,
+    "rotation": 3.46
+  },
+  {
+    "x": 62.3,
+    "z": -150.5,
+    "type": "Clover_1",
+    "scale": 1.16,
+    "rotation": 0.73
+  },
+  {
+    "x": 60.3,
+    "z": -109.7,
+    "type": "Bush_Large",
+    "scale": 1.27,
+    "rotation": 3.8
+  },
+  {
+    "x": 64.1,
+    "z": -101.9,
+    "type": "Bush_Large",
+    "scale": 1.74,
+    "rotation": 1.33
+  },
+  {
+    "x": 61.4,
+    "z": -95,
+    "type": "Flower_5_Clump",
+    "scale": 1.47,
+    "rotation": 0.62
+  },
+  {
+    "x": 60.1,
+    "z": -88.2,
+    "type": "Flower_2",
+    "scale": 1.57,
+    "rotation": 3.82
+  },
+  {
+    "x": 63.8,
+    "z": 154.4,
+    "type": "Flower_5_Clump",
+    "scale": 1.38,
+    "rotation": 1.15
+  },
+  {
+    "x": 60.9,
+    "z": 164.7,
+    "type": "Bush_Large",
+    "scale": 1.38,
+    "rotation": 2.25
+  },
+  {
+    "x": 68.4,
+    "z": -166.1,
+    "type": "Clover_1",
+    "scale": 1.77,
+    "rotation": 0.36
+  },
+  {
+    "x": 72.2,
+    "z": -160.1,
+    "type": "Plant_1_Big",
+    "scale": 1.59,
+    "rotation": 5.74
+  },
+  {
+    "x": 72.7,
+    "z": -118.8,
+    "type": "Flower_5_Clump",
+    "scale": 1.08,
+    "rotation": 3.81
+  },
+  {
+    "x": 67.3,
+    "z": -108.6,
+    "type": "Flower_5_Clump",
+    "scale": 1.44,
+    "rotation": 5.97
+  },
+  {
+    "x": 70.7,
+    "z": -99.8,
+    "type": "Flower_2_Clump",
+    "scale": 1.72,
+    "rotation": 1.14
+  },
+  {
+    "x": 68.4,
+    "z": -91.7,
+    "type": "Bush_Small",
+    "scale": 0.96,
+    "rotation": 5.46
+  },
+  {
+    "x": 71.7,
+    "z": -84.5,
+    "type": "Flower_2_Clump",
+    "scale": 1.23,
+    "rotation": 6.21
+  },
+  {
+    "x": 68.7,
+    "z": 84,
+    "type": "Clover_2",
+    "scale": 1.6,
+    "rotation": 5.79
+  },
+  {
+    "x": 70.2,
+    "z": 152.5,
+    "type": "Bush_Small",
+    "scale": 1.59,
+    "rotation": 4.28
+  },
+  {
+    "x": 68.6,
+    "z": 161.2,
+    "type": "Clover_1",
+    "scale": 1.47,
+    "rotation": 2.32
+  },
+  {
+    "x": 78.8,
+    "z": -126.6,
+    "type": "Bush_Common",
+    "scale": 1.26,
+    "rotation": 5.38
+  },
+  {
+    "x": 76.1,
+    "z": -115.6,
+    "type": "Flower_5_Clump",
+    "scale": 1.61,
+    "rotation": 2.03
+  },
+  {
+    "x": 78.9,
+    "z": -111.8,
+    "type": "Clover_2",
+    "scale": 1.17,
+    "rotation": 4.19
+  },
+  {
+    "x": 77.6,
+    "z": -99.7,
+    "type": "Bush",
+    "scale": 1.38,
+    "rotation": 2.69
+  },
+  {
+    "x": 78.3,
+    "z": -93.2,
+    "type": "Flower_2",
+    "scale": 1.71,
+    "rotation": 3.57
+  },
+  {
+    "x": 77.8,
+    "z": -87.4,
+    "type": "Bush_Large",
+    "scale": 0.82,
+    "rotation": 4.89
+  },
+  {
+    "x": 76.2,
+    "z": 84.3,
+    "type": "Flower_1",
+    "scale": 0.87,
+    "rotation": 5.17
+  },
+  {
+    "x": 87.6,
+    "z": -142.8,
+    "type": "Bush_Common_Flowers",
+    "scale": 0.98,
+    "rotation": 3.11
+  },
+  {
+    "x": 84.8,
+    "z": -134.4,
+    "type": "Flower_5_Clump",
+    "scale": 1.18,
+    "rotation": 2.55
+  },
+  {
+    "x": 84.1,
+    "z": -127.8,
+    "type": "Flower_1_Clump",
+    "scale": 0.96,
+    "rotation": 0.53
+  },
+  {
+    "x": 86.4,
+    "z": -119.7,
+    "type": "Bush_Flowers",
+    "scale": 1.58,
+    "rotation": 0.89
+  },
+  {
+    "x": 88.1,
+    "z": -112.8,
+    "type": "Flower_1",
+    "scale": 1.11,
+    "rotation": 5.42
+  },
+  {
+    "x": 86.7,
+    "z": -104.7,
+    "type": "Flower_2_Clump",
+    "scale": 0.83,
+    "rotation": 3.45
+  },
+  {
+    "x": 84.6,
+    "z": -96.2,
+    "type": "Flower_2_Clump",
+    "scale": 1.43,
+    "rotation": 5.25
+  },
+  {
+    "x": 86.9,
+    "z": -88.3,
+    "type": "Mushroom_Common",
+    "scale": 1.12,
+    "rotation": 6.11
+  },
+  {
+    "x": 93.2,
+    "z": -142,
+    "type": "Bush_Small_Flowers",
+    "scale": 1.66,
+    "rotation": 4.92
+  },
+  {
+    "x": 93.9,
+    "z": -131.5,
+    "type": "Bush_Large",
+    "scale": 1.39,
+    "rotation": 1.36
+  },
+  {
+    "x": 95.3,
+    "z": -124.4,
+    "type": "Flower_1_Clump",
+    "scale": 1.25,
+    "rotation": 0.89
+  },
+  {
+    "x": 93.6,
+    "z": -118.9,
+    "type": "Clover_1",
+    "scale": 1.49,
+    "rotation": 5.7
+  },
+  {
+    "x": 91.9,
+    "z": -103.8,
+    "type": "Clover_1",
+    "scale": 1.37,
+    "rotation": 3.82
+  },
+  {
+    "x": 91.4,
+    "z": -96.4,
+    "type": "Plant_1",
+    "scale": 0.89,
+    "rotation": 2.24
+  },
+  {
+    "x": 92.7,
+    "z": -87.9,
+    "type": "Flower_5_Clump",
+    "scale": 1.77,
+    "rotation": 5.96
+  },
+  {
+    "x": 95.1,
+    "z": -77.2,
+    "type": "Bush_Small",
+    "scale": 1.15,
+    "rotation": 1.08
+  },
+  {
+    "x": 96.5,
+    "z": -67.6,
+    "type": "Mushroom_Common",
+    "scale": 1.7,
+    "rotation": 5.3
+  },
+  {
+    "x": 94.4,
+    "z": -56.6,
+    "type": "Clover_2",
+    "scale": 0.96,
+    "rotation": 3.66
+  },
+  {
+    "x": 95.1,
+    "z": -47.8,
+    "type": "Mushroom_Common",
+    "scale": 1.15,
+    "rotation": 5.72
+  },
+  {
+    "x": 93,
+    "z": -36.9,
+    "type": "Flower_5_Clump",
+    "scale": 1.33,
+    "rotation": 2.71
+  },
+  {
+    "x": 95.4,
+    "z": -22.4,
+    "type": "Flower_1",
+    "scale": 0.82,
+    "rotation": 4.12
+  },
+  {
+    "x": 94.1,
+    "z": -13.3,
+    "type": "Bush_Flowers",
+    "scale": 0.83,
+    "rotation": 4.16
+  },
+  {
+    "x": 96,
+    "z": -5.9,
+    "type": "Plant_7_Big",
+    "scale": 0.92,
+    "rotation": 5.86
+  },
+  {
+    "x": 94.4,
+    "z": 3.3,
+    "type": "Mushroom_Common",
+    "scale": 1.68,
+    "rotation": 1.95
+  },
+  {
+    "x": 93.4,
+    "z": 9.3,
+    "type": "Fern_1",
+    "scale": 1.23,
+    "rotation": 4.62
+  },
+  {
+    "x": 92,
+    "z": 20.4,
+    "type": "Mushroom_Common",
+    "scale": 1.22,
+    "rotation": 2.98
+  },
+  {
+    "x": 92,
+    "z": 32.8,
+    "type": "Flower_2_Clump",
+    "scale": 1.32,
+    "rotation": 0.47
+  },
+  {
+    "x": 95.6,
+    "z": 41.3,
+    "type": "Bush_Common_Flowers",
+    "scale": 1.17,
+    "rotation": 4.7
+  },
+  {
+    "x": 101.5,
+    "z": -151.3,
+    "type": "Bush_Small",
+    "scale": 1.12,
+    "rotation": 1.17
+  },
+  {
+    "x": 103.4,
+    "z": -140.2,
+    "type": "Bush",
+    "scale": 1.45,
+    "rotation": 1.84
+  },
+  {
+    "x": 103.9,
+    "z": -134.6,
+    "type": "Bush_Large_Flowers",
+    "scale": 1.13,
+    "rotation": 0.2
+  },
+  {
+    "x": 100.9,
+    "z": -127.6,
+    "type": "Plant_7",
+    "scale": 1.46,
+    "rotation": 2.97
+  },
+  {
+    "x": 102.2,
+    "z": -115.4,
+    "type": "Plant_7",
+    "scale": 1.63,
+    "rotation": 5.94
+  },
+  {
+    "x": 101,
+    "z": -100.6,
+    "type": "Flower_2_Clump",
+    "scale": 1.71,
+    "rotation": 6.03
+  },
+  {
+    "x": 104.5,
+    "z": -96,
+    "type": "Bush_Common",
+    "scale": 0.84,
+    "rotation": 4.73
+  },
+  {
+    "x": 104.4,
+    "z": -84.5,
+    "type": "Clover_1",
+    "scale": 1.8,
+    "rotation": 0.42
+  },
+  {
+    "x": 100.1,
+    "z": -76.5,
+    "type": "Plant_7_Big",
+    "scale": 0.86,
+    "rotation": 4.44
+  },
+  {
+    "x": 101.6,
+    "z": -59.7,
+    "type": "Bush_Common_Flowers",
+    "scale": 1.03,
+    "rotation": 0.07
+  },
+  {
+    "x": 101.2,
+    "z": -46.9,
+    "type": "Plant_7",
+    "scale": 0.9,
+    "rotation": 5.26
+  },
+  {
+    "x": 100.3,
+    "z": -39,
+    "type": "Bush_Small_Flowers",
+    "scale": 1.44,
+    "rotation": 5.41
+  },
+  {
+    "x": 104.4,
+    "z": -30.8,
+    "type": "Flower_3_Clump",
+    "scale": 1.71,
+    "rotation": 0.58
+  },
+  {
+    "x": 101.1,
+    "z": -20.2,
+    "type": "Bush_Common",
+    "scale": 1.69,
+    "rotation": 2.59
+  },
+  {
+    "x": 100.7,
+    "z": -12.1,
+    "type": "Flower_2",
+    "scale": 0.94,
+    "rotation": 4.27
+  },
+  {
+    "x": 104,
+    "z": -5.2,
+    "type": "Bush",
+    "scale": 1.15,
+    "rotation": 2.57
+  },
+  {
+    "x": 99.4,
+    "z": 3.6,
+    "type": "Flower_2",
+    "scale": 1.03,
+    "rotation": 3.98
+  },
+  {
+    "x": 102.1,
+    "z": 11.8,
+    "type": "Flower_2_Clump",
+    "scale": 1.19,
+    "rotation": 1.25
+  },
+  {
+    "x": 104.2,
+    "z": 24.5,
+    "type": "Bush_Common_Flowers",
+    "scale": 1.47,
+    "rotation": 2.55
+  },
+  {
+    "x": 99.8,
+    "z": 31.5,
+    "type": "Flower_5_Clump",
+    "scale": 1.72,
+    "rotation": 0.62
+  },
+  {
+    "x": 104.4,
+    "z": 44.2,
+    "type": "Bush",
+    "scale": 0.93,
+    "rotation": 0.48
+  },
+  {
+    "x": 103.3,
+    "z": 107.4,
+    "type": "Bush_Small",
+    "scale": 1.46,
+    "rotation": 4.19
+  },
+  {
+    "x": 107.8,
+    "z": -151.9,
+    "type": "Flower_2_Clump",
+    "scale": 1.64,
+    "rotation": 1.97
+  },
+  {
+    "x": 111.4,
+    "z": -142.2,
+    "type": "Fern_1",
+    "scale": 0.81,
+    "rotation": 4.07
+  },
+  {
+    "x": 112,
+    "z": -132.9,
+    "type": "Fern_1",
+    "scale": 0.95,
+    "rotation": 5.93
+  },
+  {
+    "x": 110.9,
+    "z": -128,
+    "type": "Bush_Common_Flowers",
+    "scale": 1.72,
+    "rotation": 4.4
+  },
+  {
+    "x": 111.4,
+    "z": -118,
+    "type": "Flower_3_Clump",
+    "scale": 1.07,
+    "rotation": 5.54
+  },
+  {
+    "x": 107.5,
+    "z": -108.3,
+    "type": "Flower_1_Clump",
+    "scale": 1.12,
+    "rotation": 1.16
+  },
+  {
+    "x": 110.1,
+    "z": -102.4,
+    "type": "Bush_Flowers",
+    "scale": 0.93,
+    "rotation": 5.2
+  },
+  {
+    "x": 109.7,
+    "z": -83.7,
+    "type": "Fern_1",
+    "scale": 1.58,
+    "rotation": 5.25
+  },
+  {
+    "x": 107.2,
+    "z": -79.6,
+    "type": "Bush_Common",
+    "scale": 1.49,
+    "rotation": 5.68
+  },
+  {
+    "x": 109.4,
+    "z": -71.6,
+    "type": "Bush",
+    "scale": 1.67,
+    "rotation": 2.32
+  },
+  {
+    "x": 110.6,
+    "z": -60.7,
+    "type": "Bush_Common",
+    "scale": 1.16,
+    "rotation": 6.15
+  },
+  {
+    "x": 107.8,
+    "z": -55.5,
+    "type": "Mushroom_Laetiporus",
+    "scale": 1.48,
+    "rotation": 3.64
+  },
+  {
+    "x": 110,
+    "z": -48.6,
+    "type": "Plant_1",
+    "scale": 1.48,
+    "rotation": 0.82
+  },
+  {
+    "x": 111.8,
+    "z": -36.6,
+    "type": "Mushroom_Laetiporus",
+    "scale": 1.33,
+    "rotation": 1.06
+  },
+  {
+    "x": 111.8,
+    "z": -29.3,
+    "type": "Bush_Large_Flowers",
+    "scale": 1.14,
+    "rotation": 4.67
+  },
+  {
+    "x": 110.8,
+    "z": -21.4,
+    "type": "Plant_7_Big",
+    "scale": 0.87,
+    "rotation": 2
+  },
+  {
+    "x": 108.6,
+    "z": -15.8,
+    "type": "Flower_1_Clump",
+    "scale": 1.37,
+    "rotation": 2.96
+  },
+  {
+    "x": 112.8,
+    "z": -6.7,
+    "type": "Bush",
+    "scale": 1.46,
+    "rotation": 0.19
+  },
+  {
+    "x": 111,
+    "z": 1.3,
+    "type": "Clover_1",
+    "scale": 1.79,
+    "rotation": 0.79
+  },
+  {
+    "x": 108.5,
+    "z": 8.5,
+    "type": "Bush_Common_Flowers",
+    "scale": 1.02,
+    "rotation": 0.31
+  },
+  {
+    "x": 112.2,
+    "z": 16.9,
+    "type": "Bush_Small",
+    "scale": 1.31,
+    "rotation": 4.1
+  },
+  {
+    "x": 112.5,
+    "z": 23.8,
+    "type": "Bush",
+    "scale": 1.55,
+    "rotation": 1.31
+  },
+  {
+    "x": 111.5,
+    "z": 36.8,
+    "type": "Bush_Small_Flowers",
+    "scale": 1.63,
+    "rotation": 5.19
+  },
+  {
+    "x": 111.3,
+    "z": 49.5,
+    "type": "Mushroom_Laetiporus",
+    "scale": 1.74,
+    "rotation": 2.94
+  },
+  {
+    "x": 108.7,
+    "z": 111.8,
+    "type": "Flower_3_Clump",
+    "scale": 0.93,
+    "rotation": 1.82
+  },
+  {
+    "x": 116.1,
+    "z": -148.4,
+    "type": "Bush_Large",
+    "scale": 1.43,
+    "rotation": 3.69
+  },
+  {
+    "x": 118.8,
+    "z": -143.5,
+    "type": "Plant_7",
+    "scale": 1.09,
+    "rotation": 1.38
+  },
+  {
+    "x": 116.8,
+    "z": -124.1,
+    "type": "Fern_1",
+    "scale": 1.45,
+    "rotation": 5.89
+  },
+  {
+    "x": 117.9,
+    "z": -118.2,
+    "type": "Flower_1_Clump",
+    "scale": 1.74,
+    "rotation": 1.47
+  },
+  {
+    "x": 118.7,
+    "z": -110.2,
+    "type": "Bush_Large",
+    "scale": 1.44,
+    "rotation": 4.77
+  },
+  {
+    "x": 115.5,
+    "z": -102.2,
+    "type": "Flower_3_Clump",
+    "scale": 1.09,
+    "rotation": 4.45
+  },
+  {
+    "x": 116.4,
+    "z": -94.5,
+    "type": "Plant_7_Big",
+    "scale": 1.78,
+    "rotation": 2.4
+  },
+  {
+    "x": 120.7,
+    "z": -85.2,
+    "type": "Plant_1_Big",
+    "scale": 1.54,
+    "rotation": 4.48
+  },
+  {
+    "x": 120.2,
+    "z": -80.5,
+    "type": "Plant_1",
+    "scale": 1,
+    "rotation": 5.81
+  },
+  {
+    "x": 119.2,
+    "z": -71.5,
+    "type": "Flower_5_Clump",
+    "scale": 0.92,
+    "rotation": 0.68
+  },
+  {
+    "x": 118.8,
+    "z": -61.2,
+    "type": "Bush_Large_Flowers",
+    "scale": 1.06,
+    "rotation": 1.71
+  },
+  {
+    "x": 117.3,
+    "z": -56,
+    "type": "Flower_2_Clump",
+    "scale": 1.43,
+    "rotation": 4.92
+  },
+  {
+    "x": 116.7,
+    "z": -46.1,
+    "type": "Flower_1_Clump",
+    "scale": 1.27,
+    "rotation": 4.97
+  },
+  {
+    "x": 120.7,
+    "z": -40.2,
+    "type": "Bush_Large",
+    "scale": 0.93,
+    "rotation": 1.86
+  },
+  {
+    "x": 116.3,
+    "z": -32.5,
+    "type": "Plant_1",
+    "scale": 1.26,
+    "rotation": 0.23
+  },
+  {
+    "x": 117.6,
+    "z": -24,
+    "type": "Plant_7_Big",
+    "scale": 1.25,
+    "rotation": 2.85
+  },
+  {
+    "x": 115.5,
+    "z": -13.3,
+    "type": "Bush_Flowers",
+    "scale": 1.1,
+    "rotation": 0.36
+  },
+  {
+    "x": 118.1,
+    "z": -6.7,
+    "type": "Flower_5_Clump",
+    "scale": 0.9,
+    "rotation": 0.76
+  },
+  {
+    "x": 118,
+    "z": 2.3,
+    "type": "Fern_1",
+    "scale": 1.5,
+    "rotation": 1.32
+  },
+  {
+    "x": 119.6,
+    "z": 8.5,
+    "type": "Flower_2_Clump",
+    "scale": 1.01,
+    "rotation": 0.33
+  },
+  {
+    "x": 118.1,
+    "z": 15.6,
+    "type": "Plant_7",
+    "scale": 1,
+    "rotation": 0.27
+  },
+  {
+    "x": 118.6,
+    "z": 27.4,
+    "type": "Mushroom_Common",
+    "scale": 1.79,
+    "rotation": 1.3
+  },
+  {
+    "x": 115.7,
+    "z": 33.2,
+    "type": "Mushroom_Laetiporus",
+    "scale": 1.41,
+    "rotation": 1.47
+  },
+  {
+    "x": 120.7,
+    "z": 41.3,
+    "type": "Plant_7",
+    "scale": 1.59,
+    "rotation": 4.05
+  },
+  {
+    "x": 115.6,
+    "z": 51.5,
+    "type": "Flower_3_Clump",
+    "scale": 1.62,
+    "rotation": 2.18
+  },
+  {
+    "x": 117.6,
+    "z": 106.3,
+    "type": "Bush_Flowers",
+    "scale": 1.47,
+    "rotation": 5.54
+  },
+  {
+    "x": 125,
+    "z": -151.6,
+    "type": "Bush_Small",
+    "scale": 1.03,
+    "rotation": 3.71
+  },
+  {
+    "x": 127.8,
+    "z": -140.9,
+    "type": "Bush_Small_Flowers",
+    "scale": 1.47,
+    "rotation": 5.03
+  },
+  {
+    "x": 128.3,
+    "z": -111.6,
+    "type": "Bush_Small",
+    "scale": 0.84,
+    "rotation": 1.75
+  },
+  {
+    "x": 124.5,
+    "z": -104,
+    "type": "Plant_1",
+    "scale": 0.88,
+    "rotation": 3.57
+  },
+  {
+    "x": 124.1,
+    "z": -95.1,
+    "type": "Bush",
+    "scale": 1.8,
+    "rotation": 2.4
+  },
+  {
+    "x": 124.6,
+    "z": -79,
+    "type": "Plant_1",
+    "scale": 1.74,
+    "rotation": 1.84
+  },
+  {
+    "x": 125.4,
+    "z": -72.3,
+    "type": "Bush_Large_Flowers",
+    "scale": 1.13,
+    "rotation": 2.01
+  },
+  {
+    "x": 124.8,
+    "z": -64.2,
+    "type": "Flower_5_Clump",
+    "scale": 1.34,
+    "rotation": 3.45
+  },
+  {
+    "x": 125.7,
+    "z": -56.3,
+    "type": "Flower_2_Clump",
+    "scale": 1.32,
+    "rotation": 6.27
+  },
+  {
+    "x": 125.2,
+    "z": -46.6,
+    "type": "Bush_Large",
+    "scale": 0.8,
+    "rotation": 6.2
+  },
+  {
+    "x": 126.2,
+    "z": -39.1,
+    "type": "Fern_1",
+    "scale": 1.39,
+    "rotation": 2.52
+  },
+  {
+    "x": 127,
+    "z": -29.3,
+    "type": "Plant_1_Big",
+    "scale": 0.88,
+    "rotation": 4.84
+  },
+  {
+    "x": 124.1,
+    "z": -19.7,
+    "type": "Clover_2",
+    "scale": 1.17,
+    "rotation": 2.53
+  },
+  {
+    "x": 126.9,
+    "z": -12.6,
+    "type": "Flower_2",
+    "scale": 1.36,
+    "rotation": 3.54
+  },
+  {
+    "x": 124.8,
+    "z": -5.5,
+    "type": "Fern_1",
+    "scale": 1.47,
+    "rotation": 1.41
+  },
+  {
+    "x": 127.8,
+    "z": 0,
+    "type": "Bush_Small",
+    "scale": 1.28,
+    "rotation": 0.25
+  },
+  {
+    "x": 123.4,
+    "z": 12.5,
+    "type": "Flower_2",
+    "scale": 0.86,
+    "rotation": 4.9
+  },
+  {
+    "x": 125.8,
+    "z": 17.5,
+    "type": "Bush_Large_Flowers",
+    "scale": 1.18,
+    "rotation": 1.49
+  },
+  {
+    "x": 124.4,
+    "z": 26.4,
+    "type": "Plant_7",
+    "scale": 1.03,
+    "rotation": 2.72
+  },
+  {
+    "x": 123.4,
+    "z": 36.2,
+    "type": "Fern_1",
+    "scale": 1.34,
+    "rotation": 1.36
+  },
+  {
+    "x": 126.6,
+    "z": 43.1,
+    "type": "Flower_2",
+    "scale": 1.68,
+    "rotation": 4.02
+  },
+  {
+    "x": 123.8,
+    "z": 48.3,
+    "type": "Flower_1",
+    "scale": 1.05,
+    "rotation": 2.26
+  },
+  {
+    "x": 133.5,
+    "z": -144.7,
+    "type": "Flower_1_Clump",
+    "scale": 1.77,
+    "rotation": 1.82
+  },
+  {
+    "x": 132.8,
+    "z": -107.9,
+    "type": "Plant_7",
+    "scale": 1.51,
+    "rotation": 4.25
+  },
+  {
+    "x": 136.4,
+    "z": -101.5,
+    "type": "Plant_1",
+    "scale": 1.04,
+    "rotation": 2.22
+  },
+  {
+    "x": 135.4,
+    "z": -92.5,
+    "type": "Plant_1_Big",
+    "scale": 1.74,
+    "rotation": 4.59
+  },
+  {
+    "x": 134.4,
+    "z": -86.2,
+    "type": "Flower_1",
+    "scale": 1.31,
+    "rotation": 5.15
+  },
+  {
+    "x": 135.2,
+    "z": -76.8,
+    "type": "Plant_1",
+    "scale": 1.51,
+    "rotation": 4.12
+  },
+  {
+    "x": 132.5,
+    "z": -67.9,
+    "type": "Flower_2",
+    "scale": 1.2,
+    "rotation": 3.72
+  },
+  {
+    "x": 136.8,
+    "z": -59.4,
+    "type": "Bush_Small_Flowers",
+    "scale": 0.98,
+    "rotation": 2.18
+  },
+  {
+    "x": 133.6,
+    "z": -56.2,
+    "type": "Bush_Flowers",
+    "scale": 1.67,
+    "rotation": 3.96
+  },
+  {
+    "x": 132.4,
+    "z": -44.5,
+    "type": "Bush_Small",
+    "scale": 1.71,
+    "rotation": 3.95
+  },
+  {
+    "x": 135.6,
+    "z": -39.2,
+    "type": "Plant_7",
+    "scale": 1.08,
+    "rotation": 4.8
+  },
+  {
+    "x": 134.2,
+    "z": -30.3,
+    "type": "Flower_3_Clump",
+    "scale": 1,
+    "rotation": 3.94
+  },
+  {
+    "x": 135.1,
+    "z": -22.1,
+    "type": "Mushroom_Laetiporus",
+    "scale": 0.96,
+    "rotation": 1.86
+  },
+  {
+    "x": 131.5,
+    "z": -14.3,
+    "type": "Bush_Large",
+    "scale": 1.13,
+    "rotation": 6.06
+  },
+  {
+    "x": 133.6,
+    "z": -6,
+    "type": "Bush_Small_Flowers",
+    "scale": 1.09,
+    "rotation": 2.93
+  },
+  {
+    "x": 133.8,
+    "z": 3.9,
+    "type": "Plant_1",
+    "scale": 1.48,
+    "rotation": 0.17
+  },
+  {
+    "x": 135.7,
+    "z": 10.6,
+    "type": "Plant_7",
+    "scale": 0.91,
+    "rotation": 4.37
+  },
+  {
+    "x": 132.7,
+    "z": 19.3,
+    "type": "Plant_1",
+    "scale": 0.98,
+    "rotation": 0.23
+  },
+  {
+    "x": 134.8,
+    "z": 33.1,
+    "type": "Bush_Large_Flowers",
+    "scale": 0.91,
+    "rotation": 1.33
+  },
+  {
+    "x": 133.3,
+    "z": 40,
+    "type": "Clover_1",
+    "scale": 1.71,
+    "rotation": 4.86
+  },
+  {
+    "x": 141.5,
+    "z": -109.3,
+    "type": "Bush_Large",
+    "scale": 0.98,
+    "rotation": 4.35
+  },
+  {
+    "x": 142.9,
+    "z": -99.2,
+    "type": "Mushroom_Laetiporus",
+    "scale": 1.48,
+    "rotation": 1.59
+  },
+  {
+    "x": 142.5,
+    "z": -94.5,
+    "type": "Bush_Small",
+    "scale": 1.71,
+    "rotation": 3.43
+  },
+  {
+    "x": 144.5,
+    "z": -84.6,
+    "type": "Plant_7_Big",
+    "scale": 1.13,
+    "rotation": 5.87
+  },
+  {
+    "x": 139.7,
+    "z": -79.1,
+    "type": "Flower_2_Clump",
+    "scale": 1.57,
+    "rotation": 4.56
+  },
+  {
+    "x": 140.9,
+    "z": -68.1,
+    "type": "Bush_Small_Flowers",
+    "scale": 1.55,
+    "rotation": 2.14
+  },
+  {
+    "x": 142.8,
+    "z": -63.3,
+    "type": "Bush_Flowers",
+    "scale": 1.04,
+    "rotation": 0.04
+  },
+  {
+    "x": 143.9,
+    "z": -55,
+    "type": "Flower_2",
+    "scale": 1.59,
+    "rotation": 3.39
+  },
+  {
+    "x": 143.6,
+    "z": -43.3,
+    "type": "Mushroom_Common",
+    "scale": 1.51,
+    "rotation": 5.38
+  },
+  {
+    "x": 142.9,
+    "z": -37.7,
+    "type": "Bush",
+    "scale": 1.56,
+    "rotation": 5.59
+  },
+  {
+    "x": 143.3,
+    "z": -27.3,
+    "type": "Bush_Common_Flowers",
+    "scale": 1.05,
+    "rotation": 4.74
+  },
+  {
+    "x": 142.3,
+    "z": -20.4,
+    "type": "Bush",
+    "scale": 1.38,
+    "rotation": 4.05
+  },
+  {
+    "x": 142.4,
+    "z": -14.9,
+    "type": "Flower_5_Clump",
+    "scale": 1.34,
+    "rotation": 2.08
+  },
+  {
+    "x": 144,
+    "z": -8.2,
+    "type": "Bush_Large",
+    "scale": 0.83,
+    "rotation": 4.61
+  },
+  {
+    "x": 139.3,
+    "z": 1.3,
+    "type": "Flower_2",
+    "scale": 1.4,
+    "rotation": 3.59
+  },
+  {
+    "x": 141.4,
+    "z": 7.9,
+    "type": "Clover_2",
+    "scale": 0.93,
+    "rotation": 5.54
+  },
+  {
+    "x": 139.7,
+    "z": 18.2,
+    "type": "Plant_7",
+    "scale": 1.48,
+    "rotation": 4.8
+  },
+  {
+    "x": 141.8,
+    "z": 25.7,
+    "type": "Plant_7",
+    "scale": 1.34,
+    "rotation": 1.66
+  },
+  {
+    "x": 142.1,
+    "z": 31.4,
+    "type": "Plant_7",
+    "scale": 1.1,
+    "rotation": 2.34
+  },
+  {
+    "x": 144.2,
+    "z": 39.7,
+    "type": "Plant_7",
+    "scale": 1.2,
+    "rotation": 2.8
+  },
+  {
+    "x": 141.9,
+    "z": 51.3,
+    "type": "Clover_2",
+    "scale": 1.48,
+    "rotation": 2.73
+  },
+  {
+    "x": 147.7,
+    "z": -108.5,
+    "type": "Bush_Large_Flowers",
+    "scale": 1.57,
+    "rotation": 2.82
+  },
+  {
+    "x": 149.9,
+    "z": -101.6,
+    "type": "Bush_Flowers",
+    "scale": 1.12,
+    "rotation": 6.13
+  },
+  {
+    "x": 149.5,
+    "z": -95,
+    "type": "Bush_Common",
+    "scale": 1.56,
+    "rotation": 5.74
+  },
+  {
+    "x": 149.3,
+    "z": -84.6,
+    "type": "Flower_5_Clump",
+    "scale": 1.44,
+    "rotation": 4.3
+  },
+  {
+    "x": 151,
+    "z": -78.7,
+    "type": "Clover_2",
+    "scale": 1.41,
+    "rotation": 5.19
+  },
+  {
+    "x": 147.8,
+    "z": -69,
+    "type": "Flower_1_Clump",
+    "scale": 0.93,
+    "rotation": 0.87
+  },
+  {
+    "x": 148.9,
+    "z": -59.8,
+    "type": "Bush_Small",
+    "scale": 1.67,
+    "rotation": 3.35
+  },
+  {
+    "x": 150.3,
+    "z": -53.9,
+    "type": "Bush_Small_Flowers",
+    "scale": 0.89,
+    "rotation": 4.09
+  },
+  {
+    "x": 147.8,
+    "z": -47.5,
+    "type": "Bush_Small_Flowers",
+    "scale": 1.25,
+    "rotation": 5.19
+  },
+  {
+    "x": 151.6,
+    "z": -39.3,
+    "type": "Plant_1_Big",
+    "scale": 1.39,
+    "rotation": 6.05
+  },
+  {
+    "x": 151.9,
+    "z": -28.1,
+    "type": "Clover_1",
+    "scale": 1.74,
+    "rotation": 4.59
+  },
+  {
+    "x": 148.9,
+    "z": -21.1,
+    "type": "Plant_7",
+    "scale": 1.71,
+    "rotation": 3.41
+  },
+  {
+    "x": 152.1,
+    "z": -13,
+    "type": "Bush_Flowers",
+    "scale": 1.56,
+    "rotation": 4.96
+  },
+  {
+    "x": 151.9,
+    "z": -5.6,
+    "type": "Mushroom_Common",
+    "scale": 0.81,
+    "rotation": 5.68
+  },
+  {
+    "x": 150.6,
+    "z": 4.7,
+    "type": "Clover_1",
+    "scale": 1.36,
+    "rotation": 1.71
+  },
+  {
+    "x": 152.5,
+    "z": 9.3,
+    "type": "Flower_1_Clump",
+    "scale": 1.2,
+    "rotation": 5.82
+  },
+  {
+    "x": 149.7,
+    "z": 16,
+    "type": "Plant_1_Big",
+    "scale": 1.35,
+    "rotation": 3.25
+  },
+  {
+    "x": 152.7,
+    "z": 23.3,
+    "type": "Plant_1_Big",
+    "scale": 1.15,
+    "rotation": 0.5
+  },
+  {
+    "x": 151.1,
+    "z": 33.8,
+    "type": "Flower_1",
+    "scale": 1.59,
+    "rotation": 5.39
+  },
+  {
+    "x": 150.4,
+    "z": 41.1,
+    "type": "Bush_Flowers",
+    "scale": 1.32,
+    "rotation": 1.18
+  },
+  {
+    "x": 148.6,
+    "z": 52,
+    "type": "Mushroom_Laetiporus",
+    "scale": 1.15,
+    "rotation": 3.42
+  },
+  {
+    "x": 151.3,
+    "z": 58.7,
+    "type": "Mushroom_Common",
+    "scale": 1.29,
+    "rotation": 5.7
+  },
+  {
+    "x": 159,
+    "z": -124.6,
+    "type": "Flower_1_Clump",
+    "scale": 1.31,
+    "rotation": 4.33
+  },
+  {
+    "x": 160.3,
+    "z": -118.9,
+    "type": "Bush_Flowers",
+    "scale": 0.96,
+    "rotation": 5.12
+  },
+  {
+    "x": 160.4,
+    "z": -107.6,
+    "type": "Bush_Small",
+    "scale": 1.37,
+    "rotation": 2.05
+  },
+  {
+    "x": 160.4,
+    "z": -95.4,
+    "type": "Flower_3_Clump",
+    "scale": 1.61,
+    "rotation": 5.12
+  },
+  {
+    "x": 160.1,
+    "z": -85.6,
+    "type": "Flower_3_Clump",
+    "scale": 1.43,
+    "rotation": 3.01
+  },
+  {
+    "x": 160.5,
+    "z": -76.5,
+    "type": "Bush_Small",
+    "scale": 1.43,
+    "rotation": 2.96
+  },
+  {
+    "x": 157.8,
+    "z": -71.2,
+    "type": "Plant_1",
+    "scale": 0.85,
+    "rotation": 0.47
+  },
+  {
+    "x": 155.5,
+    "z": -62.4,
+    "type": "Clover_1",
+    "scale": 1.63,
+    "rotation": 4.37
+  },
+  {
+    "x": 155.4,
+    "z": -54.2,
+    "type": "Flower_3_Clump",
+    "scale": 1.37,
+    "rotation": 6.06
+  },
+  {
+    "x": 156.4,
+    "z": -43.4,
+    "type": "Flower_5_Clump",
+    "scale": 1.13,
+    "rotation": 4.67
+  },
+  {
+    "x": 159.9,
+    "z": -28.2,
+    "type": "Flower_2_Clump",
+    "scale": 1.24,
+    "rotation": 5.27
+  },
+  {
+    "x": 158.6,
+    "z": -21.4,
+    "type": "Mushroom_Common",
+    "scale": 1.22,
+    "rotation": 3.41
+  },
+  {
+    "x": 157.1,
+    "z": -12.8,
+    "type": "Flower_3_Clump",
+    "scale": 1.76,
+    "rotation": 3.54
+  },
+  {
+    "x": 160.2,
+    "z": -4.9,
+    "type": "Bush_Small",
+    "scale": 1.61,
+    "rotation": 6.2
+  },
+  {
+    "x": 157.5,
+    "z": 4.1,
+    "type": "Clover_1",
+    "scale": 1.79,
+    "rotation": 4.62
+  },
+  {
+    "x": 157.5,
+    "z": 19,
+    "type": "Flower_2_Clump",
+    "scale": 1.31,
+    "rotation": 3.36
+  },
+  {
+    "x": 158.6,
+    "z": 27.8,
+    "type": "Bush_Common_Flowers",
+    "scale": 0.89,
+    "rotation": 0.63
+  },
+  {
+    "x": 155.6,
+    "z": 39.3,
+    "type": "Bush_Large",
+    "scale": 1.53,
+    "rotation": 2.06
+  },
+  {
+    "x": 160,
+    "z": 49.3,
+    "type": "Bush_Small",
+    "scale": 1.37,
+    "rotation": 4.85
+  },
+  {
+    "x": 158.6,
+    "z": 57.2,
+    "type": "Plant_7_Big",
+    "scale": 0.87,
+    "rotation": 0.28
+  },
+  {
+    "x": 156.8,
+    "z": 65.5,
+    "type": "Flower_2",
+    "scale": 1.64,
+    "rotation": 3.3
+  },
+  {
+    "x": 167.4,
+    "z": -151.7,
+    "type": "Flower_2",
+    "scale": 1.63,
+    "rotation": 1.26
+  },
+  {
+    "x": 163.4,
+    "z": -143.6,
+    "type": "Flower_2",
+    "scale": 1.12,
+    "rotation": 2.64
+  },
+  {
+    "x": 166.9,
+    "z": -132.6,
+    "type": "Bush_Flowers",
+    "scale": 1.05,
+    "rotation": 4.14
+  },
+  {
+    "x": 167.7,
+    "z": -128,
+    "type": "Bush_Flowers",
+    "scale": 0.85,
+    "rotation": 4.73
+  },
+  {
+    "x": 166.1,
+    "z": -117.8,
+    "type": "Bush_Small_Flowers",
+    "scale": 1.04,
+    "rotation": 0.21
+  },
+  {
+    "x": 165.5,
+    "z": -111.1,
+    "type": "Bush_Common",
+    "scale": 1.15,
+    "rotation": 5.07
+  },
+  {
+    "x": 167.4,
+    "z": -101.1,
+    "type": "Fern_1",
+    "scale": 0.83,
+    "rotation": 4.46
+  },
+  {
+    "x": 164.4,
+    "z": -91.7,
+    "type": "Flower_1",
+    "scale": 1.73,
+    "rotation": 1.39
+  },
+  {
+    "x": 166.6,
+    "z": -85,
+    "type": "Plant_7",
+    "scale": 1.62,
+    "rotation": 3.02
+  },
+  {
+    "x": 166.6,
+    "z": -79.8,
+    "type": "Flower_1",
+    "scale": 1.17,
+    "rotation": 2.48
+  },
+  {
+    "x": 164.5,
+    "z": -70.8,
+    "type": "Plant_7",
+    "scale": 1.24,
+    "rotation": 5.39
+  },
+  {
+    "x": 166.2,
+    "z": -61,
+    "type": "Bush_Small_Flowers",
+    "scale": 1.66,
+    "rotation": 4
+  },
+  {
+    "x": 166.2,
+    "z": -53.6,
+    "type": "Bush_Common_Flowers",
+    "scale": 1.56,
+    "rotation": 2.57
+  },
+  {
+    "x": 165.2,
+    "z": -46.1,
+    "type": "Plant_7",
+    "scale": 1.47,
+    "rotation": 3.65
+  },
+  {
+    "x": 167.8,
+    "z": -39.2,
+    "type": "Flower_1_Clump",
+    "scale": 1.01,
+    "rotation": 3.77
+  },
+  {
+    "x": 166.5,
+    "z": -23.5,
+    "type": "Clover_1",
+    "scale": 1.61,
+    "rotation": 5.32
+  },
+  {
+    "x": 165,
+    "z": -15.4,
+    "type": "Bush_Small_Flowers",
+    "scale": 1.22,
+    "rotation": 1.06
+  },
+  {
+    "x": 163.7,
+    "z": 3.3,
+    "type": "Flower_5_Clump",
+    "scale": 1.42,
+    "rotation": 4.24
+  },
+  {
+    "x": 164.6,
+    "z": 10.8,
+    "type": "Bush_Large_Flowers",
+    "scale": 1.33,
+    "rotation": 3.09
+  },
+  {
+    "x": 164.9,
+    "z": 20.2,
+    "type": "Plant_1",
+    "scale": 1.66,
+    "rotation": 2.53
+  },
+  {
+    "x": 165,
+    "z": 36.3,
+    "type": "Flower_2_Clump",
+    "scale": 1.65,
+    "rotation": 2.81
+  },
+  {
+    "x": 167.2,
+    "z": 42.9,
+    "type": "Flower_5_Clump",
+    "scale": 1.65,
+    "rotation": 3.05
+  },
+  {
+    "x": 165.3,
+    "z": 47.4,
+    "type": "Flower_5_Clump",
+    "scale": 1.5,
+    "rotation": 3.66
+  },
+  {
+    "x": 168.8,
+    "z": 57.7,
+    "type": "Bush_Large_Flowers",
+    "scale": 0.99,
+    "rotation": 5.35
+  },
+  {
+    "x": 168.7,
+    "z": 65.2,
+    "type": "Bush",
+    "scale": 1.31,
+    "rotation": 4.35
+  },
+  {
+    "x": 172.4,
+    "z": -149.8,
+    "type": "Mushroom_Common",
+    "scale": 1.41,
+    "rotation": 4.38
+  },
+  {
+    "x": 171.6,
+    "z": -144.2,
+    "type": "Bush_Common_Flowers",
+    "scale": 1.54,
+    "rotation": 2.44
+  },
+  {
+    "x": 172.1,
+    "z": -131.5,
+    "type": "Flower_1_Clump",
+    "scale": 1.58,
+    "rotation": 6.25
+  },
+  {
+    "x": 176.1,
+    "z": -124.2,
+    "type": "Bush",
+    "scale": 1.26,
+    "rotation": 5.55
+  },
+  {
+    "x": 171.5,
+    "z": -119.5,
+    "type": "Bush",
+    "scale": 1.74,
+    "rotation": 4.19
+  },
+  {
+    "x": 172.4,
+    "z": -111.7,
+    "type": "Mushroom_Common",
+    "scale": 1.33,
+    "rotation": 4.11
+  },
+  {
+    "x": 175.3,
+    "z": -101.1,
+    "type": "Flower_5_Clump",
+    "scale": 1.22,
+    "rotation": 0.52
+  },
+  {
+    "x": 176.1,
+    "z": -91.9,
+    "type": "Bush_Large",
+    "scale": 1.56,
+    "rotation": 0.95
+  },
+  {
+    "x": 175.3,
+    "z": -86.4,
+    "type": "Plant_1",
+    "scale": 1.16,
+    "rotation": 5.86
+  },
+  {
+    "x": 173.9,
+    "z": -75.2,
+    "type": "Bush_Small",
+    "scale": 1.19,
+    "rotation": 1.11
+  },
+  {
+    "x": 172.5,
+    "z": -67.3,
+    "type": "Flower_5_Clump",
+    "scale": 1.61,
+    "rotation": 3.26
+  },
+  {
+    "x": 174.8,
+    "z": -60.4,
+    "type": "Bush_Large",
+    "scale": 1.79,
+    "rotation": 3.82
+  },
+  {
+    "x": 176.3,
+    "z": -51.6,
+    "type": "Bush_Flowers",
+    "scale": 1.71,
+    "rotation": 0.36
+  },
+  {
+    "x": 176.6,
+    "z": -35.5,
+    "type": "Bush_Large_Flowers",
+    "scale": 1.04,
+    "rotation": 0.98
+  },
+  {
+    "x": 173.6,
+    "z": -30.9,
+    "type": "Clover_2",
+    "scale": 1.37,
+    "rotation": 0.52
+  },
+  {
+    "x": 176.2,
+    "z": -23.7,
+    "type": "Flower_1",
+    "scale": 1.75,
+    "rotation": 2.99
+  },
+  {
+    "x": 172.3,
+    "z": -16.3,
+    "type": "Bush_Large_Flowers",
+    "scale": 1.06,
+    "rotation": 5.78
+  },
+  {
+    "x": 176.7,
+    "z": 18.7,
+    "type": "Bush_Small",
+    "scale": 1.5,
+    "rotation": 3.13
+  },
+  {
+    "x": 175.6,
+    "z": 28.4,
+    "type": "Flower_1_Clump",
+    "scale": 0.81,
+    "rotation": 3.14
+  },
+  {
+    "x": 172.7,
+    "z": 33.4,
+    "type": "Flower_2",
+    "scale": 1.58,
+    "rotation": 5.27
+  },
+  {
+    "x": 175.7,
+    "z": 39.8,
+    "type": "Bush_Flowers",
+    "scale": 0.81,
+    "rotation": 5.73
+  },
+  {
+    "x": 174.6,
+    "z": 51.6,
+    "type": "Bush_Large",
+    "scale": 1.69,
+    "rotation": 5.13
+  },
+  {
+    "x": 176.2,
+    "z": 57.7,
+    "type": "Flower_2_Clump",
+    "scale": 1.44,
+    "rotation": 4.6
+  },
+  {
+    "x": 176,
+    "z": 64.5,
+    "type": "Bush_Small_Flowers",
+    "scale": 1.38,
+    "rotation": 4
+  },
+  {
+    "x": 180.1,
+    "z": -139.5,
+    "type": "Flower_2",
+    "scale": 1.02,
+    "rotation": 4.54
+  },
+  {
+    "x": 183.6,
+    "z": -134.8,
+    "type": "Flower_1_Clump",
+    "scale": 1.17,
+    "rotation": 1.24
+  },
+  {
+    "x": 182.1,
+    "z": -127.5,
+    "type": "Bush_Small",
+    "scale": 1.49,
+    "rotation": 5.14
+  },
+  {
+    "x": 181.8,
+    "z": -120.5,
+    "type": "Fern_1",
+    "scale": 1,
+    "rotation": 1.87
+  },
+  {
+    "x": 184.6,
+    "z": -108.2,
+    "type": "Plant_1_Big",
+    "scale": 1.6,
+    "rotation": 0.66
+  },
+  {
+    "x": 183.8,
+    "z": -103.3,
+    "type": "Bush_Large",
+    "scale": 1.03,
+    "rotation": 4.57
+  },
+  {
+    "x": 180.4,
+    "z": -96.7,
+    "type": "Clover_2",
+    "scale": 1,
+    "rotation": 5.29
+  },
+  {
+    "x": 184.3,
+    "z": -88.6,
+    "type": "Mushroom_Laetiporus",
+    "scale": 1.34,
+    "rotation": 3.36
+  },
+  {
+    "x": 183.7,
+    "z": -79.3,
+    "type": "Flower_3_Clump",
+    "scale": 1.65,
+    "rotation": 4.05
+  },
+  {
+    "x": 184.4,
+    "z": -71.8,
+    "type": "Plant_7_Big",
+    "scale": 1.68,
+    "rotation": 4.57
+  },
+  {
+    "x": 181.9,
+    "z": -64.7,
+    "type": "Bush_Small",
+    "scale": 1.41,
+    "rotation": 0.26
+  },
+  {
+    "x": 184.7,
+    "z": -55.9,
+    "type": "Plant_7",
+    "scale": 1.52,
+    "rotation": 5.02
+  },
+  {
+    "x": 181.5,
+    "z": -44.5,
+    "type": "Flower_3_Clump",
+    "scale": 1.54,
+    "rotation": 4.5
+  },
+  {
+    "x": 180.6,
+    "z": -39.3,
+    "type": "Plant_1",
+    "scale": 1.01,
+    "rotation": 2.26
+  },
+  {
+    "x": 179.4,
+    "z": -19.3,
+    "type": "Bush_Flowers",
+    "scale": 1.3,
+    "rotation": 1.01
+  },
+  {
+    "x": 182,
+    "z": 20,
+    "type": "Fern_1",
+    "scale": 1.36,
+    "rotation": 2.05
+  },
+  {
+    "x": 181.7,
+    "z": 27.9,
+    "type": "Bush_Common",
+    "scale": 0.84,
+    "rotation": 2.94
+  },
+  {
+    "x": 180.3,
+    "z": 32.3,
+    "type": "Bush",
+    "scale": 1.24,
+    "rotation": 5.93
+  },
+  {
+    "x": 182.7,
+    "z": 39.7,
+    "type": "Plant_1_Big",
+    "scale": 1.74,
+    "rotation": 4.49
+  },
+  {
+    "x": 181.7,
+    "z": 51.7,
+    "type": "Bush",
+    "scale": 1.37,
+    "rotation": 3.67
+  },
+  {
+    "x": 184.1,
+    "z": 55.7,
+    "type": "Fern_1",
+    "scale": 1.13,
+    "rotation": 3.34
+  },
+  {
+    "x": 183,
+    "z": 74.2,
+    "type": "Flower_3_Clump",
+    "scale": 1.32,
+    "rotation": 3.82
+  },
+  {
+    "x": 191,
+    "z": -143.3,
+    "type": "Mushroom_Laetiporus",
+    "scale": 1.27,
+    "rotation": 4.45
+  },
+  {
+    "x": 189.6,
+    "z": -136,
+    "type": "Bush_Common",
+    "scale": 1.31,
+    "rotation": 5.28
+  },
+  {
+    "x": 189.5,
+    "z": -123.2,
+    "type": "Flower_2",
+    "scale": 0.96,
+    "rotation": 0.69
+  },
+  {
+    "x": 188.4,
+    "z": -115.6,
+    "type": "Mushroom_Common",
+    "scale": 1.46,
+    "rotation": 2.96
+  },
+  {
+    "x": 192.2,
+    "z": -108.9,
+    "type": "Plant_1_Big",
+    "scale": 1.44,
+    "rotation": 1.59
+  },
+  {
+    "x": 191.7,
+    "z": -101,
+    "type": "Bush_Small",
+    "scale": 0.95,
+    "rotation": 3.93
+  },
+  {
+    "x": 189.9,
+    "z": -92,
+    "type": "Plant_7_Big",
+    "scale": 1.44,
+    "rotation": 1.09
+  },
+  {
+    "x": 190.4,
+    "z": -84.3,
+    "type": "Flower_1_Clump",
+    "scale": 1.61,
+    "rotation": 2.84
+  },
+  {
+    "x": 192,
+    "z": -77.1,
+    "type": "Bush_Common",
+    "scale": 1.71,
+    "rotation": 2.06
+  },
+  {
+    "x": 191.6,
+    "z": -69.6,
+    "type": "Plant_1",
+    "scale": 1.58,
+    "rotation": 2.2
+  },
+  {
+    "x": 189,
+    "z": -61.4,
+    "type": "Bush_Common",
+    "scale": 1.5,
+    "rotation": 4.6
+  },
+  {
+    "x": 187.6,
+    "z": -45.6,
+    "type": "Mushroom_Common",
+    "scale": 1.03,
+    "rotation": 3.05
+  },
+  {
+    "x": 189.3,
+    "z": -40.4,
+    "type": "Bush_Small",
+    "scale": 1.67,
+    "rotation": 0.4
+  },
+  {
+    "x": 191.5,
+    "z": -28.5,
+    "type": "Bush_Large_Flowers",
+    "scale": 1.02,
+    "rotation": 3.43
+  },
+  {
+    "x": 191.7,
+    "z": -21.5,
+    "type": "Bush_Large_Flowers",
+    "scale": 1.26,
+    "rotation": 2.14
+  },
+  {
+    "x": 188.4,
+    "z": -13.5,
+    "type": "Flower_2",
+    "scale": 1.04,
+    "rotation": 0.23
+  },
+  {
+    "x": 187.9,
+    "z": -7.1,
+    "type": "Bush",
+    "scale": 1.55,
+    "rotation": 3.74
+  },
+  {
+    "x": 192.1,
+    "z": -0.5,
+    "type": "Plant_7",
+    "scale": 1.5,
+    "rotation": 0.77
+  },
+  {
+    "x": 191.2,
+    "z": 8.2,
+    "type": "Plant_1_Big",
+    "scale": 1.02,
+    "rotation": 3.04
+  },
+  {
+    "x": 189.2,
+    "z": 19.1,
+    "type": "Flower_1",
+    "scale": 1.46,
+    "rotation": 2.26
+  },
+  {
+    "x": 190,
+    "z": 25,
+    "type": "Plant_1_Big",
+    "scale": 1.35,
+    "rotation": 1.68
+  },
+  {
+    "x": 187.7,
+    "z": 35.4,
+    "type": "Bush_Small",
+    "scale": 1.8,
+    "rotation": 1.33
+  },
+  {
+    "x": 190.2,
+    "z": 42.9,
+    "type": "Flower_2",
+    "scale": 1.7,
+    "rotation": 3.99
+  },
+  {
+    "x": 188,
+    "z": 52.2,
+    "type": "Mushroom_Laetiporus",
+    "scale": 1.11,
+    "rotation": 1.67
+  },
+  {
+    "x": 190.8,
+    "z": 56.5,
+    "type": "Bush_Common",
+    "scale": 1.39,
+    "rotation": 0.62
+  },
+  {
+    "x": 189.7,
+    "z": 67.1,
+    "type": "Bush_Common_Flowers",
+    "scale": 1.54,
+    "rotation": 2.14
+  },
+  {
+    "x": 192.4,
+    "z": 74.2,
+    "type": "Bush_Large",
+    "scale": 0.86,
+    "rotation": 1
+  },
+  {
+    "x": 189.2,
+    "z": 79.9,
+    "type": "Mushroom_Common",
+    "scale": 1.49,
+    "rotation": 3.69
+  },
+  {
+    "x": 189.3,
+    "z": 88.9,
+    "type": "Mushroom_Common",
+    "scale": 0.81,
+    "rotation": 0.11
+  },
+  {
+    "x": 192.3,
+    "z": 99.5,
+    "type": "Clover_1",
+    "scale": 1.7,
+    "rotation": 0.7
+  },
+  {
+    "x": 199.9,
+    "z": -151.6,
+    "type": "Plant_7",
+    "scale": 1.55,
+    "rotation": 4.39
+  },
+  {
+    "x": 200.1,
+    "z": -139.3,
+    "type": "Bush_Large_Flowers",
+    "scale": 1.48,
+    "rotation": 2.04
+  },
+  {
+    "x": 198.7,
+    "z": -134.7,
+    "type": "Plant_1_Big",
+    "scale": 1.62,
+    "rotation": 5.2
+  },
+  {
+    "x": 198.2,
+    "z": -128.6,
+    "type": "Bush_Small_Flowers",
+    "scale": 1.11,
+    "rotation": 2.17
+  },
+  {
+    "x": 200.6,
+    "z": -117.3,
+    "type": "Bush_Small_Flowers",
+    "scale": 1.35,
+    "rotation": 4.59
+  },
+  {
+    "x": 199.2,
+    "z": -109.2,
+    "type": "Flower_1",
+    "scale": 1.11,
+    "rotation": 0.17
+  },
+  {
+    "x": 199.5,
+    "z": -100.5,
+    "type": "Plant_7_Big",
+    "scale": 0.83,
+    "rotation": 3.96
+  },
+  {
+    "x": 196,
+    "z": -91.4,
+    "type": "Plant_7",
+    "scale": 1.11,
+    "rotation": 4.85
+  },
+  {
+    "x": 199.5,
+    "z": -84.7,
+    "type": "Bush_Small",
+    "scale": 1,
+    "rotation": 2.74
+  },
+  {
+    "x": 199.7,
+    "z": -78,
+    "type": "Clover_2",
+    "scale": 1.73,
+    "rotation": 0.36
+  },
+  {
+    "x": 198.8,
+    "z": -70.9,
+    "type": "Flower_1_Clump",
+    "scale": 1.25,
+    "rotation": 5.02
+  },
+  {
+    "x": 195.5,
+    "z": -61.8,
+    "type": "Fern_1",
+    "scale": 1.08,
+    "rotation": 1.63
+  },
+  {
+    "x": 198.6,
+    "z": -52.3,
+    "type": "Bush_Small",
+    "scale": 1.72,
+    "rotation": 4.99
+  },
+  {
+    "x": 200.2,
+    "z": -47.8,
+    "type": "Bush_Large_Flowers",
+    "scale": 0.88,
+    "rotation": 0.16
+  },
+  {
+    "x": 197.2,
+    "z": -37.5,
+    "type": "Flower_2",
+    "scale": 1.48,
+    "rotation": 1.52
+  },
+  {
+    "x": 199,
+    "z": -29.4,
+    "type": "Flower_1_Clump",
+    "scale": 1.12,
+    "rotation": 2.07
+  },
+  {
+    "x": 200.1,
+    "z": -24.6,
+    "type": "Clover_2",
+    "scale": 1.57,
+    "rotation": 3.2
+  },
+  {
+    "x": 197,
+    "z": -14.2,
+    "type": "Bush",
+    "scale": 1.2,
+    "rotation": 4.63
+  },
+  {
+    "x": 197.7,
+    "z": -7.2,
+    "type": "Flower_3_Clump",
+    "scale": 1.6,
+    "rotation": 4.69
+  },
+  {
+    "x": 199.9,
+    "z": 1.7,
+    "type": "Mushroom_Common",
+    "scale": 1.11,
+    "rotation": 5.14
+  },
+  {
+    "x": 199.4,
+    "z": 9.5,
+    "type": "Bush_Small_Flowers",
+    "scale": 1.12,
+    "rotation": 0.69
+  },
+  {
+    "x": 195.4,
+    "z": 16.7,
+    "type": "Mushroom_Common",
+    "scale": 1.25,
+    "rotation": 2.67
+  },
+  {
+    "x": 198.8,
+    "z": 28,
+    "type": "Bush_Flowers",
+    "scale": 1.21,
+    "rotation": 3.88
+  },
+  {
+    "x": 195.3,
+    "z": 33,
+    "type": "Mushroom_Common",
+    "scale": 1.64,
+    "rotation": 3.52
+  },
+  {
+    "x": 197.2,
+    "z": 44.4,
+    "type": "Flower_2",
+    "scale": 0.86,
+    "rotation": 1.1
+  },
+  {
+    "x": 195.2,
+    "z": 51.9,
+    "type": "Plant_1",
+    "scale": 0.91,
+    "rotation": 6.18
+  },
+  {
+    "x": 197.9,
+    "z": 58.9,
+    "type": "Flower_2_Clump",
+    "scale": 1.8,
+    "rotation": 0.04
+  },
+  {
+    "x": 198.3,
+    "z": 67.3,
+    "type": "Flower_2_Clump",
+    "scale": 1.4,
+    "rotation": 4.23
+  },
+  {
+    "x": 197.1,
+    "z": 72.9,
+    "type": "Clover_2",
+    "scale": 0.85,
+    "rotation": 3.05
+  },
+  {
+    "x": 197.4,
+    "z": 80,
+    "type": "Clover_2",
+    "scale": 1.26,
+    "rotation": 4.7
+  },
+  {
+    "x": 199.6,
+    "z": 88.2,
+    "type": "Bush",
+    "scale": 1.05,
+    "rotation": 3.98
+  },
+  {
+    "x": 197.2,
+    "z": 95.5,
+    "type": "Flower_2",
+    "scale": 1.66,
+    "rotation": 1.39
+  },
+  {
+    "x": 198.3,
+    "z": 108.2,
+    "type": "Flower_2",
+    "scale": 1.47,
+    "rotation": 3.49
+  },
+  {
+    "x": 204.8,
+    "z": -167.5,
+    "type": "Plant_1",
+    "scale": 1.34,
+    "rotation": 1.32
+  },
+  {
+    "x": 207.2,
+    "z": -159,
+    "type": "Flower_3_Clump",
+    "scale": 1.62,
+    "rotation": 6.02
+  },
+  {
+    "x": 205,
+    "z": -150.5,
+    "type": "Flower_3_Clump",
+    "scale": 1.74,
+    "rotation": 1.36
+  },
+  {
+    "x": 207.7,
+    "z": -124.4,
+    "type": "Bush_Small",
+    "scale": 0.89,
+    "rotation": 3.03
+  },
+  {
+    "x": 206.8,
+    "z": -115.6,
+    "type": "Clover_1",
+    "scale": 1.37,
+    "rotation": 5.7
+  },
+  {
+    "x": 208.4,
+    "z": -109.9,
+    "type": "Fern_1",
+    "scale": 0.97,
+    "rotation": 1.25
+  },
+  {
+    "x": 204.3,
+    "z": -104.6,
+    "type": "Bush_Small_Flowers",
+    "scale": 1.6,
+    "rotation": 3.05
+  },
+  {
+    "x": 203.7,
+    "z": -95,
+    "type": "Plant_7_Big",
+    "scale": 1.42,
+    "rotation": 3.92
+  },
+  {
+    "x": 205.9,
+    "z": -84.8,
+    "type": "Clover_2",
+    "scale": 1.3,
+    "rotation": 2.82
+  },
+  {
+    "x": 204,
+    "z": -71.5,
+    "type": "Flower_3_Clump",
+    "scale": 1.06,
+    "rotation": 6.18
+  },
+  {
+    "x": 203.9,
+    "z": -64.8,
+    "type": "Plant_7",
+    "scale": 1.44,
+    "rotation": 5.09
+  },
+  {
+    "x": 206.9,
+    "z": -56.3,
+    "type": "Clover_1",
+    "scale": 0.98,
+    "rotation": 4.53
+  },
+  {
+    "x": 208.6,
+    "z": -43.9,
+    "type": "Mushroom_Laetiporus",
+    "scale": 1.31,
+    "rotation": 1.69
+  },
+  {
+    "x": 206,
+    "z": -40,
+    "type": "Bush",
+    "scale": 1.01,
+    "rotation": 4.27
+  },
+  {
+    "x": 206.1,
+    "z": -32.3,
+    "type": "Flower_2",
+    "scale": 1,
+    "rotation": 1.81
+  },
+  {
+    "x": 206.2,
+    "z": -21.4,
+    "type": "Flower_2",
+    "scale": 0.99,
+    "rotation": 5.7
+  },
+  {
+    "x": 204.1,
+    "z": -12.5,
+    "type": "Bush_Small_Flowers",
+    "scale": 0.89,
+    "rotation": 2.78
+  },
+  {
+    "x": 204.1,
+    "z": -4.5,
+    "type": "Clover_2",
+    "scale": 0.98,
+    "rotation": 2.22
+  },
+  {
+    "x": 203.2,
+    "z": 12.4,
+    "type": "Flower_5_Clump",
+    "scale": 1.16,
+    "rotation": 3.51
+  },
+  {
+    "x": 206.6,
+    "z": 16.2,
+    "type": "Bush_Large_Flowers",
+    "scale": 1.35,
+    "rotation": 6.21
+  },
+  {
+    "x": 204.1,
+    "z": 28.1,
+    "type": "Bush_Large",
+    "scale": 1.27,
+    "rotation": 3.15
+  },
+  {
+    "x": 206.4,
+    "z": 32.6,
+    "type": "Bush_Flowers",
+    "scale": 1.54,
+    "rotation": 4.55
+  },
+  {
+    "x": 207,
+    "z": 39.8,
+    "type": "Bush_Common_Flowers",
+    "scale": 1.31,
+    "rotation": 2.34
+  },
+  {
+    "x": 207.6,
+    "z": 51.3,
+    "type": "Fern_1",
+    "scale": 0.98,
+    "rotation": 0.8
+  },
+  {
+    "x": 206.8,
+    "z": 59.9,
+    "type": "Flower_3_Clump",
+    "scale": 0.94,
+    "rotation": 6.27
+  },
+  {
+    "x": 208.5,
+    "z": 66.8,
+    "type": "Bush_Common",
+    "scale": 0.89,
+    "rotation": 1.69
+  },
+  {
+    "x": 206.7,
+    "z": 76.2,
+    "type": "Mushroom_Common",
+    "scale": 1.23,
+    "rotation": 3.57
+  },
+  {
+    "x": 206.4,
+    "z": 81.2,
+    "type": "Plant_7_Big",
+    "scale": 1.47,
+    "rotation": 6.16
+  },
+  {
+    "x": 203.6,
+    "z": 97.1,
+    "type": "Bush_Small_Flowers",
+    "scale": 1.79,
+    "rotation": 5.95
+  },
+  {
+    "x": 204.9,
+    "z": 103.5,
+    "type": "Bush_Flowers",
+    "scale": 0.84,
+    "rotation": 4.14
+  },
+  {
+    "x": 212.7,
+    "z": -164.7,
+    "type": "Mushroom_Laetiporus",
+    "scale": 1.61,
+    "rotation": 1.74
+  },
+  {
+    "x": 214.3,
+    "z": -156.2,
+    "type": "Bush_Small_Flowers",
+    "scale": 0.81,
+    "rotation": 3.29
+  },
+  {
+    "x": 213.7,
+    "z": -150.8,
+    "type": "Bush_Large_Flowers",
+    "scale": 0.83,
+    "rotation": 3.51
+  },
+  {
+    "x": 213.6,
+    "z": -140.1,
+    "type": "Plant_1_Big",
+    "scale": 1.3,
+    "rotation": 2.81
+  },
+  {
+    "x": 212.5,
+    "z": -125.4,
+    "type": "Mushroom_Common",
+    "scale": 1.52,
+    "rotation": 3.35
+  },
+  {
+    "x": 215.9,
+    "z": -117.8,
+    "type": "Mushroom_Laetiporus",
+    "scale": 1.18,
+    "rotation": 5.93
+  },
+  {
+    "x": 215.4,
+    "z": -108,
+    "type": "Flower_2",
+    "scale": 1.6,
+    "rotation": 1.62
+  },
+  {
+    "x": 216.6,
+    "z": -100.1,
+    "type": "Bush_Small_Flowers",
+    "scale": 1.32,
+    "rotation": 0.7
+  },
+  {
+    "x": 212.5,
+    "z": -95.5,
+    "type": "Bush_Small",
+    "scale": 1.32,
+    "rotation": 2.31
+  },
+  {
+    "x": 215,
+    "z": -85,
+    "type": "Mushroom_Common",
+    "scale": 1.55,
+    "rotation": 0.4
+  },
+  {
+    "x": 215.2,
+    "z": -75.6,
+    "type": "Plant_7_Big",
+    "scale": 0.94,
+    "rotation": 2.69
+  },
+  {
+    "x": 216.3,
+    "z": -70.7,
+    "type": "Bush",
+    "scale": 0.98,
+    "rotation": 2.05
+  },
+  {
+    "x": 216.3,
+    "z": -64.5,
+    "type": "Clover_2",
+    "scale": 0.85,
+    "rotation": 4.43
+  },
+  {
+    "x": 215.4,
+    "z": -53,
+    "type": "Bush_Small",
+    "scale": 0.82,
+    "rotation": 1.02
+  },
+  {
+    "x": 215.1,
+    "z": -43.7,
+    "type": "Plant_7",
+    "scale": 1.68,
+    "rotation": 0.53
+  },
+  {
+    "x": 216.4,
+    "z": -28.5,
+    "type": "Flower_1",
+    "scale": 0.83,
+    "rotation": 1.54
+  },
+  {
+    "x": 212.9,
+    "z": -22.4,
+    "type": "Flower_2_Clump",
+    "scale": 1.09,
+    "rotation": 4.49
+  },
+  {
+    "x": 216.2,
+    "z": -13.5,
+    "type": "Bush_Large_Flowers",
+    "scale": 1.18,
+    "rotation": 4.44
+  },
+  {
+    "x": 216.1,
+    "z": -8.6,
+    "type": "Flower_2_Clump",
+    "scale": 1.6,
+    "rotation": 3.28
+  },
+  {
+    "x": 216.5,
+    "z": 2.5,
+    "type": "Fern_1",
+    "scale": 1.15,
+    "rotation": 5.66
+  },
+  {
+    "x": 212.1,
+    "z": 8,
+    "type": "Bush_Common_Flowers",
+    "scale": 1.01,
+    "rotation": 4.17
+  },
+  {
+    "x": 212.6,
+    "z": 19.7,
+    "type": "Flower_1_Clump",
+    "scale": 1.39,
+    "rotation": 5.48
+  },
+  {
+    "x": 215.6,
+    "z": 28.5,
+    "type": "Plant_7",
+    "scale": 1.13,
+    "rotation": 3.19
+  },
+  {
+    "x": 212.1,
+    "z": 35.7,
+    "type": "Bush_Common_Flowers",
+    "scale": 1.48,
+    "rotation": 1.12
+  },
+  {
+    "x": 212.9,
+    "z": 42.9,
+    "type": "Clover_2",
+    "scale": 0.9,
+    "rotation": 6.01
+  },
+  {
+    "x": 215.9,
+    "z": 60,
+    "type": "Bush_Flowers",
+    "scale": 1.31,
+    "rotation": 0.2
+  },
+  {
+    "x": 215.5,
+    "z": 72.8,
+    "type": "Mushroom_Common",
+    "scale": 1.61,
+    "rotation": 1.54
+  },
+  {
+    "x": 216,
+    "z": 84.3,
+    "type": "Bush_Small_Flowers",
+    "scale": 1.22,
+    "rotation": 1.94
+  },
+  {
+    "x": 213.7,
+    "z": 88.7,
+    "type": "Bush_Common",
+    "scale": 1.65,
+    "rotation": 2.63
+  },
+  {
+    "x": 212.3,
+    "z": 96.6,
+    "type": "Bush_Small_Flowers",
+    "scale": 1.68,
+    "rotation": 0.23
+  },
+  {
+    "x": 212.4,
+    "z": 105,
+    "type": "Clover_1",
+    "scale": 1.65,
+    "rotation": 4.39
+  },
+  {
+    "x": 216,
+    "z": 113.3,
+    "type": "Plant_7",
+    "scale": 1.37,
+    "rotation": 3.49
+  },
+  {
+    "x": 222.8,
+    "z": -166.8,
+    "type": "Plant_7_Big",
+    "scale": 1.26,
+    "rotation": 3.79
+  },
+  {
+    "x": 221,
+    "z": -157.2,
+    "type": "Bush_Large",
+    "scale": 1.75,
+    "rotation": 5.57
+  },
+  {
+    "x": 221,
+    "z": -151.6,
+    "type": "Bush_Small",
+    "scale": 1.38,
+    "rotation": 4.55
+  },
+  {
+    "x": 220.4,
+    "z": -140.3,
+    "type": "Plant_1",
+    "scale": 1.38,
+    "rotation": 4.75
+  },
+  {
+    "x": 219.6,
+    "z": -132,
+    "type": "Fern_1",
+    "scale": 1.45,
+    "rotation": 3.81
+  },
+  {
+    "x": 223.7,
+    "z": -116.4,
+    "type": "Fern_1",
+    "scale": 1.76,
+    "rotation": 5.55
+  },
+  {
+    "x": 220.5,
+    "z": -109.7,
+    "type": "Flower_2_Clump",
+    "scale": 1.36,
+    "rotation": 3.71
+  },
+  {
+    "x": 223.3,
+    "z": -102.7,
+    "type": "Bush_Large",
+    "scale": 1.51,
+    "rotation": 0.35
+  },
+  {
+    "x": 220.6,
+    "z": -94.5,
+    "type": "Clover_1",
+    "scale": 1.8,
+    "rotation": 4.87
+  },
+  {
+    "x": 223.4,
+    "z": -85.5,
+    "type": "Flower_2_Clump",
+    "scale": 1.45,
+    "rotation": 1.05
+  },
+  {
+    "x": 220.4,
+    "z": -77.9,
+    "type": "Flower_5_Clump",
+    "scale": 1.17,
+    "rotation": 1.44
+  },
+  {
+    "x": 222.8,
+    "z": -64.7,
+    "type": "Flower_1_Clump",
+    "scale": 1.42,
+    "rotation": 2.85
+  },
+  {
+    "x": 221.6,
+    "z": -55.8,
+    "type": "Plant_7",
+    "scale": 1.01,
+    "rotation": 3.81
+  },
+  {
+    "x": 222.9,
+    "z": -48.8,
+    "type": "Flower_1_Clump",
+    "scale": 1.43,
+    "rotation": 5.7
+  },
+  {
+    "x": 223.7,
+    "z": -36.7,
+    "type": "Flower_5_Clump",
+    "scale": 0.82,
+    "rotation": 2.13
+  },
+  {
+    "x": 223.7,
+    "z": -27.7,
+    "type": "Bush_Common",
+    "scale": 1.39,
+    "rotation": 5.36
+  },
+  {
+    "x": 219.5,
+    "z": -21.5,
+    "type": "Bush_Common_Flowers",
+    "scale": 1.05,
+    "rotation": 3.4
+  },
+  {
+    "x": 223.6,
+    "z": -16.6,
+    "type": "Bush_Small",
+    "scale": 1.4,
+    "rotation": 1.14
+  },
+  {
+    "x": 221.9,
+    "z": 8.3,
+    "type": "Bush_Common",
+    "scale": 1.37,
+    "rotation": 1.78
+  },
+  {
+    "x": 220.1,
+    "z": 15.5,
+    "type": "Bush_Flowers",
+    "scale": 1.51,
+    "rotation": 0.81
+  },
+  {
+    "x": 222.7,
+    "z": 27.6,
+    "type": "Mushroom_Laetiporus",
+    "scale": 1.48,
+    "rotation": 0.18
+  },
+  {
+    "x": 223.2,
+    "z": 32.3,
+    "type": "Plant_7_Big",
+    "scale": 1.57,
+    "rotation": 3.08
+  },
+  {
+    "x": 219.5,
+    "z": 39.2,
+    "type": "Mushroom_Laetiporus",
+    "scale": 0.99,
+    "rotation": 2.55
+  },
+  {
+    "x": 220.5,
+    "z": 51.6,
+    "type": "Bush_Common_Flowers",
+    "scale": 1.54,
+    "rotation": 1.89
+  },
+  {
+    "x": 221.3,
+    "z": 58.6,
+    "type": "Plant_1",
+    "scale": 1.29,
+    "rotation": 0.56
+  },
+  {
+    "x": 222.8,
+    "z": 63.9,
+    "type": "Bush_Flowers",
+    "scale": 0.86,
+    "rotation": 5.95
+  },
+  {
+    "x": 223.3,
+    "z": 73,
+    "type": "Flower_3_Clump",
+    "scale": 1.56,
+    "rotation": 3.74
+  },
+  {
+    "x": 220.7,
+    "z": 80.5,
+    "type": "Flower_2_Clump",
+    "scale": 1.45,
+    "rotation": 5.47
+  },
+  {
+    "x": 220.3,
+    "z": 87.8,
+    "type": "Flower_3_Clump",
+    "scale": 0.89,
+    "rotation": 4.59
+  },
+  {
+    "x": 223.5,
+    "z": 99.3,
+    "type": "Bush",
+    "scale": 1.31,
+    "rotation": 0.64
+  },
+  {
+    "x": 224,
+    "z": 108,
+    "type": "Bush_Small",
+    "scale": 1.24,
+    "rotation": 1.58
+  }
+]

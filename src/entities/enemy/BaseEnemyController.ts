@@ -314,6 +314,7 @@ export class BaseEnemyController {
 
         this.nameTagSprite.scale.set(3.6 * Math.min(1.5, scaleVal), 0.9 * Math.min(1.5, scaleVal), 1);
         this.nameTagSprite.position.set(0, 2.6 * scaleVal + 0.4, 0);
+        this.nameTagSprite.renderOrder = 999;
         this.playerGroup.add(this.nameTagSprite);
 
         this.lastHpRatio = -1;
