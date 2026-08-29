@@ -114,7 +114,7 @@ function patchMaterial(
        vHoloWorldPos = _tmpWP.xyz;`
     );
 
-    // ── Fragment shader: cone-shaped cutout ──
+    // ── Fragment shader: cone-shaped cutout with per-pixel leaf culling ──
     const stippleFn = cutoutStyle === 'stipple'
       ? `float occStipple(vec2 fc){vec2 p=fc/2.;return fract((floor(p.x)+floor(p.y))/2.);}`
       : '';
@@ -132,7 +132,18 @@ function patchMaterial(
        varying vec3  vHoloWorldPos;
        varying vec3  vObjCenter;
        varying float vScale;
-       ${stippleFn}`
+       ${stippleFn}
+
+       // 4x4 Bayer dither pattern computed mathematically to avoid branching
+       float dither4x4(vec2 position) {
+           vec2 pos = mod(position, 4.0);
+           float val = 0.0;
+           val += mod(pos.x, 2.0) * 8.0;
+           val += step(2.0, pos.x) * 4.0;
+           val += mod(pos.y, 2.0) * 2.0;
+           val += step(2.0, pos.y) * 1.0;
+           return (val + 0.5) / 16.0;
+       }`
     );
 
     const discard = cutoutStyle === 'stipple'
@@ -143,17 +154,8 @@ function patchMaterial(
       '#include <dithering_fragment>',
       `#include <dithering_fragment>
        {
+         // Cone-based cutout (for both leaves and bark blocking player visibility)
          vec3 pa=vHoloWorldPos-uCamPos;
-         
-         // Deteksi masuk ke volume daun secara adaptif berdasarkan posisi horizontal (X-Z) kamera ke pusat pohon
-         float distCamToCenterXZ = length(uCamPos.xz - vObjCenter.xz);
-         // Radius culling dedaunan disesuaikan secara dinamis dengan skala pohon (TwistedTree besar -> radius culling besar)
-         float leafCullRadius = vScale * 4.2;
-
-         if(uIsLeaf > 0.5 && distCamToCenterXZ < leafCullRadius) {
-             discard;
-         }
-
          vec3 ba=uPlayerPos-uCamPos;
          float baSq=max(dot(ba,ba),1e-5);
          float hRaw=dot(pa,ba)/baSq;
@@ -172,16 +174,19 @@ function patchMaterial(
 }
 
 // ---------------------------------------------------------------------------
-// Leaf material heuristic
+// Leaf material detection — STRICT: only actual leaf/foliage materials
+// Bark, trunk, branch, wood materials MUST return false so they stay visible
 // ---------------------------------------------------------------------------
 function isLeaf(mat: THREE.Material): boolean {
-  // Tagged by Trees.ts loader (userData can carry any flag)
-  if ((mat as any).userData?.isLeaf === true) return true;
-  // Name-based heuristic
+  // Explicit tag from Trees.ts loader (most reliable)
+  if (mat.userData?.isLeaf === true) return true;
+  if (mat.userData?.isBark === true) return false; // explicit bark, never treat as leaf
+
+  // Name-based: ONLY match clear leaf/foliage keywords
   const n = mat.name.toLowerCase();
-  if (/leaf|foliage|leaves|tree|branch|bark|pine|birch|maple/.test(n)) return true;
-  // AlphaTest + StandardMaterial = typical transparent leaf setup
-  if (mat instanceof THREE.MeshStandardMaterial && (mat as any).alphaTest > 0) return true;
+  if (/leaf|leaves|foliage/.test(n)) return true;
+
+  // DO NOT match bark|branch|tree|trunk|pine|birch|maple — those are trunk materials!
   return false;
 }
 
@@ -194,9 +199,9 @@ interface LeafMeta { base: number; cur: number }
 // Tree mesh heuristic
 // ---------------------------------------------------------------------------
 function isTreeMesh(object: THREE.Object3D): boolean {
-  if (object.userData?.isTree === true) return true;
+  if (object.userData?.isTree === true || object.userData?.isRock === true) return true;
   const n = object.name.toLowerCase();
-  return /tree|pine|birch|maple/.test(n);
+  return /tree|pine|birch|maple|rock|pebble/.test(n);
 }
 
 // ---------------------------------------------------------------------------
@@ -313,8 +318,16 @@ export class CameraOcclusionManager {
         // Register leaf mats for fade
         if (isLeaf(mat)) {
           next.push(mat);
+
+          // Enforce high-performance alpha clipping instead of blending to eliminate overdraw fillrate bottleneck
+          const m = mat as THREE.MeshStandardMaterial;
+          m.transparent = false;
+          m.alphaTest = 0.5;
+          m.depthWrite = true;
+          m.needsUpdate = true;
+
           if (!this.leafMeta.has(mat)) {
-            const base = (mat as THREE.MeshStandardMaterial).opacity ?? 1.0;
+            const base = m.opacity ?? 1.0;
             this.leafMeta.set(mat, { base, cur: base });
           }
         }

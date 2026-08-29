@@ -3,6 +3,7 @@ import { LAKES, type LakeDef } from "../../simulation/constants";
 
 // VERTEX SHADER
 const VERT = /* glsl */ `
+    #include <fog_pars_vertex>
     varying vec2 vWorldXZ;
     varying vec3 vWorldPosition; // Ditambahkan untuk kalkulasi view vector Fresnel
 
@@ -11,12 +12,15 @@ const VERT = /* glsl */ `
         vWorldXZ = worldPos.xz;
         vWorldPosition = worldPos.xyz;
         
-        gl_Position = projectionMatrix * viewMatrix * worldPos;
+        vec4 mvPosition = viewMatrix * worldPos;
+        gl_Position = projectionMatrix * mvPosition;
+        #include <fog_vertex>
     }
 `;
 
 // FRAGMENT SHADER
 const FRAG = /* glsl */ `
+    #include <fog_pars_fragment>
     uniform float uTime;
     uniform vec2  uLakeCenter;
     uniform vec2  uLakeRadius;
@@ -186,6 +190,7 @@ const FRAG = /* glsl */ `
         finalAlpha = clamp(finalAlpha + fresnel * 0.3 + finalFoam * 0.5, 0.0, 1.0); // Grazing angle & foam lebih solid
 
         gl_FragColor = vec4(finalColor, finalAlpha);
+        #include <fog_fragment>
     }
 `;
 
@@ -209,17 +214,21 @@ export class WaterSurface {
         // River plane
         const riverGeo = new THREE.PlaneGeometry(900, 900);
         const riverMat = new THREE.ShaderMaterial({
-            uniforms: {
-                uTime: uniforms.uTime,
-                uLakeCenter: { value: new THREE.Vector2(9999, 9999) },
-                uLakeRadius: { value: new THREE.Vector2(1, 1) },
-                uSkyColor: { value: this.skyColor },
-            },
+            uniforms: THREE.UniformsUtils.merge([
+                THREE.UniformsLib.fog,
+                {
+                    uTime: uniforms.uTime,
+                    uLakeCenter: { value: new THREE.Vector2(9999, 9999) },
+                    uLakeRadius: { value: new THREE.Vector2(1, 1) },
+                    uSkyColor: { value: this.skyColor },
+                }
+            ]),
             vertexShader: VERT,
             fragmentShader: FRAG,
             transparent: true,
-            depthWrite: false,
+            depthWrite: true,
             side: THREE.DoubleSide,
+            fog: true,
         });
         const riverMesh = new THREE.Mesh(riverGeo, riverMat);
         riverMesh.name = "water";
@@ -227,7 +236,7 @@ export class WaterSurface {
         riverMesh.rotation.x = -Math.PI / 2;
         riverMesh.position.set(0, -3.0, 0);
         riverMesh.frustumCulled = false;
-        riverMesh.renderOrder = 1;
+        riverMesh.renderOrder = -1; // Render before other transparent VFX so VFX blend on top of water
         scene.add(riverMesh);
         this.meshes.push(riverMesh);
         this.materials.push(riverMat);
@@ -253,17 +262,21 @@ export class WaterSurface {
         const geo = new THREE.PlaneGeometry(width, height);
 
         const mat = new THREE.ShaderMaterial({
-            uniforms: {
-                uTime: uniforms.uTime,
-                uLakeCenter: { value: new THREE.Vector2(lake.cx, lake.cz) },
-                uLakeRadius: { value: new THREE.Vector2(lake.rx, lake.rz) },
-                uSkyColor: { value: this.skyColor },
-            },
+            uniforms: THREE.UniformsUtils.merge([
+                THREE.UniformsLib.fog,
+                {
+                    uTime: uniforms.uTime,
+                    uLakeCenter: { value: new THREE.Vector2(lake.cx, lake.cz) },
+                    uLakeRadius: { value: new THREE.Vector2(lake.rx, lake.rz) },
+                    uSkyColor: { value: this.skyColor },
+                }
+            ]),
             vertexShader: VERT,
             fragmentShader: FRAG,
             transparent: true,
-            depthWrite: false,
+            depthWrite: true,
             side: THREE.DoubleSide,
+            fog: true,
         });
 
         const mesh = new THREE.Mesh(geo, mat);
@@ -272,7 +285,7 @@ export class WaterSurface {
         mesh.rotation.x = -Math.PI / 2;
         mesh.position.set(lake.cx, -3.0, lake.cz);
         mesh.frustumCulled = false;
-        mesh.renderOrder = 1;
+        mesh.renderOrder = -1; // Render before other transparent VFX so VFX blend on top of water
 
         return { mesh, mat };
     }

@@ -113,6 +113,44 @@ export class BaseEnemyController {
         this.placeholderMesh.position.y = 2.0 * scaleVal;
         this.playerGroup.add(this.placeholderMesh);
 
+        // Minimap Marker (Only visible on Layer 1)
+        const markerGeo = new THREE.ConeGeometry(3.5 * scaleVal, 9.0 * scaleVal, 3);
+        markerGeo.rotateX(Math.PI / 2); // flat on X-Z plane
+        const markerMat = new THREE.MeshBasicMaterial({ 
+          color: 0xff0033, // Vibrant red
+          depthTest: false,
+          fog: false // Disable fog so colors stay 100% bright and clear
+        });
+        const minimapMarker = new THREE.Mesh(markerGeo, markerMat);
+        minimapMarker.position.set(0, 4.0 * scaleVal + 1.0, 0);
+        minimapMarker.layers.set(1);
+        this.playerGroup.add(minimapMarker);
+
+        // Minimap Enemy Name Sprite (Only visible on Layer 1)
+        const minimapCanvas = document.createElement('canvas');
+        minimapCanvas.width = 256;
+        minimapCanvas.height = 64;
+        const minimapCtx = minimapCanvas.getContext('2d')!;
+        minimapCtx.font = 'bold 24px Arial';
+        minimapCtx.fillStyle = '#ff3333'; // Red text for enemies
+        minimapCtx.textAlign = 'center';
+        minimapCtx.strokeStyle = '#000000';
+        minimapCtx.lineWidth = 5;
+        minimapCtx.strokeText(this.npcName, 128, 40);
+        minimapCtx.fillText(this.npcName, 128, 40);
+
+        const minimapTexture = new THREE.CanvasTexture(minimapCanvas);
+        const minimapSpriteMat = new THREE.SpriteMaterial({ 
+          map: minimapTexture, 
+          depthTest: false,
+          fog: false 
+        });
+        const minimapNameSprite = new THREE.Sprite(minimapSpriteMat);
+        minimapNameSprite.scale.set(32 * scaleVal, 8 * scaleVal, 1);
+        minimapNameSprite.position.set(0, 4.0 * scaleVal + 6.0, 0); // Positioned above the cone marker
+        minimapNameSprite.layers.set(1);
+        this.playerGroup.add(minimapNameSprite);
+
         // Register dynamic enemy entity in Centralized TargetingManager
         const self = this;
         TargetingManager.registerEntity({

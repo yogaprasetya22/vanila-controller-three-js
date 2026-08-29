@@ -115,11 +115,13 @@ export class LocalPlayer {
   // Smooth terrain-Y tracking: lerped toward getTerrainHeight each frame
   // Eliminates 0.5-unit grid quantization micro-jitter from height cache
   private _smoothTerrainY = 0;
+  private _smoothedCameraY = 0;
 
   // Placeholder mesh (shown while loading GLTF assets)
   private placeholderMesh: THREE.Mesh;
   public isLocal: boolean;
   public playerId: string = '';
+  public minimapMarker!: THREE.Mesh;
   public interpolator = new MovementInterpolator();
   public lodLevel: 'full' | 'name-only' | 'culled' = 'full';
   
@@ -168,6 +170,44 @@ export class LocalPlayer {
     this.placeholderMesh = new THREE.Mesh(geo, mat);
     this.placeholderMesh.position.y = this.height / 2;
     this.playerGroup.add(this.placeholderMesh);
+
+    // Minimap Marker (Only visible on Layer 1)
+    const markerGeo = new THREE.ConeGeometry(4.0, 10.0, 3);
+    markerGeo.rotateX(Math.PI / 2); // flat on X-Z plane
+    const markerMat = new THREE.MeshBasicMaterial({ 
+      color: this.isLocal ? 0x00ffcc : 0x00aaff, // Brighter neon colors (cyan/green and bright blue)
+      depthTest: false,
+      fog: false // Disable fog so colors stay 100% bright and clear
+    });
+    this.minimapMarker = new THREE.Mesh(markerGeo, markerMat);
+    this.minimapMarker.position.set(0, this.height + 1.0, 0);
+    this.minimapMarker.layers.set(1);
+    this.playerGroup.add(this.minimapMarker);
+
+    // Minimap Username Sprite (Only visible on Layer 1)
+    const minimapCanvas = document.createElement('canvas');
+    minimapCanvas.width = 256;
+    minimapCanvas.height = 64;
+    const minimapCtx = minimapCanvas.getContext('2d')!;
+    minimapCtx.font = 'bold 24px Arial';
+    minimapCtx.fillStyle = '#ffffff';
+    minimapCtx.textAlign = 'center';
+    minimapCtx.strokeStyle = '#000000';
+    minimapCtx.lineWidth = 5;
+    minimapCtx.strokeText(this.username, 128, 40);
+    minimapCtx.fillText(this.username, 128, 40);
+
+    const minimapTexture = new THREE.CanvasTexture(minimapCanvas);
+    const minimapSpriteMat = new THREE.SpriteMaterial({ 
+      map: minimapTexture, 
+      depthTest: false,
+      fog: false 
+    });
+    const minimapNameSprite = new THREE.Sprite(minimapSpriteMat);
+    minimapNameSprite.scale.set(32, 8, 1);
+    minimapNameSprite.position.set(0, this.height + 6.0, 0); // Positioned above the cone marker
+    minimapNameSprite.layers.set(1);
+    this.playerGroup.add(minimapNameSprite);
 
     // Setup input listeners
     if (this.isLocal) {
@@ -960,8 +1000,71 @@ export class LocalPlayer {
       this.projectileSystem.update(delta, this.environmentMesh);
     }
 
+    // Sync minimap marker rotation with player model rotation
+    if (this.minimapMarker && this.playerMesh) {
+      this.minimapMarker.rotation.y = this.playerMesh.rotation.y;
+    }
+
     // 8. Update Camera
     this.updateCamera(delta);
+  }
+
+  private debugObstaclesGroup: THREE.Group | null = null;
+  private debugObstacleMeshes: THREE.Mesh[] = [];
+
+  public resolveObstacleCollisions(trees?: any, rocks?: any, vegetation?: any) {
+    // Handled perfectly by standard three-mesh-bvh collider in resolveCollisions()!
+    // No more aggressive circle physics.
+
+    // ponytail: Dynamic Debug wireframe meshes for nearby colliders (within 15 meters)
+    if (import.meta.env.VITE_DEBUG_COLLIDERS === 'true') {
+      if (!this.debugObstaclesGroup) {
+        this.debugObstaclesGroup = new THREE.Group();
+        this.debugObstaclesGroup.name = "player-collision-debug";
+        this.scene.add(this.debugObstaclesGroup);
+      }
+
+      // Clear previous frame's debug meshes
+      while (this.debugObstacleMeshes.length > 0) {
+        const mesh = this.debugObstacleMeshes.pop();
+        if (mesh) {
+          this.debugObstaclesGroup.remove(mesh);
+        }
+      }
+
+      const debugTrees = trees ? trees.getNearbyInstanceMeshes(this.position, 15) : [];
+      const debugRocks = rocks ? rocks.getNearbyInstanceMeshes(this.position, 15) : [];
+      const debugVeg   = vegetation ? vegetation.getNearbyInstanceMeshes(this.position, 15) : [];
+      const debugObstacles = [...debugTrees, ...debugRocks, ...debugVeg];
+
+      const debugMat = new THREE.MeshBasicMaterial({
+        color: 0x00ff00, // Green wireframe wrapping the actual mesh shapes/postures
+        wireframe: true,
+        transparent: true,
+        opacity: 0.15,
+        depthWrite: false
+      });
+
+      for (const obs of debugObstacles) {
+        const mesh = new THREE.Mesh(obs.geometry, debugMat);
+        mesh.matrixAutoUpdate = false;
+        mesh.matrix.copy(obs.matrix);
+        this.debugObstaclesGroup.add(mesh);
+        this.debugObstacleMeshes.push(mesh);
+      }
+    } else {
+      // Clean up debug meshes if VITE_DEBUG_COLLIDERS is changed to false on hot reload
+      if (this.debugObstaclesGroup) {
+        while (this.debugObstacleMeshes.length > 0) {
+          const mesh = this.debugObstacleMeshes.pop();
+          if (mesh) {
+            this.debugObstaclesGroup.remove(mesh);
+          }
+        }
+        this.scene.remove(this.debugObstaclesGroup);
+        this.debugObstaclesGroup = null;
+      }
+    }
   }
 
   public attackCooldown = 0;
@@ -1193,11 +1296,20 @@ export class LocalPlayer {
     // Smoothly follow position
     this.camera.position.lerp(targetCameraPosition, 8 * delta);
 
-    // Double check and apply safety clamp to actual camera position
+    // Double check and apply safety clamp to actual camera position with smooth height transitions
     const actualTerrainHeight = getTerrainHeight(this.camera.position.x, this.camera.position.z);
     const actualMinCameraHeight = actualTerrainHeight + 1.0;
-    if (this.camera.position.y < actualMinCameraHeight) {
-      this.camera.position.y = actualMinCameraHeight;
+    
+    if (this._smoothedCameraY === 0) {
+      this._smoothedCameraY = actualMinCameraHeight;
+    } else {
+      // Snappy response when camera is below minimum to prevent clipping under terrain, smooth when above
+      const lerpSpeed = this.camera.position.y < actualMinCameraHeight ? 24.0 : 8.0;
+      this._smoothedCameraY = THREE.MathUtils.lerp(this._smoothedCameraY, actualMinCameraHeight, lerpSpeed * delta);
+    }
+
+    if (this.camera.position.y < this._smoothedCameraY) {
+      this.camera.position.y = this._smoothedCameraY;
     }
 
     // Lock camera orientation onto the focus point (prevents rotation overshoot/jitter)

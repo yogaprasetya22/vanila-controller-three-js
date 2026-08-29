@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { getTerrainHeight } from '../../simulation/constants';
 import { treePositions } from './Trees';
+import { globalWind } from './Wind';
 
 const LEAF_COLORS = [0x76b041, 0xffb7b2, 0xffdac1, 0x4d908e].map(c => new THREE.Color(c));
 
@@ -93,15 +94,18 @@ export class Leaves {
       }
 
       p.velocity.y -= 0.008 * delta;
-      const windSway = Math.sin(elapsed * 2.5 + i * 0.7) * 0.15 * delta;
-      p.position.x += p.velocity.x * delta * 60 + windSway;
-      p.position.y += p.velocity.y * delta * 60;
-      p.position.z += p.velocity.z * delta * 60;
-      p.rotation.x += p.rotationSpeed.x * delta;
-      p.rotation.y += p.rotationSpeed.y * delta;
-      p.rotation.z += p.rotationSpeed.z * delta;
-
       const groundY = getTerrainHeight(p.position.x, p.position.z);
+      const windSway = Math.sin(elapsed * 2.5 + i * 0.7) * 0.15 * delta;
+      p.position.x += (p.velocity.x + globalWind.direction.x * globalWind.strength * 0.25) * delta * 60 + windSway;
+      p.position.y += p.velocity.y * delta * 60;
+      p.position.z += (p.velocity.z + globalWind.direction.y * globalWind.strength * 0.25) * delta * 60;
+
+      // ponytail: Fluttering rotation/sway mimicking the WebGPU/TSL implementation
+      const rotationMultiplier = Math.max((p.position.y - groundY) * 0.5, 0.2); // stronger flutter in the air, settles as it approaches ground
+      p.rotation.z = Math.sin(p.position.x * 4.0 + elapsed * 6.0) * 0.6 * rotationMultiplier;
+      p.rotation.x = Math.sin(p.position.z * 4.0 + elapsed * 6.0) * 0.6 * rotationMultiplier;
+      p.rotation.y += p.rotationSpeed.y * delta;
+
       if (p.position.y < groundY + 0.02) {
         p.position.y = groundY + 0.02;
         p.velocity.y = 0;

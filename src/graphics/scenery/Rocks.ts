@@ -12,6 +12,33 @@ export class Rocks {
       return h >= 0.2; // Dry land only
     });
 
+    // ponytail: procedurally generate rocks on the outskirt mountains/forests to populate the 900x900 world
+    let seed = 54321;
+    const prng = () => {
+      const x = Math.sin(seed++) * 10000;
+      return x - Math.floor(x);
+    };
+
+    const rockTypes = Array.from(new Set(rocksData.map(r => r.type)));
+    if (rockTypes.length > 0) {
+      for (let i = 0; i < 200; i++) {
+        const rx = (prng() - 0.5) * 820;
+        const rz = (prng() - 0.5) * 820;
+        if (Math.abs(rx) < 100 && Math.abs(rz) < 100) continue; // Skip battlefield area
+
+        const h = getTerrainHeight(rx, rz);
+        if (h < 0.2) continue; // Dry land only
+
+        activeRocksData.push({
+          x: rx,
+          z: rz,
+          type: rockTypes[Math.floor(prng() * rockTypes.length)],
+          scale: 0.8 + prng() * 1.4,
+          rotation: prng() * Math.PI * 2
+        });
+      }
+    }
+
     const uniqueTypes = Array.from(new Set(activeRocksData.map(r => r.type)));
 
     const promises = uniqueTypes.map(name => {
@@ -79,7 +106,16 @@ export class Rocks {
           instancedMesh.castShadow = false;
           instancedMesh.receiveShadow = false;
           instancedMesh.frustumCulled = false;
+          instancedMesh.userData.isRock = true;
 
+          // Compute exact local bounding sphere from the original geometry
+          if (!mesh.geometry.boundingSphere) {
+            mesh.geometry.computeBoundingSphere();
+          }
+          const localSphere = mesh.geometry.boundingSphere!.clone();
+          localSphere.applyMatrix4(relativeMatrix); // transform to template space
+
+          // Temp variables to compose instance matrices
           const position = new THREE.Vector3();
           const rotation = new THREE.Euler();
           const quaternion = new THREE.Quaternion();
@@ -89,9 +125,20 @@ export class Rocks {
 
           instances.forEach((data, index) => {
             const groundY = getTerrainHeight(data.x, data.z);
-            position.set(data.x, groundY - 0.1, data.z); // slightly sink into ground
-            rotation.set(0, data.rotation, 0);
-            quaternion.setFromEuler(rotation);
+            const groundX = getTerrainHeight(data.x + 1.0, data.z);
+            const groundZ = getTerrainHeight(data.x, data.z + 1.0);
+            const dx = groundX - groundY;
+            const dz = groundZ - groundY;
+            const len = Math.sqrt(dx * dx + 1.0 + dz * dz);
+            const normal = new THREE.Vector3(-dx / len, 1.0 / len, -dz / len);
+
+            const sink = 0.25 * data.scale;
+            position.set(data.x, groundY - sink, data.z);
+            
+            quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), normal);
+            const yaw = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), data.rotation);
+            quaternion.multiply(yaw);
+            
             scale.set(data.scale, data.scale, data.scale);
 
             instanceMatrix.compose(position, quaternion, scale);
@@ -102,7 +149,12 @@ export class Rocks {
 
           instancedMesh.instanceMatrix.needsUpdate = true;
           scene.add(instancedMesh);
-          this.instancedMeshes.push({ meshList: instancedMesh, instances, relativeMatrix });
+          this.instancedMeshes.push({ 
+            meshList: instancedMesh, 
+            instances, 
+            relativeMatrix,
+            localSphere
+          });
         });
       });
     });
@@ -112,6 +164,7 @@ export class Rocks {
     meshList: THREE.InstancedMesh;
     instances: Array<{ x: number; z: number; scale: number; rotation: number }>;
     relativeMatrix: THREE.Matrix4;
+    localSphere: THREE.Sphere;
   }> = [];
 
   private lastUpdatePos = new THREE.Vector3(9999, 9999, 9999);
@@ -157,9 +210,20 @@ export class Rocks {
       activeInstances.forEach((inst, index) => {
         const data = inst.data;
         const groundY = getTerrainHeight(data.x, data.z);
-        position.set(data.x, groundY - 0.1, data.z);
-        rotation.set(0, data.rotation, 0);
-        quaternion.setFromEuler(rotation);
+        const groundX = getTerrainHeight(data.x + 1.0, data.z);
+        const groundZ = getTerrainHeight(data.x, data.z + 1.0);
+        const dx = groundX - groundY;
+        const dz = groundZ - groundY;
+        const len = Math.sqrt(dx * dx + 1.0 + dz * dz);
+        const normal = new THREE.Vector3(-dx / len, 1.0 / len, -dz / len);
+
+        const sink = 0.25 * inst.currentScale;
+        position.set(data.x, groundY - sink, data.z);
+
+        quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), normal);
+        const yaw = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), data.rotation);
+        quaternion.multiply(yaw);
+
         scale.set(inst.currentScale, inst.currentScale, inst.currentScale);
 
         instanceMatrix.compose(position, quaternion, scale);
@@ -172,5 +236,105 @@ export class Rocks {
       }
       mesh.instanceMatrix.needsUpdate = true;
     }
+  }
+
+  public getNearbyColliders(playerPos: THREE.Vector3, radius: number = 5) {
+    const radiusSq = radius * radius;
+    const colliders: Array<{ x: number; z: number; radius: number }> = [];
+    const seen = new Set<string>();
+
+    for (const group of this.instancedMeshes) {
+      for (const data of group.instances) {
+        const key = `${data.x.toFixed(1)},${data.z.toFixed(1)}`;
+        if (seen.has(key)) continue;
+
+        const dx = data.x - playerPos.x;
+        const dz = data.z - playerPos.z;
+        if (dx * dx + dz * dz <= radiusSq) {
+          seen.add(key);
+          // Radius rintangan batu (0.6 dikali skala agar lebih pas dan tidak macet)
+          colliders.push({ x: data.x, z: data.z, radius: data.scale * 0.6 }); 
+        }
+      }
+    }
+    return colliders;
+  }
+
+  public getNearbyInstanceMeshes(playerPos: THREE.Vector3, radius: number = 15) {
+    const radiusSq = radius * radius;
+    const result: Array<{ geometry: THREE.BufferGeometry; matrix: THREE.Matrix4 }> = [];
+
+    const position = new THREE.Vector3();
+    const rotation = new THREE.Euler();
+    const quaternion = new THREE.Quaternion();
+    const scale = new THREE.Vector3();
+    const instanceMatrix = new THREE.Matrix4();
+
+    for (const group of this.instancedMeshes) {
+      group.instances.forEach((data) => {
+        const dx = data.x - playerPos.x;
+        const dz = data.z - playerPos.z;
+        if (dx * dx + dz * dz <= radiusSq) {
+          const groundY = getTerrainHeight(data.x, data.z);
+          const groundX = getTerrainHeight(data.x + 1.0, data.z);
+          const groundZ = getTerrainHeight(data.x, data.z + 1.0);
+          const diffX = groundX - groundY;
+          const diffZ = groundZ - groundY;
+          const len = Math.sqrt(diffX * diffX + 1.0 + diffZ * diffZ);
+          const normal = new THREE.Vector3(-diffX / len, 1.0 / len, -diffZ / len);
+
+          const sink = 0.25 * data.scale;
+          position.set(data.x, groundY - sink, data.z);
+
+          quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), normal);
+          const yaw = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), data.rotation);
+          quaternion.multiply(yaw);
+
+          scale.set(data.scale, data.scale, data.scale);
+
+          instanceMatrix.compose(position, quaternion, scale);
+
+          const finalMatrix = new THREE.Matrix4();
+          finalMatrix.multiplyMatrices(instanceMatrix, group.relativeMatrix);
+
+          result.push({
+            geometry: group.meshList.geometry,
+            matrix: finalMatrix
+          });
+        }
+      });
+    }
+    return result;
+  }
+
+  public getNearbyCollisionSpheres(playerPos: THREE.Vector3, radius: number = 5) {
+    const radiusSq = radius * radius;
+    const spheres: Array<{ center: THREE.Vector3; radius: number }> = [];
+
+    for (const group of this.instancedMeshes) {
+      group.instances.forEach((data) => {
+        const dx = data.x - playerPos.x;
+        const dz = data.z - playerPos.z;
+        if (dx * dx + dz * dz <= radiusSq) {
+          // Transform local template sphere center to world space for this instance
+          const worldCenter = group.localSphere.center.clone();
+          worldCenter.multiplyScalar(data.scale);
+          worldCenter.applyAxisAngle(new THREE.Vector3(0, 1, 0), data.rotation);
+
+          const groundY = getTerrainHeight(data.x, data.z);
+          worldCenter.x += data.x;
+          worldCenter.y += groundY - 0.1;
+          worldCenter.z += data.z;
+
+          const worldRadius = group.localSphere.radius * data.scale;
+
+          spheres.push({
+            center: worldCenter,
+            radius: worldRadius
+          });
+        }
+      });
+    }
+    return spheres;
   }
 }

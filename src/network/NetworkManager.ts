@@ -23,11 +23,15 @@ export class Player {
     private pendingBatch: Record<string, any> = {};
 
     public setState(key: string, value: any) {
-        // Dirty check: only accumulate if value changed
-        const currentValStr = JSON.stringify(this.state[key]);
-        const newValStr     = JSON.stringify(value);
-        if (currentValStr === newValStr) return;
-
+        const prev = this.state[key];
+        // ponytail: avoid JSON.stringify (string alloc + GC) every frame.
+        // Fast path for primitives, then for {x,y,z} pos objects.
+        // Ceiling: if new state shapes are added, extend the fast-compare below.
+        if (prev === value) return;
+        if (prev !== null && prev !== undefined && typeof prev === 'object' &&
+            value !== null && typeof value === 'object') {
+            if (prev.x === value.x && prev.y === value.y && prev.z === value.z) return;
+        }
         this.state[key]        = value;
         this.pendingBatch[key] = value;
     }

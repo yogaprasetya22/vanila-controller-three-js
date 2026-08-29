@@ -5,7 +5,7 @@ export class SceneryWindLines {
   points: THREE.Points;
   geometry: THREE.BufferGeometry;
   velocities: { x: number, y: number, z: number, speed: number }[] = [];
-  count = 80;
+  count = 25;
   constructor(scene: THREE.Scene) {
     this.geometry = new THREE.BufferGeometry();
     const positions = new Float32Array(this.count * 3);

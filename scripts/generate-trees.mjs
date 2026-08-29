@@ -7,10 +7,10 @@ const __dirname = path.dirname(__filename);
 const ROOT_DIR = path.join(__dirname, '..');
 
 // Define boundaries and zones based on constants.ts
-const MAP_MIN_X = -230;
-const MAP_MAX_X = 230;
-const MAP_MIN_Z = -170;
-const MAP_MAX_Z = 170;
+const MAP_MIN_X = -430;
+const MAP_MAX_X = 430;
+const MAP_MIN_Z = -430;
+const MAP_MAX_Z = 430;
 
 const BF_HALF_X = 92; // Buffered slightly to prevent overlapping onto the battlefield
 const BF_HALF_Z = 82;
@@ -27,20 +27,43 @@ const LAKES = [
 ];
 
 const TREE_TYPES = [
-  'BirchTree_1', 'BirchTree_2', 'BirchTree_3', 'BirchTree_4', 'BirchTree_5',
-  'MapleTree_1', 'MapleTree_2', 'MapleTree_3', 'MapleTree_4',
-  'Pine_1', 'Pine_2', 'Pine_3', 'Pine_5',
-  'TwistedTree_1', 'TwistedTree_3'
+    "BirchTree_1",
+    "BirchTree_2",
+    "BirchTree_3",
+    "BirchTree_4",
+    "BirchTree_5",
+    "CommonTree_1",
+    "CommonTree_2",
+    "MapleTree_1",
+    "MapleTree_2",
+    "MapleTree_3",
+    "MapleTree_4",
+    "Pine_1",
+    "Pine_2",
+    "Pine_3",
+    "Pine_5",
+    "TwistedTree_2",
+    "TwistedTree_3",
 ];
 
 const ROCK_TYPES = [
   'Rock_Medium_1', 'Rock_Medium_2', 'Rock_Medium_3',
   'Pebble_Round_1', 'Pebble_Round_2', 'Pebble_Round_3', 'Pebble_Round_4', 'Pebble_Round_5',
-  'Pebble_Square_1', 'Pebble_Square_2', 'Pebble_Square_3', 'Pebble_Square_4', 'Pebble_Square_5', 'Pebble_Square_6'
+  'Pebble_Square_1', 'Pebble_Square_2', 'Pebble_Square_3', 'Pebble_Square_4', 'Pebble_Square_5', 'Pebble_Square_6',
+  'RockPath_Round_Small_1', 'RockPath_Round_Small_2', 'RockPath_Round_Small_3',
+  'RockPath_Round_Thin', 'RockPath_Round_Wide',
+  'RockPath_Square_Small_1', 'RockPath_Square_Small_2', 'RockPath_Square_Small_3',
+  'RockPath_Square_Thin', 'RockPath_Square_Wide'
+];
+
+const MEDIUM_ROCKS = ['Rock_Medium_1', 'Rock_Medium_2', 'Rock_Medium_3'];
+const PEBBLES = [
+  'Pebble_Round_1', 'Pebble_Round_2', 'Pebble_Round_3', 'Pebble_Round_4', 'Pebble_Round_5',
+  'Pebble_Square_1', 'Pebble_Square_2', 'Pebble_Square_3', 'Pebble_Square_4', 'Pebble_Square_5', 'Pebble_Square_6',
 ];
 
 const VEGETATION_TYPES = [
-  'Bush', 'Bush_Common', 'Bush_Common_Flowers', 'Bush_Flowers', 'Bush_Large', 'Bush_Large_Flowers', 'Bush_Small', 'Bush_Small_Flowers',
+  'Bush', 'Bush_Common', 'Bush_Common_Flowers',
   'Clover_1', 'Clover_2', 'Fern_1',
   'Flower_1', 'Flower_1_Clump', 'Flower_2', 'Flower_2_Clump', 'Flower_3_Clump', 'Flower_5_Clump',
   'Mushroom_Common', 'Mushroom_Laetiporus',
@@ -118,9 +141,19 @@ function getTerrainHeight(x, z) {
   return forestTerrain * forestFactor;
 }
 
-function generateScenery(types, spacing, minDistanceSq, scaleMin, scaleMax) {
+function getSlope(x, z) {
+  const h = getTerrainHeight(x, z);
+  const hX = getTerrainHeight(x + 2.0, z);
+  const hZ = getTerrainHeight(x, z + 2.0);
+  const dx = (hX - h) / 2.0;
+  const dz = (hZ - h) / 2.0;
+  return Math.sqrt(dx * dx + dz * dz);
+}
+
+function generateScenery(types, spacing, minDistanceSq, scaleMin, scaleMax, allowBattlefield = false) {
   const items = [];
   const jitterRange = spacing * 0.35;
+  const BF_BLEND = 14;
 
   for (let x = MAP_MIN_X + spacing / 2; x < MAP_MAX_X; x += spacing) {
     for (let z = MAP_MIN_Z + spacing / 2; z < MAP_MAX_Z; z += spacing) {
@@ -128,8 +161,21 @@ function generateScenery(types, spacing, minDistanceSq, scaleMin, scaleMax) {
       const jx = parseFloat((x + (Math.random() * 2 - 1) * jitterRange).toFixed(1));
       const jz = parseFloat((z + (Math.random() * 2 - 1) * jitterRange).toFixed(1));
 
-      // Must be outside the battlefield, outside any lake, and on dry land (Y >= 0.2)
-      if (isInsideBattlefield(jx, jz) || isInsideLake(jx, jz) || getTerrainHeight(jx, jz) < 0.2) {
+      // Height boundary check: Trees use Y >= 0.2. Vegetation uses Y between -0.05 and 12.0 (same as grass).
+      const h = getTerrainHeight(jx, jz);
+      const heightOk = (types === VEGETATION_TYPES) ? (h >= -0.05 && h <= 12.0) : (h >= 0.2);
+
+      // Must be outside lake, on dry land/valid height, and optionally outside battlefield
+      if ((!allowBattlefield && isInsideBattlefield(jx, jz)) || isInsideLake(jx, jz) || !heightOk) {
+        continue;
+      }
+
+      // ponytail: ensure vegetation only spawns in dense grass/forest regions (forestFactor > 0.45)
+      const dxEdge = Math.max(0, Math.abs(jx) - BF_HALF_X);
+      const dzEdge = Math.max(0, Math.abs(jz) - BF_HALF_Z);
+      const edgeDist = Math.sqrt(dxEdge * dxEdge + dzEdge * dzEdge);
+      const forestFactor = smoothstep(0, BF_BLEND, edgeDist);
+      if (types === VEGETATION_TYPES && forestFactor < 0.45) {
         continue;
       }
 
@@ -169,8 +215,8 @@ function generateScenery(types, spacing, minDistanceSq, scaleMin, scaleMax) {
   return items;
 }
 
-// 1. Generate Trees (spacing: ~10.0 units, min distance: ~6.0 units)
-const trees = generateScenery(TREE_TYPES, 10.0, 36.0, 2.0, 4.0);
+// 1. Generate Trees (spacing: ~12.5 units, min distance: ~7.0 units)
+const trees = generateScenery(TREE_TYPES, 12.5, 49.0, 2.0, 4.0);
 fs.writeFileSync(
   path.join(ROOT_DIR, 'src/graphics/scenery/treesData.json'),
   JSON.stringify(trees, null, 2),
@@ -178,8 +224,108 @@ fs.writeFileSync(
 );
 console.log(`🌲 Generated ${trees.length} trees.`);
 
-// 2. Generate Rocks (spacing: ~14.0 units, min distance: ~7.5 units)
-const rocks = generateScenery(ROCK_TYPES, 14.0, 56.25, 0.8, 2.2);
+function generateRocks() {
+  const items = [];
+  const spacing = 16.0; // Slightly larger spacing to make room for clusters
+  const jitterRange = spacing * 0.35;
+
+  for (let x = MAP_MIN_X + spacing / 2; x < MAP_MAX_X; x += spacing) {
+    for (let z = MAP_MIN_Z + spacing / 2; z < MAP_MAX_Z; z += spacing) {
+      // Jitter position within cell
+      const cx = x + (Math.random() * 2 - 1) * jitterRange;
+      const cz = z + (Math.random() * 2 - 1) * jitterRange;
+
+      // Must be outside any lake and on dry land (generate everywhere including battlefield!)
+      if (isInsideLake(cx, cz) || getTerrainHeight(cx, cz) < 0.2) {
+        continue;
+      }
+
+      // ponytail: bias rock placement to hills/mountainsides (steeper slope) for realism
+      const slope = getSlope(cx, cz);
+      if (slope < 0.12 && Math.random() > 0.08) {
+        continue; // Skip 92% of flat areas
+      }
+
+      // Check distance against already generated items to guarantee spacing between clusters/single rocks
+      let tooClose = false;
+      for (const item of items) {
+        const dx = cx - item.x;
+        const dz = cz - item.z;
+        if (dx * dx + dz * dz < 12.0 * 12.0) { // spacing between independent formations
+          tooClose = true;
+          break;
+        }
+      }
+      if (tooClose) continue;
+
+      // 45% chance to spawn a cluster, 55% to spawn a single rock
+      const isCluster = Math.random() < 0.45;
+      
+      if (isCluster) {
+        // Spawn exactly 3 rocks in a cluster
+        const numRocks = 3;
+        const mainScale = parseFloat((Math.random() * 1.5 + 2.5).toFixed(2)); // Large central boulder (2.5 - 4.0)
+        
+        for (let i = 0; i < numRocks; i++) {
+          let rx, rz, rScale, type;
+          if (i === 0) {
+            // Main central large rock
+            rx = cx;
+            rz = cz;
+            rScale = mainScale;
+            type = MEDIUM_ROCKS[Math.floor(Math.random() * MEDIUM_ROCKS.length)];
+          } else {
+            // Smaller rocks clustered around it
+            const angle = Math.random() * Math.PI * 2;
+            const dist = 1.2 + Math.random() * 2.2; // close cluster distance
+            rx = cx + Math.cos(angle) * dist;
+            rz = cz + Math.sin(angle) * dist;
+            // Scale is 20% to 60% of the main rock scale (pebbles/stepping stones)
+            rScale = parseFloat((mainScale * (0.2 + Math.random() * 0.4)).toFixed(2));
+            type = PEBBLES[Math.floor(Math.random() * PEBBLES.length)];
+          }
+
+          // Ensure cluster components don't clip into lake or underwater
+          if (isInsideLake(rx, rz) || getTerrainHeight(rx, rz) < 0.2) {
+            continue;
+          }
+
+          const rotation = parseFloat((Math.random() * Math.PI * 2).toFixed(2));
+
+          items.push({
+            x: parseFloat(rx.toFixed(1)),
+            z: parseFloat(rz.toFixed(1)),
+            type,
+            scale: rScale,
+            rotation
+          });
+        }
+      } else {
+        // Spawn a single standalone rock
+        const isMedium = Math.random() < 0.40;
+        const type = isMedium 
+          ? MEDIUM_ROCKS[Math.floor(Math.random() * MEDIUM_ROCKS.length)]
+          : PEBBLES[Math.floor(Math.random() * PEBBLES.length)];
+        const scale = isMedium
+          ? parseFloat((Math.random() * 1.5 + 2.5).toFixed(2)) // Large standalone boulder
+          : parseFloat((Math.random() * 1.0 + 0.5).toFixed(2)); // Small standalone pebble
+        const rotation = parseFloat((Math.random() * Math.PI * 2).toFixed(2));
+
+        items.push({
+          x: parseFloat(cx.toFixed(1)),
+          z: parseFloat(cz.toFixed(1)),
+          type,
+          scale,
+          rotation
+        });
+      }
+    }
+  }
+  return items;
+}
+
+// 2. Generate Rocks (with clustering support)
+const rocks = generateRocks();
 fs.writeFileSync(
   path.join(ROOT_DIR, 'src/graphics/scenery/rocksData.json'),
   JSON.stringify(rocks, null, 2),
@@ -187,8 +333,8 @@ fs.writeFileSync(
 );
 console.log(`🪨 Generated ${rocks.length} rocks.`);
 
-// 3. Generate Vegetation (spacing: ~8.0 units, min distance: ~4.5 units)
-const vegetation = generateScenery(VEGETATION_TYPES, 8.0, 20.25, 0.8, 1.8);
+// 3. Generate Vegetation (spacing: ~8.0 units, min distance: ~4.5 units, forest grass only)
+const vegetation = generateScenery(VEGETATION_TYPES, 8.0, 20.25, 0.8, 1.8, false);
 fs.writeFileSync(
   path.join(ROOT_DIR, 'src/graphics/scenery/vegetationData.json'),
   JSON.stringify(vegetation, null, 2),
