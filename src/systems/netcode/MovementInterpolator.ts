@@ -175,10 +175,8 @@ export class MovementInterpolator {
     this._scratchPos.lerpVectors(s0.position, s1.position, t);
     this._scratchRot.slerpQuaternions(s0.rotation, s1.rotation, t);
 
-    outPosition.x = THREE.MathUtils.damp(outPosition.x, this._scratchPos.x, this.lambda, delta);
-    outPosition.y = THREE.MathUtils.damp(outPosition.y, this._scratchPos.y, this.lambda, delta);
-    outPosition.z = THREE.MathUtils.damp(outPosition.z, this._scratchPos.z, this.lambda, delta);
-    outQuaternion.slerp(this._scratchRot, Math.min(1.0, delta * this.lambda));
+    outPosition.copy(this._scratchPos);
+    outQuaternion.copy(this._scratchRot);
 
     this._updateVelocity(outPosition, delta);
     return { action: s1.action, velocity: this.frameVelocity };

@@ -12,7 +12,7 @@ export class Vegetation {
       return h >= 0.2; // Dry land only
     });
 
-    // ponytail: procedurally generate vegetation on the outskirts to populate the 900x900 world
+    // ponytail: procedurally generate vegetation on the outskirts to populate the 2400x2400 world
     let seed = 12345;
     const prng = () => {
       const x = Math.sin(seed++) * 10000;
@@ -21,9 +21,9 @@ export class Vegetation {
 
     const vegTypes = Array.from(new Set(vegetationData.map(v => v.type)));
     if (vegTypes.length > 0) {
-      for (let i = 0; i < 400; i++) {
-        const rx = (prng() - 0.5) * 820;
-        const rz = (prng() - 0.5) * 820;
+      for (let i = 0; i < 500; i++) {
+        const rx = (prng() - 0.5) * 2300;
+        const rz = (prng() - 0.5) * 2300;
         if (Math.abs(rx) < 100 && Math.abs(rz) < 100) continue; // Skip battlefield area
 
         const h = getTerrainHeight(rx, rz);
@@ -146,11 +146,22 @@ export class Vegetation {
           const instanceMatrix = new THREE.Matrix4();
           const finalMatrix = new THREE.Matrix4();
 
-          instances.forEach((data, index) => {
+          const enrichedInstances = instances.map((data) => {
             const groundY = getTerrainHeight(data.x, data.z);
-            position.set(data.x, groundY, data.z);
-            rotation.set(0, data.rotation, 0);
-            quaternion.setFromEuler(rotation);
+            const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, data.rotation, 0));
+            return {
+              ...data,
+              groundY,
+              qx: q.x,
+              qy: q.y,
+              qz: q.z,
+              qw: q.w
+            };
+          });
+
+          enrichedInstances.forEach((data, index) => {
+            position.set(data.x, data.groundY, data.z);
+            quaternion.set(data.qx, data.qy, data.qz, data.qw);
             scale.set(data.scale, data.scale, data.scale);
 
             instanceMatrix.compose(position, quaternion, scale);
@@ -161,7 +172,7 @@ export class Vegetation {
 
           instancedMesh.instanceMatrix.needsUpdate = true;
           scene.add(instancedMesh);
-          this.instancedMeshes.push({ meshList: instancedMesh, instances, relativeMatrix });
+          this.instancedMeshes.push({ meshList: instancedMesh, instances: enrichedInstances, relativeMatrix });
         });
       });
     });
@@ -169,65 +180,94 @@ export class Vegetation {
 
   private instancedMeshes: Array<{
     meshList: THREE.InstancedMesh;
-    instances: Array<{ x: number; z: number; scale: number; rotation: number }>;
+    instances: Array<{ x: number; z: number; scale: number; rotation: number; groundY: number; qx: number; qy: number; qz: number; qw: number }>;
     relativeMatrix: THREE.Matrix4;
   }> = [];
 
   private lastUpdatePos = new THREE.Vector3(9999, 9999, 9999);
+  private lastUpdateQuat = new THREE.Quaternion();
   private needsFirstUpdate = true;
 
-  public update(cameraPos: THREE.Vector3) {
+  private static _scratchPos = new THREE.Vector3();
+  private static _scratchQuat = new THREE.Quaternion();
+  private static _scratchScale = new THREE.Vector3();
+  private static _scratchInstMat = new THREE.Matrix4();
+  private static _scratchFinalMat = new THREE.Matrix4();
+  private static _scratchSphere = new THREE.Sphere();
+  private static _projScreenMatrix = new THREE.Matrix4();
+  private static _frustum = new THREE.Frustum();
+
+  public update(cameraOrPos: THREE.Camera | THREE.Vector3) {
     if (this.instancedMeshes.length === 0) return;
 
-    if (!this.needsFirstUpdate && this.lastUpdatePos.distanceToSquared(cameraPos) < 1.0) {
+    const isCamera = (cameraOrPos as THREE.Camera).isCamera;
+    const camera = isCamera ? (cameraOrPos as THREE.Camera) : null;
+    const cameraPos = isCamera ? (cameraOrPos as THREE.Camera).position : (cameraOrPos as THREE.Vector3);
+
+    let camMoved = this.lastUpdatePos.distanceToSquared(cameraPos) > 0.35;
+    let camRotated = false;
+    if (camera) {
+      camRotated = this.lastUpdateQuat.angleTo(camera.quaternion) > 0.035;
+    }
+
+    if (!this.needsFirstUpdate && !camMoved && !camRotated) {
       return;
     }
     this.needsFirstUpdate = false;
     this.lastUpdatePos.copy(cameraPos);
+    if (camera) {
+      this.lastUpdateQuat.copy(camera.quaternion);
+      Vegetation._projScreenMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+      Vegetation._frustum.setFromProjectionMatrix(Vegetation._projScreenMatrix);
+    }
 
-    const MAX_DIST_SQ = 60 * 60; // Vegetation culls at 60m
+    const MAX_DIST_SQ = 80 * 80; // Vegetation culls at 80m
 
-    const position = new THREE.Vector3();
-    const rotation = new THREE.Euler();
-    const quaternion = new THREE.Quaternion();
-    const scale = new THREE.Vector3();
-    const instanceMatrix = new THREE.Matrix4();
-    const finalMatrix = new THREE.Matrix4();
+    const pos = Vegetation._scratchPos;
+    const quat = Vegetation._scratchQuat;
+    const scl = Vegetation._scratchScale;
+    const instMat = Vegetation._scratchInstMat;
+    const finalMat = Vegetation._scratchFinalMat;
+    const sphere = Vegetation._scratchSphere;
+    const frustum = Vegetation._frustum;
 
-    for (const group of this.instancedMeshes) {
+    for (let g = 0; g < this.instancedMeshes.length; g++) {
+      const group = this.instancedMeshes[g];
       const mesh = group.meshList;
-      const activeInstances: { data: typeof group.instances[0]; currentScale: number }[] = [];
+      const instances = group.instances;
+      let visibleCount = 0;
 
-      group.instances.forEach((data) => {
+      for (let i = 0; i < instances.length; i++) {
+        const data = instances[i];
         const dx = data.x - cameraPos.x;
         const dz = data.z - cameraPos.z;
         const distSq = dx * dx + dz * dz;
 
-        let currentScale = data.scale;
+        // 1. Distance culling (80m)
         if (distSq > MAX_DIST_SQ) {
-          currentScale = 0.0;
+          continue;
         }
 
-        if (currentScale > 0.0) {
-          activeInstances.push({ data, currentScale });
+        // 2. Camera Frustum Culling
+        if (camera) {
+          sphere.center.set(data.x, data.groundY + data.scale * 0.8, data.z);
+          sphere.radius = data.scale * 2.0;
+          if (!frustum.intersectsSphere(sphere)) {
+            continue;
+          }
         }
-      });
 
-      activeInstances.forEach((inst, index) => {
-        const data = inst.data;
-        const groundY = getTerrainHeight(data.x, data.z);
-        position.set(data.x, groundY, data.z);
-        rotation.set(0, data.rotation, 0);
-        quaternion.setFromEuler(rotation);
-        scale.set(inst.currentScale, inst.currentScale, inst.currentScale);
+        pos.set(data.x, data.groundY, data.z);
+        quat.set(data.qx, data.qy, data.qz, data.qw);
+        scl.set(data.scale, data.scale, data.scale);
 
-        instanceMatrix.compose(position, quaternion, scale);
-        finalMatrix.multiplyMatrices(instanceMatrix, group.relativeMatrix);
-        mesh.setMatrixAt(index, finalMatrix);
-      });
+        instMat.compose(pos, quat, scl);
+        finalMat.multiplyMatrices(instMat, group.relativeMatrix);
+        mesh.setMatrixAt(visibleCount++, finalMat);
+      }
 
-      if (mesh.count !== activeInstances.length) {
-        mesh.count = activeInstances.length;
+      if (mesh.count !== visibleCount) {
+        mesh.count = visibleCount;
       }
       mesh.instanceMatrix.needsUpdate = true;
     }

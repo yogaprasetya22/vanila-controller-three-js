@@ -4,13 +4,14 @@ import { myPlayer } from '../../../network/NetworkManager.ts';
 import { damageHUDBatcher } from '../../../graphics/effects/DamageHUDBatcher.ts';
 import { spawnDoubleShotFX } from '../../../graphics/effects/DoubleShotFX';
 import { TargetingManager } from '../../../systems/targeting/TargetingManager';
+import { CHARACTER_CONFIG } from '../../player/PlayerConfig';
 
 export class RangedAttackBehavior implements IAttackBehavior {
   public attackRange: number;
   private owner!: BaseEnemyController;
   private hasDamagedThisLoop = false;
 
-  constructor(attackRange: number = 15.0) {
+  constructor(attackRange: number = 5.0) {
     this.attackRange = attackRange;
   }
 
@@ -62,25 +63,19 @@ export class RangedAttackBehavior implements IAttackBehavior {
             // Spawns projectile from the enemy group position to the target player
             spawnDoubleShotFX(this.owner.playerGroup.parent as any, fx, fy, fz, tx, ty, tz, true, 0);
 
-            if (closestPlayer.id === localId) {
+            if (closestPlayer && closestPlayer.id === localId) {
               damageHUDBatcher.spawn({
                 skill: 'normal',
                 value: baseDamage,
                 position: [closestPlayer.position.x, closestPlayer.position.y + 1, closestPlayer.position.z],
                 isCrit: Math.random() > 0.9,
-                isMagic: true
+                isMagic: true,
+                forceShow: true
               });
-              const localHp = myPlayer().getState('hp') ?? 100;
+              const maxHp = CHARACTER_CONFIG.combat.maxHp || 5000;
+              const localHp = myPlayer().getState('hp') ?? maxHp;
               const nextHp = Math.max(0, localHp - baseDamage);
-              myPlayer().setState('hp', nextHp === 0 ? 100 : nextHp);
-            } else {
-              damageHUDBatcher.spawn({
-                skill: 'normal',
-                value: baseDamage,
-                position: [closestPlayer.position.x, closestPlayer.position.y + 1, closestPlayer.position.z],
-                isCrit: Math.random() > 0.9,
-                isMagic: true
-              });
+              myPlayer().setState('hp', nextHp === 0 ? maxHp : nextHp);
             }
           }
         }

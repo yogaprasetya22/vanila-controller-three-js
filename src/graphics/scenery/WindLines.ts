@@ -46,8 +46,8 @@ function createWindLineGeometry(segments = 32): THREE.BufferGeometry {
 const _sharedWindGeo = createWindLineGeometry();
 const _sharedWindMat = new THREE.ShaderMaterial({
     uniforms: {
-        uColor:     { value: new THREE.Color(0xffffff) },
-        uThickness: { value: 0.35 }, // Ketebalan diperbesar dari 0.18 ke 0.35
+        uColor:     { value: new THREE.Color('#00d8ff') }, // Glowing neon cyan
+        uThickness: { value: 0.70 }, // Increased thickness for cartoon ribbon styling
         uProgress:  { value: 0.0 },
         uTime:      { value: 0.0 },
     },
@@ -67,16 +67,17 @@ const _sharedWindMat = new THREE.ShaderMaterial({
             float progressThickness = smoothstep(0.0, 1.0, 1.0 - abs(ratio - remapedProgress));
             float finalThickness = uThickness * baseThickness * progressThickness;
 
-            vec3 tangent = normalize(vec3(0.0, 1.0, -1.0));
-            vec3 sideOffset = tangent * (side * finalThickness);
+            // Expand ribbon horizontally perpendicular to path
+            vec3 sideOffset = vec3(side * finalThickness, 0.0, 0.0);
             
-            // Efek gelombang berombak lambat (slow-motion breeze)
+            // Swirling curvy wind logic (Lissajous curves)
             float fade = sin(ratio * 3.14159);
-            float wave = sin(ratio * 8.0 - uTime * 3.5) * 0.8 * fade;
-            vec3 curveOffset = vec3(wave, wave * 0.2 + fade * 0.4, 0.0);
+            float waveX = sin(ratio * 3.5 - uTime * 2.8) * 1.8 * fade;
+            float waveY = cos(ratio * 2.2 - uTime * 1.4) * 0.8 * fade;
+            vec3 curveOffset = vec3(waveX, waveY, 0.0);
             vec3 localPos = position + sideOffset + curveOffset;
 
-            vAlpha = baseThickness * progressThickness * 0.7;
+            vAlpha = baseThickness * progressThickness * 0.75;
             gl_Position = projectionMatrix * modelViewMatrix * vec4(localPos, 1.0);
         }
     `,
@@ -84,7 +85,9 @@ const _sharedWindMat = new THREE.ShaderMaterial({
         uniform vec3 uColor;
         varying float vAlpha;
         void main() {
-            gl_FragColor = vec4(uColor, vAlpha);
+            // Bright white neon core with glowing borders
+            vec3 finalColor = mix(uColor, vec3(1.0, 1.0, 1.0), vAlpha * 0.45);
+            gl_FragColor = vec4(finalColor, vAlpha);
         }
     `,
     transparent: true,
@@ -110,12 +113,14 @@ interface WindLineState {
 }
 
 export class WindEffectManager {
+    public static instance: WindEffectManager | null = null;
     private intervalId: ReturnType<typeof setTimeout> | null = null;
-    private active = false;
+    public active = false;
     private pool: WindLineState[] = [];
     private lastCamPos = new THREE.Vector3(0, 0, 0);
 
     constructor(scene: THREE.Scene) {
+        WindEffectManager.instance = this;
         // ponytail: 6 clone dari 1 ShaderMaterial — 1 program compile, 6 pakai
         for (let i = 0; i < 6; i++) {
             const mat = _sharedWindMat.clone();

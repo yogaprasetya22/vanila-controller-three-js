@@ -28,9 +28,10 @@ export class EnemyFactory {
         const isRanged = npcName.includes('Mage') || npcName.includes('Ranged') || preset.behaviorType === 'RANGED';
 
         if (isRanged) {
-            ctrl.attackBehavior = new RangedAttackBehavior(15.0);
+            const range = (npcType === 'world_boss') ? 12.0 : (npcType === 'raid_boss') ? 8.0 : 5.0;
+            ctrl.attackBehavior = new RangedAttackBehavior(range);
         } else {
-            const range = (npcType === 'raid_boss' || npcType === 'world_boss') ? 3.0 : 2.0;
+            const range = (npcType === 'world_boss') ? 12.0 : (npcType === 'raid_boss') ? 8.0 : 2.0;
             ctrl.attackBehavior = new MeleeAttackBehavior(range);
         }
         ctrl.attackBehavior.init(ctrl);

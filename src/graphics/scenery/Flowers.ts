@@ -61,8 +61,8 @@ export class Flowers {
     };
 
     for (let i = 0; i < totalFlowerInstances; i++) {
-      const rx = (prng() - 0.5) * 840;
-      const rz = (prng() - 0.5) * 840;
+      const rx = (prng() - 0.5) * 2300;
+      const rz = (prng() - 0.5) * 2300;
       if (Math.abs(rx) < 5.0 && Math.abs(rz) < 5.0) { i--; continue; } // skip center battlefield
       dummyFlower.position.set(rx, getTerrainHeight(rx, rz), rz);
       dummyFlower.rotation.y = prng() * Math.PI;
@@ -71,8 +71,8 @@ export class Flowers {
       this.redMesh.setMatrixAt(i, dummyFlower.matrix);
     }
     for (let i = 0; i < totalFlowerInstances; i++) {
-      const yx = (prng() - 0.5) * 840;
-      const yz = (prng() - 0.5) * 840;
+      const yx = (prng() - 0.5) * 2300;
+      const yz = (prng() - 0.5) * 2300;
       if (Math.abs(yx) < 5.0 && Math.abs(yz) < 5.0) { i--; continue; }
       dummyFlower.position.set(yx, getTerrainHeight(yx, yz), yz);
       dummyFlower.rotation.y = prng() * Math.PI;

@@ -11,6 +11,7 @@ export const CHARACTER_CONFIG = {
 
   // Combat stats (Authoritative, synced dynamically from Go server on handshake)
   combat: {
+    maxHp: 5000,
     baseAttackSpeed: 0,
     rateOfFire: 0,
     autoAimRange: 0,
@@ -21,9 +22,9 @@ export const CHARACTER_CONFIG = {
   // Projectile system parameters
   projectiles: {
     speed: 40.0,                 // Flight speed of arrow (m/s)
-    maxDistance: 15.0,           // Range limit before projectile dissolves (meters)
+    maxDistance: 35.0,           // Range limit before projectile dissolves (meters)
     heightOffset: 1.1,           // Height offset from character origin to spawn arrow (meters)
-    homingSteerForce: 8.0,       // Interpolation steer strength towards target dummy
+    homingSteerForce: 24.0,      // Interpolation steer strength towards target dummy
     glowColor: 0x00d2ff,         // Hex glow color of GLSL projectile
   },
 

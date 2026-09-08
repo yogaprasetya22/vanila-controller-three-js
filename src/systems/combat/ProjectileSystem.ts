@@ -18,6 +18,8 @@ interface Projectile {
   ownerId?: string;
   ownerTeam?: number;
   hitRadius: number;
+  torsoHeight: number;
+  isLargeTarget: boolean;
 }
 
 // Module-level pre-allocated scratch vectors — zero heap allocation in hot loop
@@ -93,11 +95,22 @@ export class ProjectileSystem {
     velocity.copy(direction).normalize().multiplyScalar(speed);
 
     let hitRadius = 0.9;
+    let torsoHeight = 0.9;
+    let isLargeTarget = false;
+
     if (target) {
       const allEntities = TargetingManager.getAllEntities();
       const targetEntity = allEntities.find(e => e.playerGroup === target);
-      if (targetEntity && targetEntity.radius) {
-        hitRadius = targetEntity.radius + 0.35;
+      if (targetEntity) {
+        if (targetEntity.radius) {
+          hitRadius = targetEntity.radius + 0.35;
+        }
+        if (targetEntity.torsoHeight !== undefined) {
+          torsoHeight = targetEntity.torsoHeight;
+        }
+        if (torsoHeight >= 1.8) {
+          isLargeTarget = true;
+        }
       }
     }
 
@@ -110,11 +123,13 @@ export class ProjectileSystem {
       target: target,
       ownerId: ownerId,
       ownerTeam: ownerTeam,
-      hitRadius: hitRadius
+      hitRadius: hitRadius,
+      torsoHeight: torsoHeight,
+      isLargeTarget: isLargeTarget
     });
   }
 
-  public update(delta: number, environmentMesh: THREE.Mesh | null, spawnVFXCallback?: (pos: THREE.Vector3, target: THREE.Object3D | null) => void) {
+  public update(delta: number, environmentMesh: THREE.Mesh | null, spawnVFXCallback?: (pos: THREE.Vector3, target: THREE.Object3D | null, ownerId?: string) => void) {
     if (this.projectiles.length === 0) return; // ponytail: early-out when idle — avoids myPlayer() call
     const localPlayerId = myPlayer().id;
 
@@ -122,56 +137,43 @@ export class ProjectileSystem {
       const p = this.projectiles[i];
       p.age += delta;
 
+      // ─── Dynamic Torso Tracking & Curved Trajectory ──────────────────────────────────────
+      if (p.target) {
+        _targetPos.copy(p.target.position);
+        _targetPos.y += p.torsoHeight; // Dynamic exact torso center of mass based on enemy scale
+
+        _toTarget.copy(_targetPos).sub(p.mesh.position);
+        const distToTarget = _toTarget.length();
+        _toTarget.normalize().multiplyScalar(p.speed);
+        
+        let steerForce = CHARACTER_CONFIG.projectiles.homingSteerForce || 24.0;
+        if (p.isLargeTarget) {
+          // Dynamic Curve Arc: rises smoothly from below then snaps sharply into the torso center
+          steerForce = distToTarget > 6.0 ? 18.0 : 36.0;
+        }
+        p.velocity.lerp(_toTarget, Math.min(1.0, steerForce * delta));
+      } else {
+        // Fallback blind fire ballistic gravity
+        p.velocity.addScaledVector(_gravity, delta);
+      }
+
       // Move forward
       p.mesh.position.addScaledVector(p.velocity, delta);
 
-      // Orient to follow velocity vector
+      // Orient arrow tip to follow instantaneous velocity vector
       _targetLook.copy(p.mesh.position).add(p.velocity);
       p.mesh.lookAt(_targetLook);
 
-      // Verify if projectile was shot by local player
-      const isLocal = p.ownerId === localPlayerId;
-
-      // ─── REMOTE projectile path (or visual-only helper path) ─────────────────────────────────────────
-      if (!isLocal) {
-        let remoteCollided = false;
-        if (p.target) {
-          _targetPos.copy(p.target.position);
-          _targetPos.y += 1.0;
-          _toTarget.copy(_targetPos).sub(p.mesh.position).normalize();
-          _toTarget.multiplyScalar(p.speed);
-          p.velocity.lerp(_toTarget, CHARACTER_CONFIG.projectiles.homingSteerForce * delta);
-
-          // Explode if close to target center (dynamically scaled for large bosses)
-          _tPos.copy(p.target.position);
-          _tPos.y += 0.5;
-          const hitRadiusSq = p.hitRadius * p.hitRadius;
-
-          if (p.mesh.position.distanceToSquared(_tPos) < hitRadiusSq) {
-            remoteCollided = true;
-          }
-        }
-        if (remoteCollided || p.age >= p.maxAge) {
-          if (spawnVFXCallback) spawnVFXCallback(p.mesh.position, p.target);
-          p.mesh.visible = false;
-          this.meshPool.push(p.mesh);
-          this.projectiles[i] = this.projectiles[this.projectiles.length - 1];
-          this.projectiles.length--;
-        }
-        continue;
-      }
-
-      // ─── LOCAL projectile path (Check collisions & trigger hit callbacks) ───────────────────────────────────────────
+      // ─── Target Collision Check ──────────────────────────────────────────────────────────
       if (p.target) {
-        // Homing: check only against pinned target — O(1)
         _tPos.copy(p.target.position);
-        _tPos.y += 0.5;
+        _tPos.y += p.torsoHeight;
         let collided = false;
         const hitRadiusSq = p.hitRadius * p.hitRadius;
 
         if (p.mesh.position.distanceToSquared(_tPos) < hitRadiusSq) {
           collided = true;
-          if (spawnVFXCallback) spawnVFXCallback(p.mesh.position, p.target);
+          if (spawnVFXCallback) spawnVFXCallback(p.mesh.position, p.target, p.ownerId);
         }
 
         if (collided || p.age >= p.maxAge) {
@@ -181,9 +183,6 @@ export class ProjectileSystem {
           this.projectiles.length--;
         }
         continue;
-      } else {
-        // Fallback blind fire (optional)
-        p.velocity.addScaledVector(_gravity, delta);
       }
 
       const oldX = p.mesh.position.x, oldY = p.mesh.position.y, oldZ = p.mesh.position.z;

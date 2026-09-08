@@ -200,8 +200,10 @@ export class DayCycleManager {
                 this.fogColorB,
                 0.5,
             );
-            const targetFar = 120 + (1 - this.fogDensity / 0.003) * 80;
-            this.scene.fog.near = targetFar * 0.45;
+            // ponytail: Tighter atmospheric horizon fog (near 80m, far 240m) tightly synced with closer 220m LOD
+            const densityRatio = this.fogDensity / 0.003;
+            const targetFar = 230 + (1 - densityRatio) * 20; // 230m - 250m
+            this.scene.fog.near = 80;
             this.scene.fog.far = targetFar;
         }
 

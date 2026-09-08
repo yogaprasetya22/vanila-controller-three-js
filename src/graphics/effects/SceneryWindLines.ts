@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { getTerrainHeight } from '../../simulation/constants';
+import { WindEffectManager } from '../scenery/WindLines';
 
 export class SceneryWindLines {
   points: THREE.Points;
@@ -39,6 +40,11 @@ export class SceneryWindLines {
   }
 
   update(delta: number, elapsed: number, camPos?: THREE.Vector3) {
+    // ponytail: follow active status of WindEffectManager
+    const isWindActive = WindEffectManager.instance && WindEffectManager.instance.active;
+    this.points.visible = !!isWindActive;
+    if (!isWindActive) return;
+
     const posAttr = this.geometry.attributes.position as THREE.BufferAttribute;
     const center = camPos || new THREE.Vector3(0, 0, 0);
 

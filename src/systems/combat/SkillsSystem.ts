@@ -29,6 +29,12 @@ export class SkillsSystem {
     cdTextEl: HTMLSpanElement;
   } | null = null;
 
+  // ponytail: dirty-flag cache — avoids DOM writes (style mutation) every frame
+  private _lastCdTexts: string[] = ['', '', ''];
+  private _lastIsReady: boolean[] = [true, true, true];
+  private _lastPassiveCd = '';
+  private _lastPassiveReady = true;
+
   constructor(
     _gasVFX?: any,
     _flameVFX?: any,
@@ -265,7 +271,7 @@ export class SkillsSystem {
     this.cdIndicator.style.display = visible ? 'flex' : 'none';
   }
 
-  public triggerNetworkVFX(skillId: string, x: number, z: number, targetMesh?: THREE.Object3D) {
+  public triggerNetworkVFX(skillId: string, x: number, z: number, forward?: THREE.Vector3, targetMesh?: THREE.Object3D) {
     const floorY = getTerrainHeight(x, z);
     const mockPos = new THREE.Vector3(x, floorY, z);
     if (getLODLevelAt(mockPos) !== 'full') return;
@@ -275,9 +281,10 @@ export class SkillsSystem {
       const mockCaster = {
         position: mockPos
       };
+      const fwd = forward ? forward.clone().normalize() : new THREE.Vector3(0, 0, -1);
       skill.cast(mockCaster, {
         scene,
-        forward: new THREE.Vector3(0, 0, 1),
+        forward: fwd,
         target: targetMesh
       });
     }
@@ -316,32 +323,54 @@ export class SkillsSystem {
   }
 
   private updateUI(character?: any) {
-    this.skillElements.forEach((el) => {
+    this.skillElements.forEach((el, idx) => {
       const isReady = this.skillManager.isReady(el.key);
       const cd = this.skillManager.getCooldown(el.key);
-      el.itemEl.style.borderColor = isReady ? el.activeColor : 'rgba(239, 68, 68, 0.5)';
-      el.itemEl.style.opacity = isReady ? '1' : '0.65';
-      
+      const cdStr = cd > 0 ? cd.toFixed(1) : '';
+
+      // ponytail: only write DOM when value changed — prevents forced reflow every frame
+      if (this._lastIsReady[idx] !== isReady) {
+        this._lastIsReady[idx] = isReady;
+        el.itemEl.style.borderColor = isReady ? el.activeColor : 'rgba(239, 68, 68, 0.5)';
+        el.itemEl.style.opacity = isReady ? '1' : '0.65';
+      }
+
       if (cd > 0) {
         el.overlayEl.style.display = 'flex';
-        el.cdTextEl.innerText = cd.toFixed(1);
+        if (this._lastCdTexts[idx] !== cdStr) {
+          this._lastCdTexts[idx] = cdStr;
+          el.cdTextEl.innerText = cdStr;
+        }
       } else {
-        el.overlayEl.style.display = 'none';
+        if (this._lastCdTexts[idx] !== '') {
+          this._lastCdTexts[idx] = '';
+          el.overlayEl.style.display = 'none';
+        }
       }
     });
 
     if (this.passiveElement) {
       const dodgeCD = character ? (character.dodgeCooldownLeft ?? 0) : 0;
       const isReady = dodgeCD <= 0;
-      
-      this.passiveElement.itemEl.style.borderColor = isReady ? '#a855f7' : 'rgba(239, 68, 68, 0.5)';
-      this.passiveElement.itemEl.style.opacity = isReady ? '1' : '0.65';
-      
+      const cdStr   = dodgeCD > 0 ? dodgeCD.toFixed(1) : '';
+
+      if (this._lastPassiveReady !== isReady) {
+        this._lastPassiveReady = isReady;
+        this.passiveElement.itemEl.style.borderColor = isReady ? '#a855f7' : 'rgba(239, 68, 68, 0.5)';
+        this.passiveElement.itemEl.style.opacity = isReady ? '1' : '0.65';
+      }
+
       if (dodgeCD > 0) {
         this.passiveElement.overlayEl.style.display = 'flex';
-        this.passiveElement.cdTextEl.innerText = dodgeCD.toFixed(1);
+        if (this._lastPassiveCd !== cdStr) {
+          this._lastPassiveCd = cdStr;
+          this.passiveElement.cdTextEl.innerText = cdStr;
+        }
       } else {
-        this.passiveElement.overlayEl.style.display = 'none';
+        if (this._lastPassiveCd !== '') {
+          this._lastPassiveCd = '';
+          this.passiveElement.overlayEl.style.display = 'none';
+        }
       }
     }
   }

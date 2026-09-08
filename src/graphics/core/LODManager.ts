@@ -7,6 +7,10 @@ import { myPlayer } from '../../network/NetworkManager';
 export class LODManager {
   private static lodSortTimer = 0;
 
+  // Pre-allocated reusable arrays to prevent garbage collection spikes in render loop
+  private static remotePlayersList: LocalPlayer[] = [];
+  private static mobsList: BaseEnemyController[] = [];
+
   public static update(
     delta: number, 
     characterMode: 'player' | 'orbit', 
@@ -19,52 +23,83 @@ export class LODManager {
     referencePosition.copy(refPos);
 
     this.lodSortTimer += delta;
-    if (this.lodSortTimer >= 0.25) {
+    if (this.lodSortTimer >= 0.25) { // Evaluate LOD every 250ms
       this.lodSortTimer = 0;
 
-      const remotePlayers = playersAndControllers
-        .filter(p => p.player.id !== myPlayer().id)
-        .map(p => p.controller);
-      const enemies = Array.from(npcControllers.values());
-      const allEntities = [...remotePlayers, ...enemies];
-      const totalEntities = allEntities.length;
+      const maxFullPlayers = Number(import.meta.env.VITE_LOD_MAX_PLAYERS) || 30;
+      const maxFullEnemies = Number(import.meta.env.VITE_LOD_MAX_ENEMIES) || 30;
 
-      allEntities.forEach(e => {
-        (e as any)._distToLocal = e.position.distanceTo(referencePosition);
-      });
+      const myId = myPlayer().id;
 
-      let entitiesInside10m = 0;
-      allEntities.forEach(e => {
-        if ((e as any)._distToLocal <= 10.0) {
-          entitiesInside10m++;
+      // ─── 1. TRACK 1: ENEMY & BOSS LOD ──────────────────────────────────────────
+      this.mobsList.length = 0;
+
+      for (const enemy of npcControllers.values()) {
+        if (enemy.hp <= 0) {
+          enemy.setLODLevel('culled');
+          continue;
         }
-      });
 
-      allEntities.forEach(e => {
-        const dist = (e as any)._distToLocal;
-        if (dist > 40.0) {
-          e.setLODLevel('culled');
-        } else if (dist <= 10.0 || totalEntities <= 10) {
-          e.setLODLevel('full');
-        } else {
-          e.setLODLevel('name-only');
-        }
-      });
+        const dist = enemy.position.distanceTo(referencePosition);
+        (enemy as any)._distToLocal = dist;
 
-      if (entitiesInside10m <= 10 && totalEntities > 10) {
-        allEntities.sort((a, b) => (a as any)._distToLocal - (b as any)._distToLocal);
-        allEntities.forEach((e, index) => {
-          const dist = (e as any)._distToLocal;
-          if (dist <= 40.0) {
-            if (index < 10) {
-              e.setLODLevel('full');
-            } else if (dist > 10.0) {
-              e.setLODLevel('name-only');
-            }
+        // BOSS PRIORITY: World Bosses and Raid Bosses are ALWAYS 'full' LOD within 80m
+        if (enemy.npcType === 'world_boss' || enemy.npcType === 'raid_boss') {
+          if (dist <= 80.0) {
+            enemy.setLODLevel('full');
           } else {
-            e.setLODLevel('culled');
+            enemy.setLODLevel('culled');
           }
-        });
+        } else {
+          // Regular Mobs
+          if (dist > 45.0) {
+            enemy.setLODLevel('culled');
+          } else {
+            this.mobsList.push(enemy);
+          }
+        }
+      }
+
+      // Sort regular mobs by distance to player
+      if (this.mobsList.length > 0) {
+        this.mobsList.sort((a, b) => (a as any)._distToLocal - (b as any)._distToLocal);
+        for (let i = 0; i < this.mobsList.length; i++) {
+          const mob = this.mobsList[i];
+          if (i < maxFullEnemies) {
+            mob.setLODLevel('full');
+          } else {
+            mob.setLODLevel('name-only');
+          }
+        }
+      }
+
+      // ─── 2. TRACK 2: REMOTE PLAYERS / BOTS LOD ─────────────────────────────────
+      this.remotePlayersList.length = 0;
+
+      for (const pc of playersAndControllers) {
+        if (pc.player.id === myId) continue;
+        const ctrl = pc.controller;
+        const dist = ctrl.position.distanceTo(referencePosition);
+        (ctrl as any)._distToLocal = dist;
+
+        if (dist > 45.0) {
+          ctrl.setLODLevel('culled');
+        } else {
+          this.remotePlayersList.push(ctrl);
+        }
+      }
+
+      // Sort remote players / bots by distance
+      if (this.remotePlayersList.length > 0) {
+        this.remotePlayersList.sort((a, b) => (a as any)._distToLocal - (b as any)._distToLocal);
+        for (let i = 0; i < this.remotePlayersList.length; i++) {
+          const playerCtrl = this.remotePlayersList[i];
+          if (i < maxFullPlayers) {
+            playerCtrl.setLODLevel('full');
+          } else {
+            playerCtrl.setLODLevel('name-only');
+          }
+        }
       }
     }
   }

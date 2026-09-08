@@ -12,7 +12,7 @@ export class Rocks {
       return h >= 0.2; // Dry land only
     });
 
-    // ponytail: procedurally generate rocks on the outskirt mountains/forests to populate the 900x900 world
+    // ponytail: procedurally generate rocks on the outskirt mountains/forests to populate the 2400x2400 world
     let seed = 54321;
     const prng = () => {
       const x = Math.sin(seed++) * 10000;
@@ -21,9 +21,9 @@ export class Rocks {
 
     const rockTypes = Array.from(new Set(rocksData.map(r => r.type)));
     if (rockTypes.length > 0) {
-      for (let i = 0; i < 200; i++) {
-        const rx = (prng() - 0.5) * 820;
-        const rz = (prng() - 0.5) * 820;
+      for (let i = 0; i < 250; i++) {
+        const rx = (prng() - 0.5) * 2300;
+        const rz = (prng() - 0.5) * 2300;
         if (Math.abs(rx) < 100 && Math.abs(rz) < 100) continue; // Skip battlefield area
 
         const h = getTerrainHeight(rx, rz);
@@ -123,7 +123,7 @@ export class Rocks {
           const instanceMatrix = new THREE.Matrix4();
           const finalMatrix = new THREE.Matrix4();
 
-          instances.forEach((data, index) => {
+          const enrichedInstances = instances.map((data) => {
             const groundY = getTerrainHeight(data.x, data.z);
             const groundX = getTerrainHeight(data.x + 1.0, data.z);
             const groundZ = getTerrainHeight(data.x, data.z + 1.0);
@@ -131,14 +131,27 @@ export class Rocks {
             const dz = groundZ - groundY;
             const len = Math.sqrt(dx * dx + 1.0 + dz * dz);
             const normal = new THREE.Vector3(-dx / len, 1.0 / len, -dz / len);
+            // Seamlessly anchor cliff rocks and boulders into the floor mesh
+            const sink = (data.scale >= 3.0 ? 0.38 : 0.28) * data.scale;
 
-            const sink = 0.25 * data.scale;
-            position.set(data.x, groundY - sink, data.z);
-            
-            quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), normal);
+            const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), normal);
             const yaw = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), data.rotation);
-            quaternion.multiply(yaw);
-            
+            q.multiply(yaw);
+
+            return {
+              ...data,
+              groundY,
+              sink,
+              qx: q.x,
+              qy: q.y,
+              qz: q.z,
+              qw: q.w
+            };
+          });
+
+          enrichedInstances.forEach((data, index) => {
+            position.set(data.x, data.groundY - data.sink, data.z);
+            quaternion.set(data.qx, data.qy, data.qz, data.qw);
             scale.set(data.scale, data.scale, data.scale);
 
             instanceMatrix.compose(position, quaternion, scale);
@@ -151,7 +164,7 @@ export class Rocks {
           scene.add(instancedMesh);
           this.instancedMeshes.push({ 
             meshList: instancedMesh, 
-            instances, 
+            instances: enrichedInstances, 
             relativeMatrix,
             localSphere
           });
@@ -162,77 +175,95 @@ export class Rocks {
 
   private instancedMeshes: Array<{
     meshList: THREE.InstancedMesh;
-    instances: Array<{ x: number; z: number; scale: number; rotation: number }>;
+    instances: Array<{ x: number; z: number; scale: number; rotation: number; groundY: number; sink: number; qx: number; qy: number; qz: number; qw: number }>;
     relativeMatrix: THREE.Matrix4;
     localSphere: THREE.Sphere;
   }> = [];
 
   private lastUpdatePos = new THREE.Vector3(9999, 9999, 9999);
+  private lastUpdateQuat = new THREE.Quaternion();
   private needsFirstUpdate = true;
 
-  public update(cameraPos: THREE.Vector3) {
+  private static _scratchPos = new THREE.Vector3();
+  private static _scratchQuat = new THREE.Quaternion();
+  private static _scratchScale = new THREE.Vector3();
+  private static _scratchInstMat = new THREE.Matrix4();
+  private static _scratchFinalMat = new THREE.Matrix4();
+  private static _scratchSphere = new THREE.Sphere();
+  private static _projScreenMatrix = new THREE.Matrix4();
+  private static _frustum = new THREE.Frustum();
+
+  public update(cameraOrPos: THREE.Camera | THREE.Vector3) {
     if (this.instancedMeshes.length === 0) return;
 
-    if (!this.needsFirstUpdate && this.lastUpdatePos.distanceToSquared(cameraPos) < 1.0) {
+    const isCamera = (cameraOrPos as THREE.Camera).isCamera;
+    const camera = isCamera ? (cameraOrPos as THREE.Camera) : null;
+    const cameraPos = isCamera ? (cameraOrPos as THREE.Camera).position : (cameraOrPos as THREE.Vector3);
+
+    let camMoved = this.lastUpdatePos.distanceToSquared(cameraPos) > 0.35;
+    let camRotated = false;
+    if (camera) {
+      camRotated = this.lastUpdateQuat.angleTo(camera.quaternion) > 0.035;
+    }
+
+    if (!this.needsFirstUpdate && !camMoved && !camRotated) {
       return;
     }
     this.needsFirstUpdate = false;
     this.lastUpdatePos.copy(cameraPos);
+    if (camera) {
+      this.lastUpdateQuat.copy(camera.quaternion);
+      Rocks._projScreenMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+      Rocks._frustum.setFromProjectionMatrix(Rocks._projScreenMatrix);
+    }
 
-    const MAX_DIST_SQ = 80 * 80; // Rocks cull at 80m
+    const MAX_DIST_SQ = 180 * 180; // Rocks cull at 180m
 
-    const position = new THREE.Vector3();
-    const rotation = new THREE.Euler();
-    const quaternion = new THREE.Quaternion();
-    const scale = new THREE.Vector3();
-    const instanceMatrix = new THREE.Matrix4();
-    const finalMatrix = new THREE.Matrix4();
+    const pos = Rocks._scratchPos;
+    const quat = Rocks._scratchQuat;
+    const scl = Rocks._scratchScale;
+    const instMat = Rocks._scratchInstMat;
+    const finalMat = Rocks._scratchFinalMat;
+    const sphere = Rocks._scratchSphere;
+    const frustum = Rocks._frustum;
 
-    for (const group of this.instancedMeshes) {
+    for (let g = 0; g < this.instancedMeshes.length; g++) {
+      const group = this.instancedMeshes[g];
       const mesh = group.meshList;
-      const activeInstances: { data: typeof group.instances[0]; currentScale: number }[] = [];
+      const instances = group.instances;
+      let visibleCount = 0;
 
-      group.instances.forEach((data) => {
+      for (let i = 0; i < instances.length; i++) {
+        const data = instances[i];
         const dx = data.x - cameraPos.x;
         const dz = data.z - cameraPos.z;
         const distSq = dx * dx + dz * dz;
 
-        let currentScale = data.scale;
+        // 1. Distance culling (180m)
         if (distSq > MAX_DIST_SQ) {
-          currentScale = 0.0;
+          continue;
         }
 
-        if (currentScale > 0.0) {
-          activeInstances.push({ data, currentScale });
+        // 2. Camera Frustum Culling
+        if (camera) {
+          sphere.center.set(data.x, data.groundY + data.scale * 1.5, data.z);
+          sphere.radius = data.scale * 3.5;
+          if (!frustum.intersectsSphere(sphere)) {
+            continue;
+          }
         }
-      });
 
-      activeInstances.forEach((inst, index) => {
-        const data = inst.data;
-        const groundY = getTerrainHeight(data.x, data.z);
-        const groundX = getTerrainHeight(data.x + 1.0, data.z);
-        const groundZ = getTerrainHeight(data.x, data.z + 1.0);
-        const dx = groundX - groundY;
-        const dz = groundZ - groundY;
-        const len = Math.sqrt(dx * dx + 1.0 + dz * dz);
-        const normal = new THREE.Vector3(-dx / len, 1.0 / len, -dz / len);
+        pos.set(data.x, data.groundY - data.sink, data.z);
+        quat.set(data.qx, data.qy, data.qz, data.qw);
+        scl.set(data.scale, data.scale, data.scale);
 
-        const sink = 0.25 * inst.currentScale;
-        position.set(data.x, groundY - sink, data.z);
+        instMat.compose(pos, quat, scl);
+        finalMat.multiplyMatrices(instMat, group.relativeMatrix);
+        mesh.setMatrixAt(visibleCount++, finalMat);
+      }
 
-        quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), normal);
-        const yaw = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), data.rotation);
-        quaternion.multiply(yaw);
-
-        scale.set(inst.currentScale, inst.currentScale, inst.currentScale);
-
-        instanceMatrix.compose(position, quaternion, scale);
-        finalMatrix.multiplyMatrices(instanceMatrix, group.relativeMatrix);
-        mesh.setMatrixAt(index, finalMatrix);
-      });
-
-      if (mesh.count !== activeInstances.length) {
-        mesh.count = activeInstances.length;
+      if (mesh.count !== visibleCount) {
+        mesh.count = visibleCount;
       }
       mesh.instanceMatrix.needsUpdate = true;
     }
@@ -265,7 +296,6 @@ export class Rocks {
     const result: Array<{ geometry: THREE.BufferGeometry; matrix: THREE.Matrix4 }> = [];
 
     const position = new THREE.Vector3();
-    const rotation = new THREE.Euler();
     const quaternion = new THREE.Quaternion();
     const scale = new THREE.Vector3();
     const instanceMatrix = new THREE.Matrix4();
@@ -275,21 +305,8 @@ export class Rocks {
         const dx = data.x - playerPos.x;
         const dz = data.z - playerPos.z;
         if (dx * dx + dz * dz <= radiusSq) {
-          const groundY = getTerrainHeight(data.x, data.z);
-          const groundX = getTerrainHeight(data.x + 1.0, data.z);
-          const groundZ = getTerrainHeight(data.x, data.z + 1.0);
-          const diffX = groundX - groundY;
-          const diffZ = groundZ - groundY;
-          const len = Math.sqrt(diffX * diffX + 1.0 + diffZ * diffZ);
-          const normal = new THREE.Vector3(-diffX / len, 1.0 / len, -diffZ / len);
-
-          const sink = 0.25 * data.scale;
-          position.set(data.x, groundY - sink, data.z);
-
-          quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), normal);
-          const yaw = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), data.rotation);
-          quaternion.multiply(yaw);
-
+          position.set(data.x, data.groundY - data.sink, data.z);
+          quaternion.set(data.qx, data.qy, data.qz, data.qw);
           scale.set(data.scale, data.scale, data.scale);
 
           instanceMatrix.compose(position, quaternion, scale);

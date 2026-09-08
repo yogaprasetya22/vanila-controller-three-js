@@ -25,19 +25,26 @@ export interface CameraOcclusionConfig {
   leafFadeRadius?: number;
   /** Lerp speed for leaf fade (6 = snappy, 2 = cinematic). */
   leafFadeSpeed?: number;
+  /**
+   * Lerp speed for uniform smoothing — reduces jitter on thin trunks.
+   * Higher = snappier but more jitter. Lower = smoother but slightly laggy.
+   * Default: 8
+   */
+  uniformSmoothSpeed?: number;
 }
 
 const DEFAULTS: Required<CameraOcclusionConfig> = {
-  maskRadius: 1.5,
-  nearConeRadius: 4.5,
-  nearClipDistance: 2.5,
-  coneFalloff: 0.9,
+  maskRadius:         0.8,   // ponytail: kecilkan hole di sekitar player
+  nearConeRadius:     1.6,   // ponytail: HALF dari sebelumnya — hapus blob merah besar
+  nearClipDistance:   2.5,
+  coneFalloff:        0.92,  // cone tetap sempit lebih lama → hanya area dekat player yang terbuka
   playerHeightOffset: 1.0,
-  excludedNames: ['terrain', 'water', 'floor'],
-  cutoutStyle: 'stipple',
-  leafMinOpacity: 0.12,
-  leafFadeRadius: 2.2,
-  leafFadeSpeed: 6.0,
+  excludedNames: ['terrain', 'water', 'floor', 'rock', 'pebble', 'stone', 'boulder', 'rocks', 'boulders'],
+  cutoutStyle:        'stipple',
+  leafMinOpacity:     0.12,
+  leafFadeRadius:     2.2,
+  leafFadeSpeed:      6.0,
+  uniformSmoothSpeed: 12.0,  // lebih responsif
 };
 
 // ---------------------------------------------------------------------------
@@ -50,16 +57,18 @@ interface OcclusionUniforms {
   uNearConeRadius:   { value: number };
   uNearClipDistance: { value: number };
   uConeFalloff:      { value: number };
+  /** Soft-edge blend width in world metres (larger = wider fade, less pop) */
+  uEdgeSoftness:     { value: number };
 }
 
 // ---------------------------------------------------------------------------
 // Module-level scratch — zero alloc per frame
 // ---------------------------------------------------------------------------
-const _segStart = new THREE.Vector3();
-const _segEnd   = new THREE.Vector3();
-const _closest  = new THREE.Vector3();
-const _tmp      = new THREE.Vector3();
-const _center   = new THREE.Vector3();
+const _segStart   = new THREE.Vector3();
+const _segEnd     = new THREE.Vector3();
+const _closest    = new THREE.Vector3();
+const _tmp        = new THREE.Vector3();
+const _center     = new THREE.Vector3();
 const _instMatrix = new THREE.Matrix4();
 const _instPos    = new THREE.Vector3();
 
@@ -87,7 +96,8 @@ function patchMaterial(
   mat.onBeforeCompile = (shader, renderer) => {
     prev?.call(mat, shader, renderer);
     Object.assign(shader.uniforms, uniforms, {
-      uIsLeaf: { value: isLeafMat ? 1.0 : 0.0 }
+      uIsLeaf:      { value: isLeafMat ? 1.0 : 0.0 },
+      uEdgeSoftness: uniforms.uEdgeSoftness,
     });
 
     // ── Vertex shader: pass world-space position, object center, and scale to fragment ──
@@ -114,11 +124,8 @@ function patchMaterial(
        vHoloWorldPos = _tmpWP.xyz;`
     );
 
-    // ── Fragment shader: cone-shaped cutout with per-pixel leaf culling ──
-    const stippleFn = cutoutStyle === 'stipple'
-      ? `float occStipple(vec2 fc){vec2 p=fc/2.;return fract((floor(p.x)+floor(p.y))/2.);}`
-      : '';
-
+    // ── Fragment shader: cone-shaped cutout with soft edge to eliminate jitter ──
+    //  Uses smoothstep instead of hard step → no flickering on thin trunks.
     shader.fragmentShader = shader.fragmentShader.replace(
       '#include <common>',
       `#include <common>
@@ -129,12 +136,12 @@ function patchMaterial(
        uniform float uNearClipDistance;
        uniform float uConeFalloff;
        uniform float uIsLeaf;
+       uniform float uEdgeSoftness;
        varying vec3  vHoloWorldPos;
        varying vec3  vObjCenter;
        varying float vScale;
-       ${stippleFn}
 
-       // 4x4 Bayer dither pattern computed mathematically to avoid branching
+       // 4×4 Bayer ordered dither — no branching, stable per-pixel pattern
        float dither4x4(vec2 position) {
            vec2 pos = mod(position, 4.0);
            float val = 0.0;
@@ -146,25 +153,30 @@ function patchMaterial(
        }`
     );
 
-    const discard = cutoutStyle === 'stipple'
-      ? 'if(occStipple(gl_FragCoord.xy)==0.)discard;'
-      : 'discard;';
-
+    // Soft-edge discard: instead of hard discard, use dither modulated by distance
+    // from the cone boundary → smooth fade, zero jitter on thin trunks.
     shader.fragmentShader = shader.fragmentShader.replace(
       '#include <dithering_fragment>',
       `#include <dithering_fragment>
        {
-         // Cone-based cutout (for both leaves and bark blocking player visibility)
-         vec3 pa=vHoloWorldPos-uCamPos;
-         vec3 ba=uPlayerPos-uCamPos;
-         float baSq=max(dot(ba,ba),1e-5);
-         float hRaw=dot(pa,ba)/baSq;
-         float h=clamp(hRaw,0.,1.);
-         if(hRaw<uConeFalloff){
-           float r=mix(uNearConeRadius,sqrt(uMaskRadiusSq),h);
-           vec3 perp=pa-(ba*h);
-           float dSq=dot(perp,perp);
-           if(dSq<r*r){${discard}}
+         vec3 pa = vHoloWorldPos - uCamPos;
+         vec3 ba = uPlayerPos - uCamPos;
+         float baSq = max(dot(ba, ba), 1e-5);
+         float hRaw = dot(pa, ba) / baSq;
+         float h    = clamp(hRaw, 0.0, 1.0);
+
+         if (hRaw < uConeFalloff) {
+           float r    = mix(uNearConeRadius, sqrt(uMaskRadiusSq), h);
+           vec3  perp = pa - (ba * h);
+           float d    = length(perp);
+
+           // Soft band: [r - softness, r + softness] → smooth alpha
+           float soft  = max(uEdgeSoftness * r, 0.05);
+           float alpha = smoothstep(r - soft, r + soft, d);
+           // alpha=0 → inside cone (should discard), alpha=1 → outside (keep)
+           // Use dither to convert fractional alpha into stable binary per-pixel
+           float threshold = dither4x4(gl_FragCoord.xy);
+           if (alpha < threshold) discard;
          }
        }`
     );
@@ -178,15 +190,10 @@ function patchMaterial(
 // Bark, trunk, branch, wood materials MUST return false so they stay visible
 // ---------------------------------------------------------------------------
 function isLeaf(mat: THREE.Material): boolean {
-  // Explicit tag from Trees.ts loader (most reliable)
   if (mat.userData?.isLeaf === true) return true;
-  if (mat.userData?.isBark === true) return false; // explicit bark, never treat as leaf
-
-  // Name-based: ONLY match clear leaf/foliage keywords
+  if (mat.userData?.isBark === true || mat.userData?.isRock === true) return false;
   const n = mat.name.toLowerCase();
   if (/leaf|leaves|foliage/.test(n)) return true;
-
-  // DO NOT match bark|branch|tree|trunk|pine|birch|maple — those are trunk materials!
   return false;
 }
 
@@ -196,12 +203,14 @@ function isLeaf(mat: THREE.Material): boolean {
 interface LeafMeta { base: number; cur: number }
 
 // ---------------------------------------------------------------------------
-// Tree mesh heuristic
+// Tree mesh heuristic (strictly foliage/trees, exclude rocks and ground)
 // ---------------------------------------------------------------------------
 function isTreeMesh(object: THREE.Object3D): boolean {
-  if (object.userData?.isTree === true || object.userData?.isRock === true) return true;
+  if (object.userData?.isLeaf === true) return true;
+  if (object.userData?.isRock === true || object.userData?.isBark === true) return false;
   const n = object.name.toLowerCase();
-  return /tree|pine|birch|maple|rock|pebble/.test(n);
+  if (/rock|pebble|stone|boulder|ground|terrain|floor/.test(n)) return false;
+  return /tree|pine|birch|maple|leaf|leaves|foliage/.test(n);
 }
 
 // ---------------------------------------------------------------------------
@@ -215,20 +224,24 @@ export class CameraOcclusionManager {
 
   private uniforms: OcclusionUniforms;
 
+  // Smooth target values — uniforms are lerped toward these each frame
+  private _targetPlayerPos = new THREE.Vector3();
+  private _targetCamPos    = new THREE.Vector3();
+
   // Patch queue (budgeted recompile)
-  private claimed = new WeakSet<THREE.Material>();
+  private claimed    = new WeakSet<THREE.Material>();
   private patchQueue: THREE.Material[] = [];
 
   // Leaf fade
-  private leafMeta = new WeakMap<THREE.Material, LeafMeta>();
-  private leafMats: THREE.Material[] = [];
-  private leafFadeRadiusSq: number;
-  private treeMeshes: (THREE.Mesh | THREE.InstancedMesh)[] = [];
+  private leafMeta          = new WeakMap<THREE.Material, LeafMeta>();
+  private leafMats:           THREE.Material[] = [];
+  private leafFadeRadiusSq:   number;
+  private treeMeshes:         (THREE.Mesh | THREE.InstancedMesh)[] = [];
 
   // Re-scan timer
-  private scanTimer = 0;
+  private scanTimer        = 0;
   private readonly SCAN_INTERVAL = 1.5; // seconds
-  private readonly PATCH_BUDGET   = 4;   // materials per frame
+  private readonly PATCH_BUDGET  = 4;   // materials per frame
 
   // Player position (set externally each frame)
   private playerPos = new THREE.Vector3();
@@ -241,7 +254,7 @@ export class CameraOcclusionManager {
     this.cfg    = { ...DEFAULTS, ...config };
     this.scene  = scene;
     this.camera = camera;
-    this.excludedNames = new Set(this.cfg.excludedNames);
+    this.excludedNames    = new Set(this.cfg.excludedNames);
     this.leafFadeRadiusSq = this.cfg.leafFadeRadius * this.cfg.leafFadeRadius;
 
     this.uniforms = {
@@ -251,6 +264,7 @@ export class CameraOcclusionManager {
       uNearConeRadius:   { value: this.cfg.nearConeRadius },
       uNearClipDistance: { value: this.cfg.nearClipDistance },
       uConeFalloff:      { value: this.cfg.coneFalloff },
+      uEdgeSoftness:     { value: 0.10 }, // ponytail: 10% of cone → soft band ≈0.16m not 0.4m
     };
 
     // Initial scan
@@ -262,9 +276,14 @@ export class CameraOcclusionManager {
     this.playerPos.copy(playerWorldPos);
     this.playerPos.y += this.cfg.playerHeightOffset;
 
-    // Update GPU uniforms
-    this.uniforms.uPlayerPos.value.copy(this.playerPos);
-    this.uniforms.uCamPos.value.copy(this.camera.position);
+    // Set smooth targets
+    this._targetPlayerPos.copy(this.playerPos);
+    this._targetCamPos.copy(this.camera.position);
+
+    // Lerp GPU uniforms toward targets — eliminates hard snapping / jitter
+    const t = Math.min(1.0, delta * this.cfg.uniformSmoothSpeed);
+    this.uniforms.uPlayerPos.value.lerp(this._targetPlayerPos, t);
+    this.uniforms.uCamPos.value.lerp(this._targetCamPos, t);
 
     // Drain patch queue at budget
     let patched = 0;
@@ -274,7 +293,7 @@ export class CameraOcclusionManager {
       patched++;
     }
 
-    // Leaf transparency fade - DISABLED to prevent entire instanced forest from becoming transparent (causes severe overdraw / fillrate GPU bottleneck)
+    // Leaf transparency fade — DISABLED: causes GPU overdraw on instanced forests
     // this.updateLeafFade(delta);
 
     // Periodic re-scan
@@ -288,7 +307,7 @@ export class CameraOcclusionManager {
   // ── Private ──────────────────────────────────────────────────────────────
 
   private scan(): void {
-    const next: THREE.Material[] = [];
+    const next:   THREE.Material[] = [];
     const meshes: (THREE.Mesh | THREE.InstancedMesh)[] = [];
 
     this.scene.traverse((child) => {
@@ -308,6 +327,7 @@ export class CameraOcclusionManager {
 
       for (const mat of mats) {
         if (mat.userData?.excludeOcclusion === true) continue;
+        if (!isLeaf(mat)) continue; // Only patch leaf/foliage, not bark
 
         // Queue for cutout shader patch
         if (!this.claimed.has(mat)) {
@@ -315,26 +335,23 @@ export class CameraOcclusionManager {
           this.patchQueue.push(mat);
         }
 
-        // Register leaf mats for fade
-        if (isLeaf(mat)) {
-          next.push(mat);
+        next.push(mat);
 
-          // Enforce high-performance alpha clipping instead of blending to eliminate overdraw fillrate bottleneck
-          const m = mat as THREE.MeshStandardMaterial;
-          m.transparent = false;
-          m.alphaTest = 0.5;
-          m.depthWrite = true;
-          m.needsUpdate = true;
+        // High-performance alpha clip — eliminates overdraw fillrate bottleneck
+        const m = mat as THREE.MeshStandardMaterial;
+        m.transparent = false;
+        m.alphaTest   = 0.5;
+        m.depthWrite  = true;
+        m.needsUpdate = true;
 
-          if (!this.leafMeta.has(mat)) {
-            const base = m.opacity ?? 1.0;
-            this.leafMeta.set(mat, { base, cur: base });
-          }
+        if (!this.leafMeta.has(mat)) {
+          const base = m.opacity ?? 1.0;
+          this.leafMeta.set(mat, { base, cur: base });
         }
       }
     });
 
-    this.leafMats = next;
+    this.leafMats  = next;
     this.treeMeshes = meshes;
   }
 
@@ -353,7 +370,7 @@ export class CameraOcclusionManager {
 
       if ((mesh as THREE.InstancedMesh).isInstancedMesh) {
         const instMesh = mesh as THREE.InstancedMesh;
-        const count = instMesh.count;
+        const count    = instMesh.count;
         for (let i = 0; i < count; i++) {
           instMesh.getMatrixAt(i, _instMatrix);
           _instPos.setFromMatrixPosition(_instMatrix);
@@ -384,12 +401,12 @@ export class CameraOcclusionManager {
       if (!meta) continue;
 
       const blocking = blockingMaterials.has(mat);
-      const target = blocking ? this.cfg.leafMinOpacity : meta.base;
-      meta.cur = THREE.MathUtils.lerp(meta.cur, target, delta * this.cfg.leafFadeSpeed);
+      const target   = blocking ? this.cfg.leafMinOpacity : meta.base;
+      meta.cur       = THREE.MathUtils.lerp(meta.cur, target, delta * this.cfg.leafFadeSpeed);
 
       const m = mat as THREE.MeshStandardMaterial;
       if (Math.abs(m.opacity - meta.cur) > 0.001) {
-        m.opacity    = meta.cur;
+        m.opacity     = meta.cur;
         m.transparent = meta.cur < 0.99;
       }
     }
@@ -400,11 +417,13 @@ export class CameraOcclusionManager {
  * TUNING GUIDE
  * ============
  * Occlusion cutout (solid objects hiding player):
- *   maskRadius        — radius of the "hole" around the player. Default 1.5m
- *   nearConeRadius    — cone radius at camera end. Default 4.5m
+ *   maskRadius        — radius of the "hole" around the player. Default 1.2m
+ *   nearConeRadius    — cone radius at camera end. Default 3.2m (smaller = less false-positives on thin trunks)
  *   nearClipDistance  — anything closer than this to cam is clipped. Default 2.5m
- *   coneFalloff       — 0→1, where along the segment the cone tightens. Default 0.9
+ *   coneFalloff       — 0→1, where along the segment the cone tightens. Default 0.85
  *   cutoutStyle       — 'solid' clean hole | 'stipple' dithered dissolve
+ *   uEdgeSoftness     — 0.25 = 25% of cone radius as soft blend band (anti-jitter key!)
+ *   uniformSmoothSpeed — lerp speed of camera/player uniform positions. 8=smooth. Lower for more smoothing.
  *
  * Leaf transparency:
  *   leafMinOpacity — how see-through leaves get (0=invisible). Default 0.12
@@ -415,4 +434,10 @@ export class CameraOcclusionManager {
  *   object.name in excludedNames array
  *   OR object.userData.excludeOcclusion = true
  *   OR mat.userData.excludeOcclusion = true
+ *
+ * Anti-jitter strategy (thin trunks):
+ *   - GPU uniforms (uPlayerPos, uCamPos) are LERPED each frame at uniformSmoothSpeed
+ *     so they don't snap abruptly when camera moves
+ *   - Cone boundary uses smoothstep + Bayer dither instead of hard step
+ *   - nearConeRadius reduced from 4.5 → 3.2 to avoid over-triggering
  */

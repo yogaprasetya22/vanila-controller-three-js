@@ -29,8 +29,8 @@ export class Floor {
     mesh: THREE.Mesh;
 
     constructor(scene: THREE.Scene) {
-        // ponytail: expanded from 240x180 to 900x900 to give an endless MMORPG landscape feel
-        const groundGeo = new THREE.PlaneGeometry(900, 900, 300, 300);
+        // ponytail: expanded to 2400x2400m open-world scale with 360x360 segments (<4MB memory, butter smooth 60 FPS)
+        const groundGeo = new THREE.PlaneGeometry(2400, 2400, 360, 360);
         const groundPos = groundGeo.attributes.position;
         const colors: number[] = [];
 

@@ -194,6 +194,7 @@ interface Evt {
     depthIdx:   number;
     vx:         number;
     vy:         number;
+    vz:         number;
     grav:       number;
     _totalW?:   number;
     _GAP?:      number;
@@ -211,6 +212,7 @@ function makeEvt(): Evt {
         depthIdx:0,
         vx: 0,
         vy: 0,
+        vz: 0,
         grav: 15.0,
     };
 }
@@ -289,7 +291,7 @@ export class DamageHUDBatcher {
                 }
             `,
             transparent: true,
-            depthTest: true,
+            depthTest: false,
             depthWrite: false,
             side: THREE.DoubleSide,
         });
@@ -317,17 +319,17 @@ export class DamageHUDBatcher {
                 }
             `,
             transparent: true,
-            depthTest: true,
+            depthTest: false,
             depthWrite: false,
             side: THREE.DoubleSide,
         });
 
         this.starMesh = new THREE.InstancedMesh(starGeo, starMat, MAX_EVENTS);
-        this.starMesh.renderOrder = 997;
+        this.starMesh.renderOrder = 99998;
         this.starMesh.frustumCulled = false;
 
         this.digitMesh = new THREE.InstancedMesh(digitGeo, digitMat, MAX_INST);
-        this.digitMesh.renderOrder = 999;
+        this.digitMesh.renderOrder = 99999;
         this.digitMesh.frustumCulled = false;
 
         for (let i = 0; i < MAX_INST; i++) this.digitMesh.setMatrixAt(i, _hide);
@@ -378,8 +380,8 @@ export class DamageHUDBatcher {
         const isTurret = !isMiss && !!event.isTurret;
 
         let totalChars = 0;
-        let SW  = isCrit ? 0.85 : 0.72;
-        let GAP = isCrit ? 0.45 : 0.36;
+        let SW  = isCrit ? 0.68 : 0.56;
+        let GAP = isCrit ? 0.35 : 0.28;
 
         const px = event.position[0], py = event.position[1], pz = event.position[2];
         let clusterX = px, clusterY = py, clusterZ = pz;
@@ -489,29 +491,31 @@ export class DamageHUDBatcher {
         const direction = (this.evtPtr % 2 === 0) ? 1 : -1;
 
         if (isCrit) {
-            // Wider staggered horizontal pop (alternating left/right aggressively)
-            e.vx = direction * (4.8 + Math.random() * 4.0) + (Math.random() - 0.5) * 1.0;
-            // High upward velocity
-            e.vy = 12.0 + Math.random() * 6.0;
-            // Higher gravity to make them drop/curve down quickly
-            e.grav = 36.0;
-            // Ultra-fast duration to prevent cluttering
-            e.duration = 0.45;
+            // Straight upward pop + backward drift into depth (no left/right spray)
+            e.vx = 0;
+            e.vy = 5.4 + Math.random() * 1.5;
+            e.vz = 2.8 + Math.random() * 1.2;
+            e.grav = 3.0;
+            e.duration = 1.70;
         } else if (isMiss) {
-            e.vx = direction * (1.2 + Math.random() * 0.8);
-            e.vy = 4.0 + Math.random() * 1.0;
-            e.grav = 14.0;
-            e.duration = 0.90;
+            e.vx = 0;
+            e.vy = 3.6 + Math.random() * 1.0;
+            e.vz = 1.6 + Math.random() * 0.8;
+            e.grav = 2.2;
+            e.duration = 1.30;
         } else if (isHeal) {
-            e.vx = (Math.random() - 0.5) * 1.5;
-            e.vy = 5.0 + Math.random() * 1.5;
-            e.grav = 10.0;
-            e.duration = 0.95;
+            e.vx = 0;
+            e.vy = 4.5 + Math.random() * 1.2;
+            e.vz = 1.8 + Math.random() * 0.8;
+            e.grav = 2.5;
+            e.duration = 1.50;
         } else {
-            e.vx = direction * (3.5 + Math.random() * 3.0) + (Math.random() - 0.5) * 1.0;
-            e.vy = 10.0 + Math.random() * 5.0;
-            e.grav = 34.0;
-            e.duration = 0.38;
+            // Normal physical / skill hit
+            e.vx = 0;
+            e.vy = 4.2 + Math.random() * 1.4;
+            e.vz = 2.4 + Math.random() * 1.0;
+            e.grav = 2.6;
+            e.duration = 1.40;
         }
 
         e._totalW = totalW;
@@ -556,35 +560,43 @@ export class DamageHUDBatcher {
 
             let scaleMultiplier = 1.0;
             if (e.isCrit) {
-                if (tn < 0.20) {
-                    const ratio = tn / 0.20;
-                    // Satisfying spring elastic ease-out pop (overshoot up to 3.0x and snap down)
-                    const ease = Math.sin(ratio * Math.PI * 0.5);
-                    scaleMultiplier = THREE.MathUtils.lerp(2.8, 1.0, ease);
+                if (tn < 0.10) {
+                    const ratio = tn / 0.10;
+                    const spring = Math.sin(ratio * Math.PI * 0.5);
+                    scaleMultiplier = THREE.MathUtils.lerp(2.2, 1.15, spring);
+                } else if (tn < 0.25) {
+                    const ratio = (tn - 0.10) / 0.15;
+                    scaleMultiplier = THREE.MathUtils.lerp(1.15, 1.0, ratio);
                 } else {
-                    scaleMultiplier = THREE.MathUtils.lerp(1.0, 0.55, (tn - 0.20) / 0.80);
+                    const ratio = (tn - 0.25) / 0.75;
+                    scaleMultiplier = THREE.MathUtils.lerp(1.0, 0.80, ratio);
                 }
             } else {
-                if (tn < 0.15) {
-                    const ratio = tn / 0.15;
-                    const ease = Math.sin(ratio * Math.PI * 0.5);
-                    scaleMultiplier = THREE.MathUtils.lerp(1.9, 1.0, ease);
+                if (tn < 0.08) {
+                    const ratio = tn / 0.08;
+                    const spring = Math.sin(ratio * Math.PI * 0.5);
+                    scaleMultiplier = THREE.MathUtils.lerp(1.6, 1.05, spring);
+                } else if (tn < 0.20) {
+                    const ratio = (tn - 0.08) / 0.12;
+                    scaleMultiplier = THREE.MathUtils.lerp(1.05, 0.95, ratio);
                 } else {
-                    scaleMultiplier = THREE.MathUtils.lerp(1.0, 0.65, (tn - 0.15) / 0.85);
+                    const ratio = (tn - 0.20) / 0.80;
+                    scaleMultiplier = THREE.MathUtils.lerp(0.95, 0.75, ratio);
                 }
             }
 
-            const baseScale = e.isCrit ? 1.2 : 0.95;
+            const baseScale = e.isCrit ? 0.95 : 0.75;
             const totalScale = baseScale * scaleMultiplier;
 
-            const offsetX = e.vx * t;
             const offsetY = e.vy * t - 0.5 * e.grav * t * t;
+            const offsetZ = e.vz * t;
 
-            const wx = e.spawnX + _camDir.x * di * 0.18;
-            const wy = e.spawnY + _camDir.y * di * 0.18;
-            const wz = e.spawnZ + _camDir.z * di * 0.18;
+            // Shift slightly towards camera on spawn so HUD numbers never clip inside enemy geometry
+            const wx = e.spawnX - _camDir.x * 0.25;
+            const wy = e.spawnY - _camDir.y * 0.25;
+            const wz = e.spawnZ - _camDir.z * 0.25;
 
-            const opacity = tn > 0.65 ? (1.0 - tn) / 0.35 : 1.0;
+            const opacity = tn > 0.72 ? (1.0 - tn) / 0.28 : 1.0;
 
             if (opacity < 0.02) {
                 for (let c = 0; c < e.numChars; c++) this.aOpacity[base + c] = 0;
@@ -594,8 +606,7 @@ export class DamageHUDBatcher {
 
             let jx = 0.0, jy = 0.0;
             if (e.isCrit && di === 0 && t < 0.10) {
-                const j = (1.0 - t / 0.10) * 0.25;
-                // Optimization: avoid Math.random() calls in hot update loop
+                const j = (1.0 - t / 0.10) * 0.35;
                 const angleSeed = e.startTime * 1234.56 + t * 987.65;
                 jx = Math.sin(angleSeed) * j;
                 jy = Math.cos(angleSeed) * j;
@@ -603,14 +614,14 @@ export class DamageHUDBatcher {
 
             // Animate Star Background
             if (e.isCrit) {
-                // Reduced from 1.85 to 1.25 to prevent blocking the boss model
-                const starBaseScale = totalScale * 1.25;
+                const starBaseScale = totalScale * 1.15;
                 const scaleX = starBaseScale * (1.15 + (e.numChars - 1) * 0.35);
                 const scaleY = starBaseScale * 1.05;
 
-                _v3.set(wx + _camDir.x * 0.05, wy + _camDir.y * 0.05, wz + _camDir.z * 0.05)
-                   .addScaledVector(_right, offsetX + jx)
-                   .addScaledVector(_up,    offsetY + jy);
+                _v3.set(wx, wy, wz)
+                   .addScaledVector(_right, jx)
+                   .addScaledVector(_up, offsetY + jy)
+                   .addScaledVector(_camDir, offsetZ);
 
                 _dummy.position.copy(_v3);
                 _dummy.quaternion.copy(camQ);
@@ -629,7 +640,10 @@ export class DamageHUDBatcher {
             const totalW = e._totalW ?? (e.numChars * GAP);
 
             let baseR: number, baseG: number, baseB: number;
-            if (e.isCrit && di === 0 && t < 0.07 && Math.floor(t * 40) % 2 === 0) {
+            // Flash pure white on initial impact frame
+            if (t < 0.05) {
+                baseR = 1.0; baseG = 1.0; baseB = 1.0;
+            } else if (e.isCrit && di === 0 && t < 0.08 && Math.floor(t * 40) % 2 === 0) {
                 baseR = 1.0; baseG = 1.0; baseB = 1.0;
             } else {
                 baseR = e.digitColor.r; baseG = e.digitColor.g; baseB = e.digitColor.b;
@@ -640,8 +654,9 @@ export class DamageHUDBatcher {
                 const lx = (c * GAP) - totalW * 0.5 + GAP * 0.5;
 
                 _v3.set(wx, wy, wz)
-                   .addScaledVector(_right, lx * totalScale + offsetX + jx)
-                   .addScaledVector(_up,    offsetY + jy);
+                   .addScaledVector(_right, lx * totalScale + jx)
+                   .addScaledVector(_up,    offsetY + jy)
+                   .addScaledVector(_camDir, offsetZ);
 
                 _dummy.position.copy(_v3);
                 _dummy.quaternion.copy(camQ);

@@ -8,6 +8,9 @@ import { ProjectileSystem } from '../../systems/combat/ProjectileSystem';
 import { getTerrainHeight } from '../../simulation/constants';
 import { TargetingManager } from '../../systems/targeting/TargetingManager';
 import { MovementInterpolator } from '../../systems/netcode/MovementInterpolator';
+import { InputManager } from '../../systems/InputManager';
+import { UIManager } from '../../ui/UIManager';
+import { send } from '../../network/NetworkManager';
 
 const gltfLoader = new GLTFLoader();
 gltfLoader.setMeshoptDecoder(MeshoptDecoder);
@@ -33,6 +36,12 @@ const _fallbackOffset = new THREE.Vector3();
 const _forwardVec = new THREE.Vector3();
 const _upAxis = new THREE.Vector3(0, 1, 0);
 
+// Camera Spring-Arm collision scratch objects
+const _camRaycaster = new THREE.Raycaster();
+const _camRayDir = new THREE.Vector3();
+const _camOffset = new THREE.Vector3();
+const _camIdealPos = new THREE.Vector3();
+
 
 export class LocalPlayer {
   // THREE.js elements
@@ -41,12 +50,7 @@ export class LocalPlayer {
   private camera: THREE.PerspectiveCamera;
   private scene: THREE.Scene;
   private environmentMesh: THREE.Mesh | null = null;
-  private projectileSystem: ProjectileSystem | null = null;
-  public teamId: number = 0;
-
-  public setProjectileSystem(ps: ProjectileSystem): void {
-    this.projectileSystem = ps;
-  }
+  public teamId = 0;
 
   // Animation system
   private mixer: THREE.AnimationMixer | null = null;
@@ -71,9 +75,15 @@ export class LocalPlayer {
   // Camera Settings (Spring arm / Orbit style)
   public cameraOffset = new THREE.Vector3(0, 2.5, 5);
   public cameraDistance = 11.0; // Comfort follow range (zoom default)
+  private currentCameraDistance = 11.0;
   private cameraTargetRotation = new THREE.Euler(0, 0, 0, 'YXZ');
   private mouseSensitivity = 0.002;
   private smoothedLookAt = new THREE.Vector3();
+  private projectileSystem: ProjectileSystem | null = null;
+
+  public setProjectileSystem(ps: ProjectileSystem): void {
+    this.projectileSystem = ps;
+  }
 
   // Input states
   private keys: { [key: string]: boolean } = {
@@ -455,7 +465,7 @@ export class LocalPlayer {
         }
       }
 
-      const attackClip = pickClip(["Ranged_Bow_Aiming_Idle", "Ranged_Bow_Release"]);
+      const attackClip = pickClip(["Ranged_Bow_Aiming_Idle", "Ranged_Bow_Shoot", "Ranged_Bow_Release", "Attack"]);
 
       if (idleClip) this.actions['idle'] = this.mixer.clipAction(idleClip);
       if (walkClip) this.actions['walk'] = this.mixer.clipAction(walkClip);
@@ -480,7 +490,7 @@ export class LocalPlayer {
         this.actions['attack'] = this.mixer.clipAction(attackClip);
         this.actions['attack'].setLoop(THREE.LoopRepeat, Infinity);
         this.actions['attack'].clampWhenFinished = false;
-        this.actions['attack'].timeScale = 1.0; // Steady timescale for aiming pose
+        this.actions['attack'].timeScale = 1.0;
       }
 
       const dodgeForwardClip = pickClip(["Dodge_Forward"]);
@@ -501,6 +511,13 @@ export class LocalPlayer {
       if (dodgeBackwardClip) setDodgeAction('dodge_backward', dodgeBackwardClip);
       if (dodgeLeftClip) setDodgeAction('dodge_left', dodgeLeftClip);
       if (dodgeRightClip) setDodgeAction('dodge_right', dodgeRightClip);
+
+      const deathClip = pickClip(["Death_A", "Death_B", "Death_Forward", "Death_Backward", "Defeat"]);
+      if (deathClip) {
+        this.actions['die'] = this.mixer.clipAction(deathClip);
+        this.actions['die'].setLoop(THREE.LoopOnce, 1);
+        this.actions['die'].clampWhenFinished = true;
+      }
 
       // Start by playing idle animation
       this.playAnimationState('idle');
@@ -758,8 +775,77 @@ export class LocalPlayer {
     }
   }
 
+  public isDead = false;
+  private flashTime = 0;
+  public spawnPos = new THREE.Vector3(0, 0, 15);
+
+  public flash(duration = 0.15, colorHex = 0xff2222) {
+    this.flashTime = duration;
+  }
+
+  private updateFlash() {
+    if (this.flashTime <= 0) return;
+    this.flashTime -= 0.016;
+    const ratio = Math.max(0, this.flashTime / 0.15);
+    this.playerGroup.traverse((child) => {
+      if ((child as THREE.Mesh).isMesh) {
+        const mesh = child as THREE.Mesh;
+        if (Array.isArray(mesh.material)) {
+          mesh.material.forEach((mat) => {
+            if ('emissive' in mat) {
+              (mat as any).emissive.setRGB(ratio, 0, 0);
+            }
+          });
+        } else if (mesh.material && 'emissive' in mesh.material) {
+          (mesh.material as any).emissive.setRGB(ratio, 0, 0);
+        }
+      }
+    });
+  }
+
+  public takeDamage(dmg: number, remainingHp: number, isDead: boolean) {
+    if (this.isDead) return;
+    this.flash(0.15, 0xff2222);
+    if (isDead || remainingHp <= 0) {
+      this.die();
+    }
+  }
+
+  public die() {
+    if (this.isDead) return;
+    this.isDead = true;
+    this.currentActionName = 'die';
+    this.playAnimationState('die', 0.1);
+    UIManager.showDeathScreen(() => {
+      this.requestRespawn();
+    });
+  }
+
+  public requestRespawn() {
+    send({
+      type: 'player_respawn',
+      value: { x: this.spawnPos.x, z: this.spawnPos.z }
+    });
+  }
+
+  public respawn(x = 0, z = 15) {
+    this.isDead = false;
+    this.position.set(x, 0, z);
+    this.playerGroup.position.set(x, 0, z);
+    this.currentActionName = 'idle';
+    this.playAnimationState('idle', 0.2);
+    UIManager.hideDeathScreen();
+  }
+
   public update(delta: number) {
     if (delta > 0.1) delta = 0.1;
+    this.updateFlash();
+
+    if (this.isDead) {
+      if (this.mixer) this.mixer.update(delta);
+      this.currentActionName = 'die';
+      return;
+    }
 
     if (!this.isLocal) {
       if (this.lodLevel === 'full' && this.mixer) {
@@ -804,8 +890,28 @@ export class LocalPlayer {
     const camRotationY = this.cameraTargetRotation.y;
     const moveX = (this.keys.KeyD ? 1 : 0) - (this.keys.KeyA ? 1 : 0);
     const moveZ = (this.keys.KeyS ? 1 : 0) - (this.keys.KeyW ? 1 : 0);
+    const hasManualInput = this.keys.KeyW || this.keys.KeyA || this.keys.KeyS || this.keys.KeyD;
     const inputDirection = this.tempVector.set(moveX, 0, moveZ).normalize();
     inputDirection.applyAxisAngle(_upVec, camRotationY);
+
+    if (!hasManualInput && InputManager.isShooting) {
+      const nearestEntity = TargetingManager.getNearestTarget(this.position, 'enemy');
+      if (nearestEntity) {
+        const dist = nearestEntity.position.distanceTo(this.position) - (nearestEntity.radius || 0);
+        const limit = CHARACTER_CONFIG.combat.autoAimRange || 15.0;
+        
+        // Dynamic auto-move check range: 30 meters for bosses, 20 meters for normal mobs
+        const isBoss = nearestEntity.controller?.npcType === 'world_boss' || nearestEntity.controller?.npcType === 'raid_boss';
+        const maxAutoMoveDist = isBoss ? 30.0 : 20.0;
+        
+        if (dist > limit && dist <= maxAutoMoveDist) {
+          const dir = new THREE.Vector3().subVectors(nearestEntity.position, this.position);
+          dir.y = 0;
+          dir.normalize();
+          inputDirection.copy(dir);
+        }
+      }
+    }
 
     if (this.isDodging) {
       this.dodgeTimeLeft -= delta;
@@ -833,7 +939,12 @@ export class LocalPlayer {
         this.isDodging = false;
       }
     } else {
-      const currentSpeed = this.speed * (this.keys.ShiftLeft ? this.sprintMultiplier : 1) * this.speedBuff;
+      // ponytail: 30% speed penalty when wading in water (< -3.0m). Avoids complex 3D swim state machine while staying immersive.
+      const rawTerrain = getTerrainHeight(this.position.x, this.position.z);
+      const isWading = rawTerrain < -3.0;
+      const waterModifier = isWading ? 0.70 : 1.0;
+
+      const currentSpeed = this.speed * (this.keys.ShiftLeft ? this.sprintMultiplier : 1) * this.speedBuff * waterModifier;
       this.velocity.x = inputDirection.x * currentSpeed;
       this.velocity.z = inputDirection.z * currentSpeed;
     }
@@ -852,58 +963,8 @@ export class LocalPlayer {
     }
 
     // 3. Integrate horizontal position
-    const lastX = this.position.x;
-    const lastZ = this.position.z;
     this.position.x += this.velocity.x * delta;
     this.position.z += this.velocity.z * delta;
-
-    // Water boundary: adaptive gradient sliding (no jitter, no stuck states).
-    // ponytail: adaptive search EPS solves flat banks, reverting position without killing velocity prevents sticking.
-    const WATER_BLOCK = -2.80;
-    let h = getTerrainHeight(this.position.x, this.position.z);
-    if (h < WATER_BLOCK) {
-      let eps = 0.25;
-      let gx = getTerrainHeight(this.position.x + eps, this.position.z) -
-                getTerrainHeight(this.position.x - eps, this.position.z);
-      const gz = getTerrainHeight(this.position.x, this.position.z + eps) -
-                  getTerrainHeight(this.position.x, this.position.z - eps);
-      let glen = Math.sqrt(gx * gx + gz * gz);
-
-      // Adaptive check: if gradient is too flat, look wider to find the shore slope
-      if (glen < 0.01) {
-        eps = 1.0;
-        const gxW = getTerrainHeight(this.position.x + eps, this.position.z) -
-                    getTerrainHeight(this.position.x - eps, this.position.z);
-        const gzW = getTerrainHeight(this.position.x, this.position.z + eps) -
-                    getTerrainHeight(this.position.x, this.position.z - eps);
-        const glenW = Math.sqrt(gxW * gxW + gzW * gzW);
-        if (glenW > 0.01) {
-          gx = gxW;
-          glen = glenW;
-        }
-      }
-
-      if (glen > 0.01) {
-        const nx = gx / glen;
-        const nz = gz / glen;
-
-        // Project velocity onto shore tangent to allow smooth sliding
-        const vdotn = this.velocity.x * nx + this.velocity.z * nz;
-        if (vdotn < 0) {
-          this.velocity.x -= vdotn * nx;
-          this.velocity.z -= vdotn * nz;
-        }
-
-        // Push out of water smoothly based on exact penetration depth
-        const depthPenetration = WATER_BLOCK - h;
-        this.position.x += nx * (depthPenetration + 0.03);
-        this.position.z += nz * (depthPenetration + 0.03);
-      } else {
-        // Fallback: Revert position to prevent water walk, but keep velocity alive to avoid stickiness
-        this.position.x = lastX;
-        this.position.z = lastZ;
-      }
-    }
 
     this.playerGroup.position.copy(this.position);
     // 4. Rotate Character Mesh towards movement direction
@@ -958,7 +1019,9 @@ export class LocalPlayer {
 
     // 7. Handle skeletal animation transitions
     if (this.mixer) {
-      const isLocked = this.animationLockTime > 0;
+      const rateOfFire = CHARACTER_CONFIG.combat.rateOfFire || 0.14;
+      const isShootingRecent = (performance.now() / 1000 - this.lastAttackTime < Math.max(0.22, rateOfFire * 1.6));
+      const isLocked = this.animationLockTime > 0 || (isShootingRecent && this.currentActionName === 'attack');
       if (isLocked) {
         // Keep playing locked animations (attack, double_jump, jump_land)
       } else if (!this.isGrounded && this.airTime > 0.1) {
@@ -992,13 +1055,8 @@ export class LocalPlayer {
     }
 
     // Tick attack cooldown down (allow negative values for frame-rate compensation, capped to prevent multi-shot bug when idle)
-    const rateOfFire = CHARACTER_CONFIG.combat.rateOfFire || 0.05;
+    const rateOfFire = CHARACTER_CONFIG.combat.rateOfFire || 0.07;
     this.attackCooldown = Math.max(-rateOfFire, this.attackCooldown - delta);
-
-    // Update projectiles (gerak + expire + collision)
-    if (this.projectileSystem) {
-      this.projectileSystem.update(delta, this.environmentMesh);
-    }
 
     // Sync minimap marker rotation with player model rotation
     if (this.minimapMarker && this.playerMesh) {
@@ -1032,9 +1090,9 @@ export class LocalPlayer {
         }
       }
 
-      const debugTrees = trees ? trees.getNearbyInstanceMeshes(this.position, 15) : [];
-      const debugRocks = rocks ? rocks.getNearbyInstanceMeshes(this.position, 15) : [];
-      const debugVeg   = vegetation ? vegetation.getNearbyInstanceMeshes(this.position, 15) : [];
+      const debugTrees = trees ? trees.getNearbyInstanceMeshes(this.position, 5) : [];
+      const debugRocks = rocks ? rocks.getNearbyInstanceMeshes(this.position, 5) : [];
+      const debugVeg   = vegetation ? vegetation.getNearbyInstanceMeshes(this.position, 5) : [];
       const debugObstacles = [...debugTrees, ...debugRocks, ...debugVeg];
 
       const debugMat = new THREE.MeshBasicMaterial({
@@ -1083,7 +1141,7 @@ export class LocalPlayer {
 
     const nearestEntity = TargetingManager.getNearestTarget(this.position, 'enemy');
     if (nearestEntity) {
-      const limit = CHARACTER_CONFIG.combat.autoAimRange || 15.0;
+      const limit = CHARACTER_CONFIG.combat.autoAimRange || 30.0;
       const dist = nearestEntity.position.distanceTo(this.position) - (nearestEntity.radius || 0);
       if (dist <= limit) {
         this.nearestTargetCached = nearestEntity.playerGroup;
@@ -1102,17 +1160,34 @@ export class LocalPlayer {
     }
     if (this.attackCooldown > 0 || !this.actions['attack']) return false;
 
-    // Get target once — reused for projectile aim
+    // Get target once — reused for projectile aim if within auto-aim range
     const target = this.getNearestTarget();
-    if (!target) return false;
 
     this.lastAttackTime = performance.now() / 1000;
 
-    const rateOfFire = CHARACTER_CONFIG.combat.rateOfFire || 0.05;
-    const animScale = CHARACTER_CONFIG.combat.attackAnimScale || 1.0;
-    this.playAnimationState('attack', 0.08, animScale);
-    // Lock animation to attack pose for 90% of the duration to prevent jittery transitions back to walk/idle
-    this.animationLockTime = (rateOfFire * 0.9) || 0.18;
+    const rateOfFire = CHARACTER_CONFIG.combat.rateOfFire || 0.14;
+    const targetAction = this.actions['attack'];
+    if (targetAction) {
+      const dynamicScale = 1.0;
+      
+      if (this.currentActionName !== 'attack') {
+        targetAction.reset();
+        targetAction.setEffectiveTimeScale(dynamicScale);
+        targetAction.play();
+        const currentAction = this.actions[this.currentActionName];
+        if (currentAction) {
+          currentAction.crossFadeTo(targetAction, 0.08, true);
+        }
+        this.currentActionName = 'attack';
+      } else {
+        targetAction.setEffectiveTimeScale(dynamicScale);
+        if (!targetAction.isRunning()) {
+          targetAction.play();
+        }
+      }
+    }
+    
+    this.animationLockTime = Math.max(0.12, rateOfFire * 1.5);
     if (this.attackCooldown <= 0) {
       this.attackCooldown += rateOfFire;
     } else {
@@ -1120,7 +1195,7 @@ export class LocalPlayer {
     }
 
     if (this.bowSound) {
-      this.bowSound.currentTime = 0.11;
+      this.bowSound.currentTime = 0.05;
       this.bowSound.play().catch(() => { });
     }
 
@@ -1128,8 +1203,16 @@ export class LocalPlayer {
       const spawnPos = this.getWeaponWorldPosition('hand_l', 1.0); // uses scratch internally
       let dx = 0, dy = 0, dz = 1;
       if (target) {
+        const allEntities = TargetingManager.getAllEntities();
+        const targetEntity = allEntities.find(e => e.playerGroup === target);
+        const torsoH = targetEntity?.torsoHeight ?? 0.9;
         _scratchTargetPos.copy(target.position);
-        _scratchTargetPos.y += 0.5;
+        // For large enemies/bosses, start initial trajectory slightly lower to produce an arcade upward curve from below into the chest
+        if (torsoH >= 1.8) {
+          _scratchTargetPos.y += Math.min(1.2, torsoH * 0.4);
+        } else {
+          _scratchTargetPos.y += torsoH;
+        }
         _scratchDir.copy(_scratchTargetPos).sub(spawnPos).normalize();
         dx = _scratchDir.x; dy = _scratchDir.y; dz = _scratchDir.z;
       } else {
@@ -1144,7 +1227,7 @@ export class LocalPlayer {
   public getForwardVector(): THREE.Vector3 {
     const forward = _forwardVec;
     if (this.playerMesh) {
-      this.playerMesh.getWorldDirection(forward);
+      forward.set(0, 0, 1).applyQuaternion(this.playerMesh.quaternion);
     } else {
       forward.set(0, 0, -1).applyAxisAngle(_upAxis, this.cameraTargetRotation.y);
     }
@@ -1164,95 +1247,79 @@ export class LocalPlayer {
   }
 
   private resolveCollisions(delta = 0.016) {
-    if (!this.environmentMesh || !this.environmentMesh.geometry.boundsTree) {
-      const rawTerrainY = getTerrainHeight(this.position.x, this.position.z);
-
-      // Lerp smoothTerrainY toward actual terrain height — removes 0.5m grid step artifacts
-      // Factor 20 = tracks terrain in ~50ms (imperceptible lag, zero jitter)
-      const t = Math.min(1, delta * 20);
-      this._smoothTerrainY = this._smoothTerrainY + (rawTerrainY - this._smoothTerrainY) * t;
-
-      if (this.position.y <= this._smoothTerrainY + 0.01) {
-        this.position.y = this._smoothTerrainY;
-        this.velocity.y = 0;
-        this.isGrounded = true;
-      } else {
-        this.isGrounded = false;
-      }
-      this.playerGroup.position.copy(this.position);
-      return;
-    }
-
-    const bvh = this.environmentMesh.geometry.boundsTree;
-
-    const capsuleStart = this.tempSegment.start;
-    const capsuleEnd = this.tempSegment.end;
-
-    capsuleStart.copy(this.position).addScaledVector(_upVec, this.radius);
-    capsuleEnd.copy(this.position).addScaledVector(_upVec, this.height - this.radius);
-
-    this.tempBox.makeEmpty();
-    this.tempBox.expandByPoint(capsuleStart);
-    this.tempBox.expandByPoint(capsuleEnd);
-    this.tempBox.min.subScalar(this.radius);
-    this.tempBox.max.addScalar(this.radius);
-
     let groundedThisFrame = false;
 
-    // Run collision resolution in 3 passes to handle corners and sliding smoothly
-    for (let iter = 0; iter < 3; iter++) {
-      capsuleStart.copy(this.position).addScaledVector(_upVec, this.radius);
-      capsuleEnd.copy(this.position).addScaledVector(_upVec, this.height - this.radius);
+    // 1. BVH Obstacle Collision (Rocks, Trees, Walls) if available
+    if (this.environmentMesh && this.environmentMesh.geometry.boundsTree) {
+      const bvh = this.environmentMesh.geometry.boundsTree;
+      const capsuleStart = this.tempSegment.start;
+      const capsuleEnd = this.tempSegment.end;
 
-      this.tempBox.makeEmpty();
-      this.tempBox.expandByPoint(capsuleStart);
-      this.tempBox.expandByPoint(capsuleEnd);
-      this.tempBox.min.subScalar(this.radius);
-      this.tempBox.max.addScalar(this.radius);
+      for (let iter = 0; iter < 3; iter++) {
+        capsuleStart.copy(this.position).addScaledVector(_upVec, this.radius);
+        capsuleEnd.copy(this.position).addScaledVector(_upVec, this.height - this.radius);
 
-      bvh.shapecast({
-        intersectsBounds: (box) => box.intersectsBox(this.tempBox),
-        intersectsTriangle: (tri) => {
-          const distance = tri.closestPointToSegment(this.tempSegment, this.tempTriPoint, this.capsulePoint);
+        this.tempBox.makeEmpty();
+        this.tempBox.expandByPoint(capsuleStart);
+        this.tempBox.expandByPoint(capsuleEnd);
+        this.tempBox.min.subScalar(this.radius);
+        this.tempBox.max.addScalar(this.radius);
 
-          if (distance < this.radius) {
-            const depth = this.radius - distance;
-            const normal = this.tempVector2.copy(this.capsulePoint).sub(this.tempTriPoint).normalize();
+        bvh.shapecast({
+          intersectsBounds: (box) => box.intersectsBox(this.tempBox),
+          intersectsTriangle: (tri) => {
+            const distance = tri.closestPointToSegment(this.tempSegment, this.tempTriPoint, this.capsulePoint);
 
-            this.position.addScaledVector(normal, depth);
+            if (distance < this.radius) {
+              const depth = this.radius - distance;
+              const normal = this.tempVector2.copy(this.capsulePoint).sub(this.tempTriPoint).normalize();
 
-            // Immediately update the capsule segment start/end so subsequent triangle tests in this pass use the new position (prevents jitter)
-            capsuleStart.copy(this.position).addScaledVector(_upVec, this.radius);
-            capsuleEnd.copy(this.position).addScaledVector(_upVec, this.height - this.radius);
+              this.position.addScaledVector(normal, depth);
 
-            if (normal.y > 0.5) {
-              groundedThisFrame = true;
-            }
+              capsuleStart.copy(this.position).addScaledVector(_upVec, this.radius);
+              capsuleEnd.copy(this.position).addScaledVector(_upVec, this.height - this.radius);
 
-            const dot = this.velocity.dot(normal);
-            if (dot < 0) {
-              if (Math.abs(normal.y) < 0.7) {
-                // Wall/Slope collision: only cancel horizontal velocity to preserve vertical jump impulse
-                const hNormalX = normal.x;
-                const hNormalZ = normal.z;
-                const hLen = Math.sqrt(hNormalX * hNormalX + hNormalZ * hNormalZ);
-                if (hLen > 0.0001) {
-                  const nx = hNormalX / hLen;
-                  const nz = hNormalZ / hLen;
-                  const hDot = this.velocity.x * nx + this.velocity.z * nz;
-                  if (hDot < 0) {
-                    this.velocity.x -= nx * hDot;
-                    this.velocity.z -= nz * hDot;
+              if (normal.y > 0.5) {
+                groundedThisFrame = true;
+              }
+
+              const dot = this.velocity.dot(normal);
+              if (dot < 0) {
+                if (Math.abs(normal.y) < 0.7) {
+                  const hNormalX = normal.x;
+                  const hNormalZ = normal.z;
+                  const hLen = Math.sqrt(hNormalX * hNormalX + hNormalZ * hNormalZ);
+                  if (hLen > 0.0001) {
+                    const nx = hNormalX / hLen;
+                    const nz = hNormalZ / hLen;
+                    const hDot = this.velocity.x * nx + this.velocity.z * nz;
+                    if (hDot < 0) {
+                      this.velocity.x -= nx * hDot;
+                      this.velocity.z -= nz * hDot;
+                    }
                   }
+                } else {
+                  this.velocity.addScaledVector(normal, -dot);
                 }
-              } else {
-                // Floor/Ceiling collision: cancel full velocity
-                this.velocity.addScaledVector(normal, -dot);
               }
             }
           }
-        }
-      });
+        });
+      }
+    }
+
+    // 2. Base Terrain Floor Collision (ALWAYS active across entire world — prevents falling through ground)
+    const rawTerrainY = getTerrainHeight(this.position.x, this.position.z);
+    // ponytail: clamp wading floor at -3.40 so character's head and chest stay visible above water surface (-3.0)
+    const floorY = Math.max(rawTerrainY, -3.40);
+
+    const t = Math.min(1, delta * 20);
+    this._smoothTerrainY = this._smoothTerrainY === 0 ? floorY : (this._smoothTerrainY + (floorY - this._smoothTerrainY) * t);
+
+    if (this.position.y <= this._smoothTerrainY + 0.05) {
+      this.position.y = this._smoothTerrainY;
+      this.velocity.y = 0;
+      groundedThisFrame = true;
     }
 
     this.isGrounded = groundedThisFrame;
@@ -1273,18 +1340,41 @@ export class LocalPlayer {
       this.smoothedLookAt.z = THREE.MathUtils.lerp(this.smoothedLookAt.z, targetLookAt.z, lerpSpeed);
     }
 
-    // Calculate spherical coordinates based on cameraTargetRotation angles (Yaw/Pitch)
+    // 1. Calculate spherical offset direction from look-at point
     const theta = this.cameraTargetRotation.y;
     const phi = Math.PI / 2 - this.cameraTargetRotation.x;
-    const distance = this.cameraDistance;
+    
+    _camRayDir.set(
+      Math.sin(phi) * Math.sin(theta),
+      Math.cos(phi),
+      Math.sin(phi) * Math.cos(theta)
+    ).normalize();
 
-    const relativeOffset = new THREE.Vector3(
-      distance * Math.sin(phi) * Math.sin(theta),
-      distance * Math.cos(phi),
-      distance * Math.sin(phi) * Math.cos(theta)
+    let targetDist = this.cameraDistance;
+
+    // 2. Camera Spring-Arm Collision Check against Obstacles (Rocks, Boulders, Props)
+    if (this.environmentMesh && this.environmentMesh.geometry.boundsTree) {
+      _camRaycaster.set(this.smoothedLookAt, _camRayDir);
+      _camRaycaster.near = 0.2;
+      _camRaycaster.far = this.cameraDistance;
+      const intersects = _camRaycaster.intersectObject(this.environmentMesh);
+      if (intersects.length > 0) {
+        // Leave a 0.35m safety cushion before the collision point to prevent near plane clipping
+        const hitDistance = intersects[0].distance - 0.35;
+        targetDist = Math.max(1.2, hitDistance);
+      }
+    }
+
+    // 3. Smooth Spring-Arm Zoom Interpolation (Fast push-in when blocked, smooth ease-out when cleared)
+    const zoomSpeed = targetDist < this.currentCameraDistance ? 24.0 : 8.0;
+    this.currentCameraDistance = THREE.MathUtils.lerp(
+      this.currentCameraDistance,
+      targetDist,
+      Math.min(1.0, zoomSpeed * delta)
     );
 
-    const targetCameraPosition = this.smoothedLookAt.clone().add(relativeOffset);
+    const relativeOffset = _camOffset.copy(_camRayDir).multiplyScalar(this.currentCameraDistance);
+    const targetCameraPosition = _camIdealPos.copy(this.smoothedLookAt).add(relativeOffset);
 
     // Keep camera above the terrain height level (prevent penetrating the ground)
     const terrainHeightAtTarget = getTerrainHeight(targetCameraPosition.x, targetCameraPosition.z);
@@ -1294,7 +1384,7 @@ export class LocalPlayer {
     }
 
     // Smoothly follow position
-    this.camera.position.lerp(targetCameraPosition, 8 * delta);
+    this.camera.position.lerp(targetCameraPosition, 16 * delta);
 
     // Double check and apply safety clamp to actual camera position with smooth height transitions
     const actualTerrainHeight = getTerrainHeight(this.camera.position.x, this.camera.position.z);

@@ -333,7 +333,15 @@ export class VisualTornado {
     const t = elapsed * this.moveSpeed + this.timeOffset;
     const x = this.startX + Math.sin(t) * this.moveRadius;
     const z = this.startZ + Math.cos(t * 0.7) * this.moveRadius;
-    const y = getTerrainHeight(x, z) - 0.2; // Pins to ground level
+    const targetY = getTerrainHeight(x, z) - 0.2; // Pins to ground level
+    let y = this.group.position.y;
+    
+    // Snap instantly on initial spawn or teleportation to prevent massive vertical floating trails
+    if (this.stateTime <= delta * 2.5 || y === 0) {
+      y = targetY;
+    } else {
+      y = THREE.MathUtils.lerp(y, targetY, 4.0 * delta); // Smooth follow lerp
+    }
 
     this.group.position.set(x, y, z);
 

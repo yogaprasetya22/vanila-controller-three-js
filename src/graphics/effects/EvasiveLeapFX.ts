@@ -10,6 +10,11 @@ import {
     spawnExplosion,
 } from "./FXCore";
 
+// ponytail: pre-allocated scratch — zero GC in hot trail loop
+const _trailPos = new THREE.Vector3();
+const _trailStart = new THREE.Vector3();
+const _trailEnd = new THREE.Vector3();
+
 export function spawnEvasiveLeapFX(
     scene: THREE.Scene,
     fx: number,
@@ -20,8 +25,9 @@ export function spawnEvasiveLeapFX(
     tz: number,
 ) {
     // We spawn a smoke particle trail along the jump trajectory
-    const start = new THREE.Vector3(fx, fy, fz);
-    const end = new THREE.Vector3(tx, ty, tz);
+    // ponytail: use module-level scratch vectors, not new allocations
+    const start = _trailStart.set(fx, fy, fz);
+    const end   = _trailEnd.set(tx, ty, tz);
 
     const trailGeo = pooledPlane(0.5, 0.5);
     const trailMat = getPooledMaterial({
@@ -61,13 +67,14 @@ export function spawnEvasiveLeapFX(
             // Draw parabolic trail
             for (let i = 0; i < trailCount; i++) {
                 const subT = Math.min(1, (i / trailCount) * t);
-                const pos = new THREE.Vector3().lerpVectors(start, end, subT);
-                
+                // ponytail: reuse _trailPos scratch — was: new THREE.Vector3() per iteration
+                _trailPos.lerpVectors(start, end, subT);
+
                 // Add jump height peak
                 const h = 4.0;
-                pos.y += Math.sin(subT * Math.PI) * h;
+                _trailPos.y += Math.sin(subT * Math.PI) * h;
 
-                _tempObj.position.copy(pos);
+                _tempObj.position.copy(_trailPos);
                 _tempObj.quaternion.copy(cq);
                 _tempObj.scale.setScalar((1.0 - t) * (0.8 + i * 0.05));
                 _tempObj.updateMatrix();

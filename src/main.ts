@@ -3,9 +3,10 @@ import * as THREE from 'three';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { LocalPlayer } from './entities/player/LocalPlayer.ts';
 import { BaseEnemyController } from './entities/enemy/BaseEnemyController.ts';
+import { CHARACTER_CONFIG } from './entities/player/PlayerConfig.ts';
 import { DayCycleManager } from './day-cycle-manager.ts';
 import { NetworkDebugger } from './systems/netcode/NetworkDebugger.ts';
-import { insertCoin, isHost, myPlayer, RPC, setState, getState, onBossDamaged, NetworkManager } from './network/NetworkManager.ts';
+import { insertCoin, isHost, myPlayer, RPC, setState, getState, onBossDamaged, onPlayerDamaged, onPlayerRespawned, NetworkManager } from './network/NetworkManager.ts';
 import { ProjectileSystem } from './systems/combat/ProjectileSystem.ts';
 import { SkillsSystem } from './systems/combat/SkillsSystem.ts';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -33,6 +34,9 @@ import { PlayerManager } from './systems/PlayerManager.ts';
 import { LODManager } from './graphics/core/LODManager.ts';
 import { CombatTracker } from './systems/combat/CombatTracker.ts';
 import { Minimap } from './graphics/core/Minimap.ts';
+import { TargetingManager } from './systems/targeting/TargetingManager.ts';
+
+import { TargetingDebugger } from './systems/targeting/TargetingDebugger.ts';
 
 // Extend THREE prototypes with BVH acceleration
 (THREE.BufferGeometry.prototype as any).computeBoundsTree = computeBoundsTree;
@@ -43,7 +47,7 @@ import { Minimap } from './graphics/core/Minimap.ts';
 const container = document.getElementById('canvas-container') as HTMLDivElement;
 const scene = new THREE.Scene();
 setScene(scene);
-scene.fog = new THREE.Fog(0x050505, 50, 200);
+scene.fog = new THREE.Fog(0x050505, 150, 1200);
 
 AssetLoader.init();
 UIManager.init();
@@ -96,10 +100,10 @@ const subemitter2Native  = new Subemitter2NativeVFX(scene, camera);
 const tornadoNative      = new CartoonTornadoNativeVFX(scene, camera);
 const skillsSystem = new SkillsSystem(subemitter2Native, flamethrowerNative, tornadoNative);
 const windEffect   = new WindEffectManager(scene);
+const targetingDebugger = new TargetingDebugger(scene);
 const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
 
 if (!isMobile) windEffect.start();
-const sceneryWindLines = new SceneryWindLines(scene);
 
 // Initialize Input Manager
 InputManager.init(() => character, skillsSystem);
@@ -111,8 +115,9 @@ let lastFpsTime = performance.now();
 const clock = new THREE.Clock();
 const netDebugger = new NetworkDebugger();
 
-// Scratch vectors for slerps/aiming - zero alloc
+// Scratch objects for zero-alloc render loop
 const _tgtPos = new THREE.Vector3();
+const _scratchLocalPos = { x: 0, y: 0, z: 0 };
 
 // ponytail: dayCycleStartTime only changes when host time resets — send max 1x per 5s
 // Ceiling: reduce to 2s if clock drift becomes noticeable across clients.
@@ -131,13 +136,17 @@ function animate() {
 
   // Update level of detail (LOD) dynamically
   LODManager.update(delta, 'player', character, camera, PlayerManager.playersAndControllers, NPCManager.npcControllers);
+  targetingDebugger.update();
 
   if (character) {
     character.update(delta);
     character.resolveObstacleCollisions(world.trees, world.rocks, world.vegetation);
 
-    const localHp = myPlayer().getState('hp') ?? 100;
-    character.updateNameTag(localHp / 100);
+    // ponytail: cache myPlayer() once per frame — avoids 6+ Map lookups per frame
+    const me = myPlayer();
+    const maxHp = CHARACTER_CONFIG.combat.maxHp || 5000;
+    const localHp = me.getState('hp') ?? maxHp;
+    character.updateNameTag(localHp / maxHp);
 
     // Boss projectile collision check
     for (let i = projectileSystem.projectiles.length - 1; i >= 0; i--) {
@@ -155,7 +164,7 @@ function animate() {
           isMagic: false 
         });
         const nextHp = Math.max(0, localHp - 10);
-        myPlayer().setState('hp', nextHp === 0 ? 100 : nextHp);
+        me.setState('hp', nextHp === 0 ? maxHp : nextHp);
         p.mesh.visible = false;
         
         projectileSystem.projectiles[i] = projectileSystem.projectiles[projectileSystem.projectiles.length - 1];
@@ -166,15 +175,6 @@ function animate() {
     // Local shooting
     if (InputManager.isShooting) {
       while (character.attackCooldown <= 0 && character.triggerAttack()) {
-        const spawnPos = character.getWeaponWorldPosition('hand_l', 1.0);
-        const target   = character.getNearestTarget();
-        let dir        = character.getForwardVector();
-        if (target) {
-          target.getWorldPosition(_tgtPos);
-          _tgtPos.y += 0.5;
-          dir = _tgtPos.sub(spawnPos).normalize();
-        }
-        projectileSystem.spawn(spawnPos, dir, 40, target, -1, myPlayer().id);
         CombatTracker.recordAttack();
       }
     }
@@ -185,10 +185,13 @@ function animate() {
   // Update Remote Players movement Advanced Interpolations
   PlayerManager.updateRemotePlayers(delta);
 
-  // Send local state to server
+  // Send local state to server with reusable scratch object
   if (character) {
-    const me = myPlayer();
-    me.setState('pos', { x: character.position.x, y: character.position.y, z: character.position.z });
+    const me = myPlayer(); // already cached above if character exists, reuse
+    _scratchLocalPos.x = character.position.x;
+    _scratchLocalPos.y = character.position.y;
+    _scratchLocalPos.z = character.position.z;
+    me.setState('pos', _scratchLocalPos);
     me.setState('rot', character.playerMesh?.rotation.y ?? 0);
     me.setState('action', character.currentActionName);
     me.setState('isShooting', InputManager.isShooting);
@@ -198,8 +201,12 @@ function animate() {
   NPCManager.syncNPCs(scene, colliderMesh, skillsSystem);
 
   // Projectile system update
-  projectileSystem.update(delta, colliderMesh, (hitPoint, target) => {
+  projectileSystem.update(delta, colliderMesh, (hitPoint, target, ownerId) => {
     if (target && PlayerManager.playerGroupSet.has(target)) return; // friendly-fire
+
+    // CRITICAL: Only the local player's client should send damage packet for its own arrows!
+    // Remote players and bots send their own damage packets directly to the server.
+    if (ownerId !== undefined && ownerId !== myPlayer().id) return;
 
     let hitNPC: BaseEnemyController | null = null;
     for (const ctrl of NPCManager.npcControllers.values()) {
@@ -223,6 +230,28 @@ function animate() {
     }
   }
   UIManager.updateBossHP(targetBoss);
+
+  // ── Sync MMORPG Player Profile HUD ──
+  // ponytail: reuse me from above block — if character null, only call once
+  const _me = myPlayer();
+  const maxPlayerHp = CHARACTER_CONFIG.combat.maxHp || 5000;
+  const localHp = _me.getState('hp') ?? maxPlayerHp;
+  const localXp = _me.getState('xp') ?? 450;
+  const localLevel = _me.getState('level') ?? 1;
+  const localRole = localStorage.getItem('playerRole') || _me.getState('role') || 'archer';
+  const localName = localStorage.getItem('playerName') || _me.getProfile()?.name || _me.id || 'Player';
+
+  UIManager.updatePlayerProfile({
+    name: localName,
+    role: localRole,
+    level: localLevel,
+    hp: localHp,
+    maxHp: maxPlayerHp,
+    mp: 100,
+    maxMp: 100,
+    xp: localXp,
+    maxXp: 1000
+  });
 
   skillsSystem.update(delta, character ?? undefined);
 
@@ -254,14 +283,13 @@ function animate() {
 
   if (!isMobile) {
     windEffect.update(delta, elapsed, camera.position);
-    sceneryWindLines.update(delta, elapsed, camera.position);
   }
 
   world.update(delta, camera.position, camera, character?.position);
 
-  // Render multi-viewport perspective + orthographic minimap viewports
+  // Render multi-viewport perspective + 2D Radar Minimap
   RendererSetup.render(scene);
-  Minimap.render(renderer, scene, character ? character.position : null);
+  Minimap.render(renderer, scene, character ? character.position : null, character?.playerMesh?.rotation.y ?? 0);
 
   // FPS HUD updates
   frameCount++;
@@ -424,21 +452,57 @@ AssetLoader.preloadGameAssets(renderer, camera).then(async () => {
   // Dynamic combat network callbacks
   onBossDamaged((data: any) => {
     const isAttackerLocal = data.attackerId === myPlayer().id;
-    damageHUDBatcher.spawn({
-      skill: data.isCrit ? 'boss' : 'normal',
-      value: data.damage,
-      position: [data.x, data.y + 0.8, data.z],
-      isCrit: data.isCrit,
-      forceShow: isAttackerLocal,
-    });
-    const targetNPC = NPCManager.npcControllers.get(data.npcId);
-    if (targetNPC && targetNPC.hp > 0) {
-      targetNPC.playHit();
-      targetNPC.flash(0.12, data.isCrit ? 0xffffff : 0xff3333);
-      gasExplosionNative.spawn(data.x, data.y + 0.5, data.z);
-    }
-    if (data.attackerId === myPlayer().id) {
+    // Only display Damage HUD pop-up numbers for the local player
+    if (isAttackerLocal) {
+      damageHUDBatcher.spawn({
+        skill: data.isCrit ? 'boss' : 'normal',
+        value: data.damage,
+        position: [data.x, data.y + 0.8, data.z],
+        isCrit: data.isCrit,
+        forceShow: true,
+      });
       CombatTracker.recordDamage(data.damage);
+    }
+    const targetNPC = NPCManager.npcControllers.get(data.npcId);
+    if (targetNPC) {
+      if (typeof data.hp === 'number') {
+        targetNPC.hp = data.hp;
+      }
+      if (targetNPC.hp <= 0) {
+        targetNPC.playerGroup.visible = false;
+      } else {
+        targetNPC.playHit();
+        targetNPC.flash(0.12, data.isCrit ? 0xffffff : 0xff3333);
+        gasExplosionNative.spawn(data.x, data.y + 0.5, data.z);
+      }
+    }
+  });
+
+  onPlayerDamaged((data: any) => {
+    const isLocal = data.playerId === myPlayer().id;
+    const targetPlayer = PlayerManager.playersAndControllers.find(p => p.player.id === data.playerId)?.controller;
+    
+    if (targetPlayer) {
+      const pos = targetPlayer.playerGroup.position;
+      damageHUDBatcher.spawn({
+        skill: data.skill || 'boss',
+        value: data.damage,
+        position: [pos.x, pos.y + 1.2, pos.z],
+        isCrit: Math.random() > 0.8,
+        forceShow: isLocal,
+      });
+      targetPlayer.flash(0.15, 0xff2222);
+    }
+
+    if (isLocal && character) {
+      character.takeDamage(data.damage, data.hp, data.isDead);
+    }
+  });
+
+  onPlayerRespawned((data: any) => {
+    const isLocal = data.playerId === myPlayer().id;
+    if (isLocal && character) {
+      character.respawn(data.x, data.z);
     }
   });
 
@@ -449,12 +513,19 @@ AssetLoader.preloadGameAssets(renderer, camera).then(async () => {
 
   RPC.register('cast_skill', (data: any) => {
     const caster = PlayerManager.playersAndControllers.find(p => p.player.id === data.playerId)?.controller;
-    skillsSystem.triggerNetworkVFX(data.skillCode, data.playerPos.x, data.playerPos.z, caster?.playerMesh ?? undefined);
+    let fwd = new THREE.Vector3(0, 0, -1);
+    if (data.forward && typeof data.forward.x === 'number') {
+      fwd.set(data.forward.x, 0, data.forward.z).normalize();
+    } else if (caster) {
+      fwd.copy(caster.getForwardVector());
+    }
+    const targetNPC = caster ? caster.getNearestTarget() : null;
+    skillsSystem.triggerNetworkVFX(data.skillCode, data.playerPos.x, data.playerPos.z, fwd, targetNPC ?? undefined);
     return Promise.resolve();
   });
 
   // Setup dynamic player synchronization callbacks
-  PlayerManager.setupPlayerJoining(scene, camera, colliderMesh, (localChar) => {
+  PlayerManager.setupPlayerJoining(scene, camera, colliderMesh, projectileSystem, (localChar) => {
     character = localChar;
   });
 

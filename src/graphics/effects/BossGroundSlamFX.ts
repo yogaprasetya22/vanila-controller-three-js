@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { getTerrainHeight } from "../../simulation/constants";
 
 // ponytail: 1 PlaneGeometry + 5 specialized Shape Shaders.
 // Pre-compiles 5 specialized, 100% branchless materials to avoid GPU instruction divergence.
@@ -180,7 +181,8 @@ export class BossGroundSlamFX {
         ];
 
         for (let i = 0; i < 6; i++) {
-            const mesh = new THREE.Mesh(_sharedGeo, matClones[0]);
+            const geom = new THREE.PlaneGeometry(2.5, 2.5, 12, 12); // 12x12 subdivisions to fit terrain slopes
+            const mesh = new THREE.Mesh(geom, matClones[0]);
             mesh.rotation.order = 'YXZ'; // Critical for flat ground orientation with Y yaw
             mesh.renderOrder = 2;
             mesh.visible = false;
@@ -236,9 +238,27 @@ export class BossGroundSlamFX {
         s.uniforms!.uBoom.value = 0;
         s.uniforms!.uTime.value = 0;
 
-        s.mesh.position.set(x, 0.1, z);
+        s.mesh.position.set(x, 0.0, z);
         s.mesh.rotation.set(-Math.PI / 2, rotationY, 0);
         s.mesh.scale.setScalar(radius);
+        s.mesh.updateMatrixWorld(true);
+
+        // Conform plane vertices to the sloped terrain contours
+        const geom = s.mesh.geometry;
+        const posAttr = geom.attributes.position;
+        const count = posAttr.count;
+        const tempV = new THREE.Vector3();
+
+        for (let i = 0; i < count; i++) {
+            tempV.set(posAttr.getX(i), posAttr.getY(i), posAttr.getZ(i));
+            tempV.applyMatrix4(s.mesh.matrixWorld);
+            const terrainY = getTerrainHeight(tempV.x, tempV.z);
+            // Local Z maps to World Y after -PI/2 X rotation. Add 0.05m offset to float cleanly.
+            posAttr.setZ(i, (terrainY + 0.05) / radius);
+        }
+        posAttr.needsUpdate = true;
+        geom.computeVertexNormals();
+
         s.mesh.visible = true;
     }
 
@@ -275,6 +295,9 @@ export class BossGroundSlamFX {
         for (const s of this.pool) {
             // Clean up cloned materials and geometries
             s.materials.forEach(mat => mat.dispose());
+            if (s.mesh.geometry) {
+                s.mesh.geometry.dispose();
+            }
             if (s.mesh.parent) {
                 s.mesh.parent.remove(s.mesh);
             }

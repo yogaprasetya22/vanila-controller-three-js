@@ -17,7 +17,7 @@ export class Trees {
       return h >= 0.2; // Keep only if it's on dry land
     });
 
-    // ponytail: procedurally generate endless trees beyond battlefield boundaries to fit the expanded 900x900 world
+    // ponytail: procedurally generate endless trees beyond battlefield boundaries to fit the expanded 2400x2400 world
     let seed = 98765;
     const prng = () => {
       const x = Math.sin(seed++) * 10000;
@@ -25,10 +25,10 @@ export class Trees {
     };
 
     const treeTypes = ["Pine_1", "BirchTree_2", "MapleTree_1"];
-    // Generate 350 random trees on the outskirt mountains/forests deterministically
-    for (let i = 0; i < 350; i++) {
-      const rx = (prng() - 0.5) * 820;
-      const rz = (prng() - 0.5) * 820;
+    // Generate 450 random trees on the outskirt mountains/forests deterministically
+    for (let i = 0; i < 450; i++) {
+      const rx = (prng() - 0.5) * 2300;
+      const rz = (prng() - 0.5) * 2300;
       // Skip the central battlefield
       if (Math.abs(rx) < 50 && Math.abs(rz) < 50) continue;
       
@@ -89,7 +89,9 @@ export class Trees {
       // Pre-populate treePositions since it is used elsewhere
       activeTreesData.forEach((data) => {
         const groundY = getTerrainHeight(data.x, data.z);
-        treePositions.push(new THREE.Vector3(data.x, groundY, data.z));
+        const pos = new THREE.Vector3(data.x, groundY, data.z);
+        (pos as any).treeType = data.type;
+        treePositions.push(pos);
       });
 
       // Create InstancedMesh for each unique tree type
@@ -266,46 +268,88 @@ export class Trees {
   }> = [];
 
   private lastUpdatePos = new THREE.Vector3(9999, 9999, 9999);
+  private lastUpdateQuat = new THREE.Quaternion();
   private needsFirstUpdate = true;
 
-  // Module level scratch vector to avoid GC allocation in update loop
+  // Module level scratch structures to avoid GC allocation in update loop
   private localCamPosScratch = new THREE.Vector3();
+  private static _scratchPos = new THREE.Vector3();
+  private static _scratchCamPos = new THREE.Vector3();
+  private static _scratchQuat = new THREE.Quaternion();
+  private static _scratchScale = new THREE.Vector3();
+  private static _scratchInstMat = new THREE.Matrix4();
+  private static _scratchFinalMat = new THREE.Matrix4();
+  private static _scratchSphere = new THREE.Sphere();
+  private static _projScreenMatrix = new THREE.Matrix4();
+  private static _frustum = new THREE.Frustum();
 
-  public update(cameraPos: THREE.Vector3) {
+  public update(cameraOrPos: THREE.Camera | THREE.Vector3) {
     if (this.instancedMeshes.length === 0) return;
 
-    // ponytail: throttle LOD calculations to avoid doing matrix composition for all 350+ trees every frame
-    if (!this.needsFirstUpdate && this.lastUpdatePos.distanceToSquared(cameraPos) < 0.25) {
+    const isCamera = (cameraOrPos as THREE.Camera).isCamera;
+    const camera = isCamera ? (cameraOrPos as THREE.Camera) : null;
+    const cameraPos = isCamera ? (cameraOrPos as THREE.Camera).position : (cameraOrPos as THREE.Vector3);
+
+    // ponytail: throttle LOD calculations when camera is stationary
+    let camMoved = this.lastUpdatePos.distanceToSquared(cameraPos) > 0.35;
+    let camRotated = false;
+    if (camera) {
+      camRotated = this.lastUpdateQuat.angleTo(camera.quaternion) > 0.035; // ~2 degrees
+    }
+
+    if (!this.needsFirstUpdate && !camMoved && !camRotated) {
       return;
     }
     this.needsFirstUpdate = false;
     this.lastUpdatePos.copy(cameraPos);
+    if (camera) {
+      this.lastUpdateQuat.copy(camera.quaternion);
+      Trees._projScreenMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+      Trees._frustum.setFromProjectionMatrix(Trees._projScreenMatrix);
+    }
 
-    // ponytail: Dynamic LOD tree distance culling (100m)
-    const MAX_DIST_SQ = 100 * 100; // 100 meters
+    // ponytail: Tighter Dynamic LOD tree distance (220m)
+    const MAX_DIST_SQ = 220 * 220; // 220 meters
 
-    const position = new THREE.Vector3();
-    const rotation = new THREE.Euler();
-    const quaternion = new THREE.Quaternion();
-    const scale = new THREE.Vector3();
-    const instanceMatrix = new THREE.Matrix4();
-    const finalMatrix = new THREE.Matrix4();
+    const pos = Trees._scratchPos;
+    const quat = Trees._scratchQuat;
+    const scl = Trees._scratchScale;
+    const instMat = Trees._scratchInstMat;
+    const finalMat = Trees._scratchFinalMat;
+    const sphere = Trees._scratchSphere;
+    const frustum = Trees._frustum;
 
-    for (const group of this.instancedMeshes) {
+    for (let g = 0; g < this.instancedMeshes.length; g++) {
+      const group = this.instancedMeshes[g];
       const mesh = group.meshList;
-      const activeInstances: { data: typeof group.instances[0]; currentScale: number }[] = [];
+      const instances = group.instances;
+      let visibleCount = 0;
 
-      group.instances.forEach((data) => {
+      for (let i = 0; i < instances.length; i++) {
+        const data = instances[i];
         const dx = data.x - cameraPos.x;
         const dz = data.z - cameraPos.z;
         const distSq = dx * dx + dz * dz;
 
+        // 1. Distance culling (220m)
+        if (distSq > MAX_DIST_SQ) {
+          continue;
+        }
+
+        // 2. Camera Frustum Culling (Skip everything outside FOV / behind camera)
+        if (camera) {
+          sphere.center.set(data.x, data.groundY + data.scale * 2.0, data.z);
+          sphere.radius = data.scale * 4.5;
+          if (!frustum.intersectsSphere(sphere)) {
+            continue;
+          }
+        }
+
         let currentScale = data.scale;
 
-        // Leaf canopy culling: if camera is inside the leaf canopy OBB (Oriented Bounding Box), set scale to 0.0
+        // Leaf canopy culling: if camera is inside the leaf canopy OBB, set scale to 0.0
         if (group.isLeafMesh) {
-          const groundY = data.groundY; // pre-computed at init — no terrain lookup
-          // Inverse transform camera pos to instance local template space
+          const groundY = data.groundY;
           const tx = cameraPos.x - data.x;
           const ty = cameraPos.y - groundY;
           const tz = cameraPos.z - data.z;
@@ -317,44 +361,34 @@ export class Trees {
 
           this.localCamPosScratch.set(rx / data.scale, ty / data.scale, rz / data.scale);
 
-          // Cull leaves if camera is inside the OBB OR within 6.5 meters of the tree center in 2D to maximize FPS
           if (distSq < 6.5 * 6.5 || group.localBox.containsPoint(this.localCamPosScratch)) {
             currentScale = 0.0;
           }
         }
 
-        // Standard LOD / Trunk culling
+        // Trunk collision culling
         if (currentScale > 0.0) {
-          const cullRadius = 1.0 + data.scale * 0.4; // dynamically scale trunk cull radius
+          const cullRadius = 1.0 + data.scale * 0.4;
           const cullRadiusSq = cullRadius * cullRadius;
 
-          if (distSq > MAX_DIST_SQ) {
-            currentScale = 0.0; // Cull far away
-          } else if (distSq < cullRadiusSq && !group.isLeafMesh) {
-            currentScale = 0.0; // Cull trunk/bark if camera literally collides with the trunk
+          if (distSq < cullRadiusSq && !group.isLeafMesh) {
+            currentScale = 0.0;
           }
         }
 
         if (currentScale > 0.0) {
-          activeInstances.push({ data, currentScale });
+          pos.set(data.x, data.groundY - data.sink, data.z);
+          quat.set(data.qx, data.qy, data.qz, data.qw);
+          scl.set(currentScale, currentScale, currentScale);
+
+          instMat.compose(pos, quat, scl);
+          finalMat.multiplyMatrices(instMat, group.relativeMatrix);
+          mesh.setMatrixAt(visibleCount++, finalMat);
         }
-      });
+      }
 
-      // Write visible instances — groundY/sink/quat already pre-computed at init
-      activeInstances.forEach((inst, index) => {
-        const data = inst.data;
-        position.set(data.x, data.groundY - data.sink, data.z);
-        quaternion.set(data.qx, data.qy, data.qz, data.qw);
-        scale.set(inst.currentScale, inst.currentScale, inst.currentScale);
-
-        instanceMatrix.compose(position, quaternion, scale);
-        finalMatrix.multiplyMatrices(instanceMatrix, group.relativeMatrix);
-        mesh.setMatrixAt(index, finalMatrix);
-      });
-
-      // Set mesh.count so the GPU draw call skips all culled trees (cuts triangles count from 1.5M to ~80k!)
-      if (mesh.count !== activeInstances.length) {
-        mesh.count = activeInstances.length;
+      if (mesh.count !== visibleCount) {
+        mesh.count = visibleCount;
       }
       mesh.instanceMatrix.needsUpdate = true;
     }
@@ -403,8 +437,7 @@ export class Trees {
         const dz = data.z - playerPos.z;
         if (dx * dx + dz * dz <= radiusSq) {
           position.set(data.x, data.groundY - data.sink, data.z);
-          rotation.set(0, data.rotation, 0);
-          quaternion.setFromEuler(rotation);
+          quaternion.set(data.qx, data.qy, data.qz, data.qw);
           scale.set(data.scale, data.scale, data.scale);
 
           instanceMatrix.compose(position, quaternion, scale);

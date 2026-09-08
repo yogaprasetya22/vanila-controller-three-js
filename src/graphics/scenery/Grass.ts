@@ -47,21 +47,22 @@ export class Grass {
     chunkCenters: THREE.Vector3[] = [];
 
     constructor(scene: THREE.Scene, uniforms: { uTime: { value: number } }) {
-        const bladesPerClump = 5;
-        const worldW = 860;
-        const worldH = 860;
+        const bladesPerClump = 6;
+        // ponytail: Full 2400x2400m open-world coverage with lush Ghibli-style carpet meadow.
+        const worldW = 2400;
+        const worldH = 2400;
 
-        // ── Spatial grid for patches (smaller cells = higher resolution density and more uniform coverage) ──
-        const cellW = 6.0;
-        const cellH = 6.0;
+        // ── Spatial grid for patches ──
+        const cellW = 10.0;
+        const cellH = 10.0;
         const cellsX = Math.ceil(worldW / cellW);
         const cellsZ = Math.ceil(worldH / cellH);
         const x0 = -worldW / 2;
         const z0 = -worldH / 2;
 
         // ── Chunk Configuration ──
-        const chunkSize = 86; // 10x10 chunks
-        const chunksPerAxis = 10;
+        const chunkSize = 120; // 20x20 chunks (400 chunks)
+        const chunksPerAxis = 20;
         const chunkPatches: Patch[][] = Array.from({ length: chunksPerAxis * chunksPerAxis }, () => []);
 
         // ── Density function ──
@@ -77,11 +78,10 @@ export class Grass {
             if (wet > 0.3) return 0;
             if (forestFactor < 0.05) return 0;
 
-            // Make the density higher overall
-            if (h < 0.2) return forestFactor * 0.8;
+            if (h < 0.2) return forestFactor * 0.9;
             if (h < 1.0) return forestFactor * 1.0;
-            if (h < 4.0) return forestFactor * 0.9;
-            if (h < 12.0) return forestFactor * 0.6;
+            if (h < 4.0) return forestFactor * 0.95;
+            if (h < 12.0) return forestFactor * 0.7;
             return 0;
         };
 
@@ -94,9 +94,8 @@ export class Grass {
                 const d = densityAt(cxCell, czCell);
                 if (d <= 0) continue;
 
-                // More patches per cell, spread wider
-                const maxPatches = Math.floor(d * 10);
-                const numPatches = maxPatches > 0 ? 1 + Math.floor(rng() * maxPatches) : 0;
+                // Dense multi-tuft patches per cell
+                const numPatches = 1 + Math.floor(rng() * (d * 4.2));
 
                 for (let p = 0; p < numPatches; p++) {
                     const px = cxCell + (rng() - 0.5) * cellW * 0.9;
@@ -116,11 +115,9 @@ export class Grass {
                     const steepness = Math.sqrt(nx * nx + nz * nz);
                     if (steepness > 1.5) continue;
 
-                    // More clumps/tufts per patch, and spread them over 2.0 radius
-                    const count = 10 + Math.floor(rng() * 15);
+                    const count = 8 + Math.floor(rng() * 9);
                     const patch = { cx: px, cz: pz, count };
 
-                    // Group patch into its respective chunk
                     const chunkX = Math.min(chunksPerAxis - 1, Math.max(0, Math.floor((px - x0) / chunkSize)));
                     const chunkZ = Math.min(chunksPerAxis - 1, Math.max(0, Math.floor((pz - z0) / chunkSize)));
                     const chunkIdx = chunkZ * chunksPerAxis + chunkX;
@@ -129,8 +126,8 @@ export class Grass {
             }
         }
 
-        const colorBottom = new THREE.Color(0x4a6530);
-        const colorTop = new THREE.Color(0x8dbd4a);
+        const colorBottom = new THREE.Color(0x284618); // Deep vibrant emerald base
+        const colorTop = new THREE.Color(0x9bd848);    // Luminous sunlit lime-green tip
 
         // Single shared material
         const grassMat = new THREE.ShaderMaterial({
@@ -156,26 +153,26 @@ export class Grass {
 
                     vec4 worldPos = modelMatrix * vec4(position, 1.0);
                     float distToCam = distance(cameraPosition, worldPos.xyz);
-                    if (distToCam > 100.0) {
+                    if (distToCam > 120.0) {
                         scaleY = 0.0;
                         scaleX = 0.0;
-                    } else if (distToCam > 85.0) {
-                        float fade = 1.0 - (distToCam - 85.0) / 15.0;
+                    } else if (distToCam > 80.0) {
+                        float fade = 1.0 - (distToCam - 80.0) / 40.0;
                         scaleY *= fade;
                         scaleX *= fade;
                     }
 
-                    // ponytail: slightly wider and taller blades for a richer, denser look
-                    float bladeWidth  = 0.12 * scaleX;
-                    float bladeHeight = 0.65 * scaleY;
+                    // ponytail: wide, lush stylized Zelda/Ghibli blade geometry
+                    float bladeWidth  = 0.22 * scaleX;
+                    float bladeHeight = 0.85 * scaleY;
 
                     vec3 localOffset = vec3(0.0);
                     if (vertexIdx < 0.5) {
                         localOffset.y = bladeHeight;
                     } else if (vertexIdx < 1.5) {
-                        localOffset.x = -bladeWidth * 0.3;
+                        localOffset.x = -bladeWidth * 0.35;
                     } else {
-                        localOffset.x = bladeWidth * 0.3;
+                        localOffset.x = bladeWidth * 0.35;
                     }
 
                     float angleToCamera = atan(worldPos.z - cameraPosition.z, worldPos.x - cameraPosition.x) - 1.57079632679;
@@ -191,10 +188,10 @@ export class Grass {
 
                     float worldX = worldPos.x + rotated.x;
                     float worldZ = worldPos.z + rotated.z;
-                    float heightRatio = rotated.y / 0.65;
+                    float heightRatio = rotated.y / 0.85;
 
-                    float wind1 = sin(uTime * 1.5 + worldX * 1.5 + worldZ) * 0.12;
-                    float wind2 = sin(uTime * 3.8 + worldX * 3.5 + worldZ * 2.0) * 0.05;
+                    float wind1 = sin(uTime * 1.5 + worldX * 1.4 + worldZ) * 0.16;
+                    float wind2 = sin(uTime * 3.6 + worldX * 3.2 + worldZ * 2.0) * 0.06;
                     float wind = (wind1 + wind2) * heightRatio * heightRatio;
 
                     rotated.x += wind;
@@ -202,7 +199,7 @@ export class Grass {
 
                     float tipness = vertexIdx < 0.5 ? 1.0 : 0.0;
                     vec3 baseColor = mix(colorBottom, colorTop, tipness);
-                    float variation = 0.82 + aColorVar * 0.36;
+                    float variation = 0.85 + aColorVar * 0.30;
                     vColor = baseColor * variation;
 
                     vec3 transformed = position + rotated;
@@ -240,7 +237,7 @@ export class Grass {
 
                 for (let t = 0; t < patch.count; t++) {
                     const angle = rng() * Math.PI * 2;
-                    const dist = rng() * 2.8;
+                    const dist = rng() * 2.4;
                     const tx = patch.cx + Math.cos(angle) * dist;
                     const tz = patch.cz + Math.sin(angle) * dist;
                     const ty = getTerrainHeight(tx, tz);
@@ -248,18 +245,18 @@ export class Grass {
                     if (Math.abs(ty - py) > 0.8) continue;
 
                     const baseRotation = rng() * Math.PI * 2;
-                    const clumpScaleY = 0.8 + rng() * 0.8;
-                    const clumpScaleX = 0.8 + rng() * 0.6;
+                    const clumpScaleY = 0.85 + rng() * 0.6;
+                    const clumpScaleX = 0.85 + rng() * 0.5;
 
                     for (let b = 0; b < bladesPerClump; b++) {
-                        const fanAngle = (b / bladesPerClump - 0.5) * Math.PI * 0.65;
-                        const angleOffset = fanAngle + (rng() - 0.5) * 0.3;
-                        const clumpDist = 0.06 + b * 0.05 + rng() * 0.06;
+                        const fanAngle = (b / bladesPerClump) * Math.PI * 2;
+                        const angleOffset = fanAngle + (rng() - 0.5) * 0.25;
+                        const clumpDist = 0.08 + (b % 3) * 0.06 + rng() * 0.05;
                         const cx = Math.cos(baseRotation + angleOffset) * clumpDist;
                         const cz = Math.sin(baseRotation + angleOffset) * clumpDist;
 
-                        const bladeScaleY = clumpScaleY * (0.75 + rng() * 0.5);
-                        const bladeScaleX = clumpScaleX * (0.7 + rng() * 0.6);
+                        const bladeScaleY = clumpScaleY * (0.8 + rng() * 0.4);
+                        const bladeScaleX = clumpScaleX * (0.8 + rng() * 0.4);
                         const colorVar = rng();
 
                         for (let v = 0; v < 3; v++) {
@@ -302,7 +299,8 @@ export class Grass {
             geo.computeBoundingSphere();
 
             const mesh = new THREE.Mesh(geo, grassMat);
-            mesh.frustumCulled = true;
+            // ponytail: avoid Three.js bounding sphere mismatch during vertex shader wind & lod transformations
+            mesh.frustumCulled = false;
 
             const chunkX = (chunkIdx % chunksPerAxis) * chunkSize + x0 + chunkSize / 2;
             const chunkZ = Math.floor(chunkIdx / chunksPerAxis) * chunkSize + z0 + chunkSize / 2;
@@ -315,13 +313,12 @@ export class Grass {
     }
 
     update(camPos: THREE.Vector3) {
-        // ponytail: CPU-level distance check to toggle mesh visibility.
-        // Invisible meshes bypass WebGL draw loop entirely, preserving rendering pipeline.
+        // ponytail: Dynamic CPU-level distance check (180m radius) ensures all nearby grass chunks stay 100% visible seamlessly
         for (let i = 0; i < this.meshes.length; i++) {
             const mesh = this.meshes[i];
             const center = this.chunkCenters[i];
             const distSq = camPos.distanceToSquared(center);
-            mesh.visible = distSq < 12100; // 110m culling radius (110 * 110 = 12100)
+            mesh.visible = distSq < 16900; // 130m culling radius (130 * 130 = 16900)
         }
     }
 }

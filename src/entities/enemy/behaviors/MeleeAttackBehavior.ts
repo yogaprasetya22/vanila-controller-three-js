@@ -3,6 +3,7 @@ import type { BaseEnemyController } from '../BaseEnemyController';
 import { myPlayer } from '../../../network/NetworkManager.ts';
 import { damageHUDBatcher } from '../../../graphics/effects/DamageHUDBatcher.ts';
 import { TargetingManager } from '../../../systems/targeting/TargetingManager';
+import { CHARACTER_CONFIG } from '../../player/PlayerConfig';
 
 export class MeleeAttackBehavior implements IAttackBehavior {
   public attackRange: number;
@@ -51,27 +52,19 @@ export class MeleeAttackBehavior implements IAttackBehavior {
             }
           }
 
-          if (closestPlayer) {
-            if (closestPlayer.id === localId) {
-              damageHUDBatcher.spawn({
-                skill: 'normal',
-                value: baseDamage,
-                position: [closestPlayer.position.x, closestPlayer.position.y + 1, closestPlayer.position.z],
-                isCrit: Math.random() > 0.9,
-                isMagic: false
-              });
-              const localHp = myPlayer().getState('hp') ?? 100;
-              const nextHp = Math.max(0, localHp - baseDamage);
-              myPlayer().setState('hp', nextHp === 0 ? 100 : nextHp);
-            } else {
-              damageHUDBatcher.spawn({
-                skill: 'normal',
-                value: baseDamage,
-                position: [closestPlayer.position.x, closestPlayer.position.y + 1, closestPlayer.position.z],
-                isCrit: Math.random() > 0.9,
-                isMagic: false
-              });
-            }
+          if (closestPlayer && closestPlayer.id === localId) {
+            damageHUDBatcher.spawn({
+              skill: 'normal',
+              value: baseDamage,
+              position: [closestPlayer.position.x, closestPlayer.position.y + 1, closestPlayer.position.z],
+              isCrit: Math.random() > 0.9,
+              isMagic: false,
+              forceShow: true
+            });
+            const maxHp = CHARACTER_CONFIG.combat.maxHp || 5000;
+            const localHp = myPlayer().getState('hp') ?? maxHp;
+            const nextHp = Math.max(0, localHp - baseDamage);
+            myPlayer().setState('hp', nextHp === 0 ? maxHp : nextHp);
           }
         }
       }

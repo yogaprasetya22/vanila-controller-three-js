@@ -43,7 +43,7 @@ const FRAG = /* glsl */ `
         float dxEdge = max(0.0, abs(p.x) - 84.0);
         float dzEdge = max(0.0, abs(p.y) - 76.0);
 
-        // ponytail: early out for central battlefield (no forest factor, height is flat 0.0) to save fragment shader cost
+        // Early out for central battlefield (no forest factor, height is flat 0.0)
         if (dxEdge == 0.0 && dzEdge == 0.0) {
             return 0.0;
         }
@@ -104,12 +104,25 @@ const FRAG = /* glsl */ `
         return (hills + lakeBowlDepth) * forestFactor;
     }
 
-    // Pembangkit Normal Ombak Prosedural
-    vec3 getWaveNormal(vec2 p) {
-        // Turunan dari fungsi sinus menghasilkan arah kemiringan ombak (normal)
-        float wave1 = sin(p.x) * cos(p.y);
-        vec3 n1 = vec3(-cos(p.x) * cos(p.y), 1.5, sin(p.x) * sin(p.y));
-        return normalize(n1);
+    // Pembangkit Normal Ombak Gerstner Prosedural Multi-Octave (3 Harmonics)
+    vec3 getWaveNormal(vec2 p, float t) {
+        // Harmonic 1: Ombak utama arah diagonal barat-daya
+        vec2 d1 = vec2(0.707, 0.707);
+        float w1 = dot(d1, p) * 0.40 + t * 1.0;
+        vec2 dw1 = d1 * cos(w1) * 0.22;
+
+        // Harmonic 2: Riak silang angin arah barat-laut
+        vec2 d2 = vec2(-0.6, 0.8);
+        float w2 = dot(d2, p) * 0.85 - t * 1.3;
+        vec2 dw2 = d2 * cos(w2) * 0.14;
+
+        // Harmonic 3: Micro-ripple kilau permukaan
+        vec2 d3 = vec2(0.9, -0.4);
+        float w3 = dot(d3, p) * 1.60 + t * 1.8;
+        vec2 dw3 = d3 * cos(w3) * 0.08;
+
+        vec2 slope = dw1 + dw2 + dw3;
+        return normalize(vec3(-slope.x, 1.2, -slope.y));
     }
 
     void main() {
@@ -126,68 +139,59 @@ const FRAG = /* glsl */ `
         float shoreFade = smoothstepGLSL(0.0, 0.25, depth);
         if (shoreFade < 0.01) discard;
 
-        float depthFactor = clamp(depth * 0.5, 0.0, 1.0);
+        float depthFactor = clamp(depth * 0.45, 0.0, 1.0);
 
-        // 1. Ilusi Ombak 3D (Panning Normals)
-        vec2 uv = vWorldXZ * 0.3;
-        vec2 timeOffset = vec2(uTime * 0.4, uTime * 0.3);
-        
-        // Dua layer ombak bersilangan
-        vec3 waveNormal1 = getWaveNormal(uv + timeOffset);
-        vec3 waveNormal2 = getWaveNormal(uv * 1.5 - timeOffset * 1.2);
-        
-        // Blend normal (0.0, 1.0, 0.0 adalah base normal flat/atas)
-        vec3 surfaceNormal = normalize(vec3(0.0, 1.0, 0.0) + (waveNormal1 + waveNormal2) * 0.3);
+        // 1. Gerstner Wave Synthesis Normal (Multi-Harmonic 3D Waves)
+        vec3 surfaceNormal = getWaveNormal(vWorldXZ * 0.45, uTime);
 
         // 2. Efek Fresnel (Refleksi Langit & Transparansi Kedalaman)
         vec3 viewDir = normalize(cameraPosition - vWorldPosition);
-        
-        // Schlick's approximation
         float fresnelDot = max(dot(viewDir, surfaceNormal), 0.0);
-        float fresnel = pow(1.0 - fresnelDot, 3.0); 
+        float fresnel = pow(1.0 - fresnelDot, 3.5); 
 
-        // Warna dasar air
-        vec3 shallowColor = vec3(0.20, 0.60, 0.68);
-        vec3 deepColor    = vec3(0.02, 0.12, 0.25);
-        vec3 baseWaterColor = mix(shallowColor, deepColor, depthFactor);
+        // 3. Gradasi Kedalaman Warna (Shallow Turquoise -> Deep Ocean)
+        vec3 shallowColor = vec3(0.18, 0.72, 0.88); // Crystal sparkling turquoise
+        vec3 deepColor    = vec3(0.03, 0.14, 0.38); // Deep rich royal navy
+        vec3 baseWaterColor = mix(shallowColor, deepColor, smoothstepGLSL(0.0, 2.5, depth));
 
-        // [ponytail: universal shore foam] Sederhana tapi dinamis memanfaatkan kedalaman air
-        float shoreFoamNoise = sin(vWorldXZ.x * 5.0 + uTime * 1.5) * cos(vWorldXZ.y * 5.0 + uTime * 1.2) * 0.5 + 0.5;
-        float shoreDist = depth;
-        float wavePulse = sin(shoreDist * 20.0 - uTime * 3.0) * 0.5 + 0.5;
-        // Busa utama tepat di bibir pantai
-        float shoreFoam = smoothstepGLSL(0.20, 0.0, shoreDist) * (0.7 + shoreFoamNoise * 0.3);
-        // Riak ombak busa sekunder dekat pantai
-        float waveFoam = smoothstepGLSL(0.12, 0.0, abs(shoreDist - 0.10 - wavePulse * 0.05)) * 0.4;
-        float totalFoam = clamp(shoreFoam + waveFoam, 0.0, 1.0) * shoreFade;
+        // 4. Distorsi Organik Ombak Bibir Pantai (Organic Shoreline Wave Displacement)
+        float shoreNoise = sin(vWorldXZ.x * 0.35 + vWorldXZ.y * 0.25 + uTime * 0.9) * 0.14 +
+                           cos(vWorldXZ.x * 0.70 - vWorldXZ.y * 0.60 - uTime * 1.3) * 0.07;
 
-        // Busa air (Foam) bereaksi pada batas dan distorsi normal (untuk danau)
-        float foamRing  = smoothstepGLSL(0.60, 0.88, distCenter) * (1.0 - smoothstepGLSL(0.88, 1.08, distCenter));
-        float foamNoise = sin(vWorldXZ.x * 16.0 + uTime * 2.0) * cos(vWorldXZ.y * 13.0 + uTime * 2.5);
-        float lakeFoamIntensity = foamRing * (0.25 + foamNoise * 0.2) * 0.5 * shoreFade;
-        
-        float finalFoam = max(totalFoam, lakeFoamIntensity);
+        // Gelombang sapuan dinamis bolak-balik (surging and receding wave wash)
+        float waveWash = sin(uTime * 2.2 - depth * 9.0 + shoreNoise * 3.5) * 0.5 + 0.5;
 
-        vec3 waterWithFoam = mix(baseWaterColor, vec3(0.90, 0.95, 0.96), finalFoam);
+        // 5. Busa Pantai Organik Halus (Soft Shore Contact Foam)
+        float shoreContact = smoothstepGLSL(0.32, 0.02, depth + shoreNoise * 0.25);
+        float waveCrest = smoothstepGLSL(0.45, 0.05, depth) * smoothstepGLSL(0.55, 0.92, waveWash);
+        float microNoise = sin(vWorldXZ.x * 2.5 + uTime * 1.1) * cos(vWorldXZ.y * 2.5 - uTime * 0.8) * 0.5 + 0.5;
+        float finalFoam = clamp(shoreContact * 0.75 + waveCrest * (0.50 + 0.35 * microNoise), 0.0, 1.0);
 
-        // [ponytail: cel-shaded shore waves] Garis riak ombak kartun yang lebih besar dan menjangkau lebih ke tengah
-        float waveTravel = sin(depth * 14.0 - uTime * 3.5) * 0.5 + 0.5;
-        float celWave = smoothstepGLSL(0.76, 0.85, waveTravel);
-        // Menjangkau lebih ke tengah (depth hingga 1.8)
-        float waveMask = smoothstepGLSL(1.80, 0.0, depth) * shoreFade;
-        waterWithFoam = mix(waterWithFoam, vec3(0.90, 0.95, 0.98), celWave * waveMask * 0.75);
+        vec3 foamColor = vec3(0.96, 0.99, 1.0);
+        vec3 waterWithFoam = mix(baseWaterColor, foamColor, finalFoam * shoreFade * 0.85);
 
-        // Caustics matahari yang terdistorsi oleh normal ombak
-        float caustic = abs(sin((vWorldXZ.x + surfaceNormal.x) * 9.0 + uTime * 1.4) * 
-                            sin((vWorldXZ.y + surfaceNormal.z) * 7.5 - uTime * 1.0));
-        waterWithFoam += caustic * vec3(0.05, 0.12, 0.10) * depthFactor * 0.5;
+        // 6. Kilau Pantulan Matahari / Specular Sun Reflection
+        vec3 sunDir = normalize(vec3(0.5, 0.75, 0.4));
+        vec3 halfVec = normalize(viewDir + sunDir);
+        float spec = pow(max(dot(surfaceNormal, halfVec), 0.0), 36.0);
+        vec3 sunSpecular = vec3(1.0, 0.95, 0.82) * spec * 0.55 * shoreFade;
+        waterWithFoam += sunSpecular;
+
+        // 7. Caustics Cairan Organik Melengkung (Curved Liquid Caustics — No Grid Matrix)
+        // ponytail: non-orthogonal diagonal wave superposition creates natural organic flowing ribbons instead of grid tiles
+        vec2 cCoord = vWorldXZ * 0.45 + surfaceNormal.xz * 0.35;
+        float cWave1 = sin(cCoord.x * 1.4 + cCoord.y * 1.1 + uTime * 1.2);
+        float cWave2 = sin(-cCoord.x * 1.2 + cCoord.y * 1.5 - uTime * 0.9);
+        float cWave3 = cos(cCoord.x * 0.9 - cCoord.y * 1.8 + uTime * 1.5);
+        float caustic = pow(clamp((cWave1 + cWave2 + cWave3) * 0.33 + 0.5, 0.0, 1.0), 3.0);
+        waterWithFoam += caustic * vec3(0.06, 0.16, 0.20) * depthFactor * 0.35;
 
         // Campurkan warna dasar air dengan warna langit berdasarkan Fresnel
-        vec3 finalColor = mix(waterWithFoam, uSkyColor, fresnel * 0.7);
+        vec3 finalColor = mix(waterWithFoam, uSkyColor, fresnel * 0.65);
 
-        // Alpha calculation: Pixel menghadap kamera lebih transparan, di tepi pantai lebih mulus
-        float finalAlpha = mix(0.35, 0.9, depthFactor) * shoreFade;
-        finalAlpha = clamp(finalAlpha + fresnel * 0.3 + finalFoam * 0.5, 0.0, 1.0); // Grazing angle & foam lebih solid
+        // Alpha calculation: Opacity pekat halus yang menutupi wireframe dasar tanah namun tetap transparan di bibir pantai
+        float finalAlpha = mix(0.85, 0.98, depthFactor) * shoreFade;
+        finalAlpha = clamp(finalAlpha + fresnel * 0.25 + finalFoam * 0.45, 0.0, 1.0);
 
         gl_FragColor = vec4(finalColor, finalAlpha);
         #include <fog_fragment>
@@ -197,96 +201,44 @@ const FRAG = /* glsl */ `
 export class WaterSurface {
     meshes: THREE.Mesh[] = [];
     materials: THREE.ShaderMaterial[] = [];
-    private lakeMeshes: THREE.Mesh[] = []; // Store lake meshes for LOD culling
-
-    // Tambahkan sky color untuk pantulan Fresnel
     private skyColor = new THREE.Color(0.6, 0.75, 0.9);
 
     constructor(scene: THREE.Scene, uniforms: { uTime: { value: number } }) {
-        for (const lake of LAKES) {
-            const { mesh, mat } = this._buildLake(lake, uniforms);
-            scene.add(mesh);
-            this.meshes.push(mesh);
-            this.materials.push(mat);
-            this.lakeMeshes.push(mesh);
-        }
+        // ponytail: Single unified 2400x2400 water plane covering all lakes and rivers across the expanded world.
+        const waterGeo = new THREE.PlaneGeometry(2400, 2400);
+        const waterUniforms = THREE.UniformsUtils.merge([
+            THREE.UniformsLib.fog,
+            {
+                uTime: uniforms.uTime,
+                uSkyColor: { value: this.skyColor },
+            }
+        ]);
+        waterUniforms.uTime = uniforms.uTime;
 
-        // River plane
-        const riverGeo = new THREE.PlaneGeometry(900, 900);
-        const riverMat = new THREE.ShaderMaterial({
-            uniforms: THREE.UniformsUtils.merge([
-                THREE.UniformsLib.fog,
-                {
-                    uTime: uniforms.uTime,
-                    uLakeCenter: { value: new THREE.Vector2(9999, 9999) },
-                    uLakeRadius: { value: new THREE.Vector2(1, 1) },
-                    uSkyColor: { value: this.skyColor },
-                }
-            ]),
+        const waterMat = new THREE.ShaderMaterial({
+            uniforms: waterUniforms,
             vertexShader: VERT,
             fragmentShader: FRAG,
             transparent: true,
-            depthWrite: true,
-            side: THREE.DoubleSide,
-            fog: true,
-        });
-        const riverMesh = new THREE.Mesh(riverGeo, riverMat);
-        riverMesh.name = "water";
-        riverMesh.userData.excludeOcclusion = true;
-        riverMesh.rotation.x = -Math.PI / 2;
-        riverMesh.position.set(0, -3.0, 0);
-        riverMesh.frustumCulled = false;
-        riverMesh.renderOrder = -1; // Render before other transparent VFX so VFX blend on top of water
-        scene.add(riverMesh);
-        this.meshes.push(riverMesh);
-        this.materials.push(riverMat);
-    }
-
-    update(camPos: THREE.Vector3) {
-        // LOD: Cull lakes that are too far from the camera
-        const LOD_DIST_SQ = 260.0 * 260.0;
-        for (const mesh of this.lakeMeshes) {
-            const dx = mesh.position.x - camPos.x;
-            const dz = mesh.position.z - camPos.z;
-            const distSq = dx * dx + dz * dz;
-            mesh.visible = distSq < LOD_DIST_SQ;
-        }
-    }
-
-    private _buildLake(
-        lake: LakeDef,
-        uniforms: { uTime: { value: number } },
-    ): { mesh: THREE.Mesh; mat: THREE.ShaderMaterial } {
-        const width = lake.rx * 2.6;
-        const height = lake.rz * 2.6;
-        const geo = new THREE.PlaneGeometry(width, height);
-
-        const mat = new THREE.ShaderMaterial({
-            uniforms: THREE.UniformsUtils.merge([
-                THREE.UniformsLib.fog,
-                {
-                    uTime: uniforms.uTime,
-                    uLakeCenter: { value: new THREE.Vector2(lake.cx, lake.cz) },
-                    uLakeRadius: { value: new THREE.Vector2(lake.rx, lake.rz) },
-                    uSkyColor: { value: this.skyColor },
-                }
-            ]),
-            vertexShader: VERT,
-            fragmentShader: FRAG,
-            transparent: true,
-            depthWrite: true,
+            depthWrite: false, // Prevents Z-buffer fighting and transparency sorting artifacts
             side: THREE.DoubleSide,
             fog: true,
         });
 
-        const mesh = new THREE.Mesh(geo, mat);
-        mesh.name = "water";
-        mesh.userData.excludeOcclusion = true;
-        mesh.rotation.x = -Math.PI / 2;
-        mesh.position.set(lake.cx, -3.0, lake.cz);
-        mesh.frustumCulled = false;
-        mesh.renderOrder = -1; // Render before other transparent VFX so VFX blend on top of water
+        const waterMesh = new THREE.Mesh(waterGeo, waterMat);
+        waterMesh.name = "water";
+        waterMesh.userData.excludeOcclusion = true;
+        waterMesh.rotation.x = -Math.PI / 2;
+        waterMesh.position.set(0, -3.0, 0);
+        waterMesh.frustumCulled = false;
+        waterMesh.renderOrder = -1;
+        
+        scene.add(waterMesh);
+        this.meshes.push(waterMesh);
+        this.materials.push(waterMat);
+    }
 
-        return { mesh, mat };
+    update(_camPos: THREE.Vector3) {
+        // Single unified plane doesn't require individual mesh iteration
     }
 }

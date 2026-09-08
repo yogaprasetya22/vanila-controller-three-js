@@ -12,7 +12,7 @@ export class RendererSetup {
   public static init(scene: THREE.Scene, container: HTMLDivElement) {
     const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
 
-    this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+    this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 450);
     setCamera(this.camera);
     this.camera.position.set(0, 15, 30);
 

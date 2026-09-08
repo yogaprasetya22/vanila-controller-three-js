@@ -3,6 +3,7 @@ import { BaseEnemyController } from '../entities/enemy/BaseEnemyController';
 import { EnemyFactory } from '../entities/enemy/EnemyFactory';
 import { SkillsSystem } from './combat/SkillsSystem';
 import { getState } from '../network/NetworkManager';
+import { TargetingManager } from './targeting/TargetingManager';
 
 export class NPCManager {
   public static npcControllers = new Map<string, BaseEnemyController>();
@@ -26,6 +27,9 @@ export class NPCManager {
       }
       ctrl.hp = data.hp;
       ctrl.maxHp = data.maxHp;
+      if (ctrl.hp > 0 && !TargetingManager.getEntity(id)) {
+        ctrl.registerTargeting();
+      }
       if (typeof data.level === 'number') {
         ctrl.level = data.level;
       }

@@ -51,19 +51,6 @@ export const SPAWN_SPREAD = 68;
 
 export const BUFFER_BYTES = UNIT_COUNT * STRIDE * Float32Array.BYTES_PER_ELEMENT;
 
-const GRID = 0.5;
-const CACHE_SIZE = 4096;
-const _hCacheKeys = new Int32Array(CACHE_SIZE).fill(-1);
-const _hCacheVals = new Float32Array(CACHE_SIZE);
-
-function getCacheIndex(x: number, z: number, keyOut: { key: number }): number {
-    const ix = Math.round(x / GRID);
-    const iz = Math.round(z / GRID);
-    const key = (ix << 16) | (iz & 0xffff);
-    keyOut.key = key;
-    return Math.abs(key) & (CACHE_SIZE - 1);
-}
-
 function smoothstep(edge0: number, edge1: number, x: number): number {
     const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
     return t * t * (3 - 2 * t);
@@ -96,17 +83,14 @@ export const BF_HALF_X = 84;
 export const BF_HALF_Z = 76;
 export const BF_BLEND = 14;
 
-const _keyRef = { key: 0 };
-
+// ponytail: Pure analytical math calculation (continuous floating-point, zero grid stepping, zero cache collision artifacts).
 export function getTerrainHeight(x: number, z: number): number {
-    const idx = getCacheIndex(x, z, _keyRef);
-    const key = _keyRef.key;
-    if (_hCacheKeys[idx] === key) {
-        return _hCacheVals[idx];
-    }
-
     const dxEdge = Math.max(0, Math.abs(x) - BF_HALF_X);
     const dzEdge = Math.max(0, Math.abs(z) - BF_HALF_Z);
+    if (dxEdge === 0 && dzEdge === 0) {
+        return 0.0; // Flat battlefield center
+    }
+
     const edgeDist = Math.sqrt(dxEdge * dxEdge + dzEdge * dzEdge);
     const forestFactor = smoothstep(0, BF_BLEND, edgeDist);
 
@@ -116,11 +100,11 @@ export function getTerrainHeight(x: number, z: number): number {
     // Secondary plateau layers for more plains variety
     const h1 = Math.sin(x * 0.12 + 0.5) * Math.cos(z * 0.12) * 3.5;
     const h2 = Math.sin(x * 0.28) * Math.sin(z * 0.22 + 1.2) * 1.2;
-    const h3 = Math.sin(x * 0.06 + 1.1) * Math.cos(z * 0.055 + 0.8) * 9.0; // wide rolling plateau
-    const h4 = Math.cos(x * 0.09) * Math.sin(z * 0.075 + 2.0) * 5.5;       // medium undulation
+    const h3 = Math.sin(x * 0.06 + 1.1) * Math.cos(z * 0.055 + 0.8) * 9.0;
+    const h4 = Math.cos(x * 0.09) * Math.sin(z * 0.075 + 2.0) * 5.5;
 
     // Winding River Bed: wider and deeper for 2x map
-    const riverPath = Math.sin(x * 0.013) * 75; // wider winding amplitude
+    const riverPath = Math.sin(x * 0.013) * 75;
     const riverDist = Math.abs(z - riverPath);
     let riverDepth = 0;
     if (riverDist < 28) {
@@ -129,7 +113,6 @@ export function getTerrainHeight(x: number, z: number): number {
     }
 
     let hills = mountainH + h1 + h2 + h3 + h4 + riverDepth;
-
     const WATER_LEVEL = -3.0;
 
     let maxWetness = 0;
@@ -147,16 +130,11 @@ export function getTerrainHeight(x: number, z: number): number {
 
     hills = mixVal(hills, WATER_LEVEL, smoothstep(0.0, 0.8, maxWetness));
     const forestTerrain = hills + lakeBowlDepth;
-    const result = forestTerrain * forestFactor;
-
-    _hCacheKeys[idx] = key;
-    _hCacheVals[idx] = result;
-    return result;
+    return forestTerrain * forestFactor;
 }
 
 export function invalidateTerrainCache(): void {
-    _hCacheKeys.fill(-1);
-    _hCacheVals.fill(0);
+    // No-op kept for backwards-compatibility with tests/callers
 }
 
 export const HERO_UNIT_INDEX = 0;

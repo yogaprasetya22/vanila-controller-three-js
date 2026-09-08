@@ -3,28 +3,72 @@ import { getTerrainHeight } from '../../simulation/constants';
 import { treePositions } from './Trees';
 import { globalWind } from './Wind';
 
-const LEAF_COLORS = [0x76b041, 0xffb7b2, 0xffdac1, 0x4d908e].map(c => new THREE.Color(c));
+const LEAF_COLORS = [
+  0x52b788, // 0: Forest Green
+  0xfcbf49, // 1: Birch Yellow
+  0xd62828, // 2: Maple Red
+  0xf77f00, // 3: Maple Orange
+].map(c => new THREE.Color(c));
 
 interface LeafParticle {
   position: THREE.Vector3;
   velocity: THREE.Vector3;
   rotation: THREE.Euler;
   rotationSpeed: THREE.Vector3;
+  scale: number;
   lifetime: number;
   maxLifetime: number;
   colorIndex: number;
 }
 
+// ponytail: Procedural 3D folded/creased leaf geometry instead of a flat Plane
+function createLeafGeometry(): THREE.BufferGeometry {
+  const geom = new THREE.BufferGeometry();
+  
+  // A folded diamond/leaf shape with center crease raised in Z
+  const vertices = new Float32Array([
+    // Left half (2 triangles)
+    0, 0.12, 0.02,     // Tip
+    -0.07, 0, 0,       // Left
+    0, 0, 0.03,        // Center
+
+    -0.07, 0, 0,       // Left
+    0, -0.12, 0.02,    // Base
+    0, 0, 0.03,        // Center
+
+    // Right half (2 triangles)
+    0, 0.12, 0.02,     // Tip
+    0, 0, 0.03,        // Center
+    0.07, 0, 0,        // Right
+
+    0, 0, 0.03,        // Center
+    0, -0.12, 0.02,    // Base
+    0.07, 0, 0,        // Right
+  ]);
+
+  const uvs = new Float32Array([
+    0.5, 1.0,   0.0, 0.5,   0.5, 0.5,
+    0.0, 0.5,   0.5, 0.0,   0.5, 0.5,
+    0.5, 1.0,   0.5, 0.5,   1.0, 0.5,
+    0.5, 0.5,   0.5, 0.0,   1.0, 0.5,
+  ]);
+
+  geom.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+  geom.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+  geom.computeVertexNormals();
+  return geom;
+}
+
 export class Leaves {
   meshes: THREE.InstancedMesh[];
   particles: LeafParticle[] = [];
-  count = 80; // ponytail: scaled from 40 to 80 for 2x map size
+  count = 180; // ponytail: reduced from 450 to 180 to avoid overcrowding
   dummy = new THREE.Object3D();
   // ponytail: pre-allocate — avoid new Matrix4() inside update() every frame
   private readonly _deadMatrix = new THREE.Matrix4().makeTranslation(0, -9999, 0);
 
   constructor(scene: THREE.Scene) {
-    const leafGeo = new THREE.PlaneGeometry(0.18, 0.26);
+    const leafGeo = createLeafGeometry();
     this.meshes = LEAF_COLORS.map(c => {
       const mesh = new THREE.InstancedMesh(leafGeo, new THREE.MeshBasicMaterial({
         // ponytail: MeshBasicMaterial — no lighting calc, ~3x faster fragment shader
@@ -47,25 +91,44 @@ export class Leaves {
     let x: number, z: number, y: number;
     const center = camPos || new THREE.Vector3(0, 0, 0);
 
-    if (treePositions.length > 0 && Math.random() < 0.7) {
-      const treePos = treePositions[Math.floor(Math.random() * treePositions.length)];
-      x = treePos.x + (Math.random() - 0.5) * 2.5;
-      z = treePos.z + (Math.random() - 0.5) * 2.5;
-      y = treePos.y + 1.2 + Math.random() * 1.5;
+    // ponytail: only spawn on Birch/Maple deciduous trees close to camera (< 65m); ignore evergreen Pines
+    const nearbyTrees = treePositions.filter(pos => {
+      const type = (pos as any).treeType;
+      return type && type !== 'Pine_1' && pos.distanceToSquared(center) < 65 * 65;
+    });
+
+    let colorIndex = Math.floor(Math.random() * LEAF_COLORS.length);
+
+    if (nearbyTrees.length > 0 && Math.random() < 0.85) {
+      const treePos = nearbyTrees[Math.floor(Math.random() * nearbyTrees.length)];
+      x = treePos.x + (Math.random() - 0.5) * 3.5;
+      z = treePos.z + (Math.random() - 0.5) * 3.5;
+      y = treePos.y + 1.5 + Math.random() * 3.0;
+
+      // Match leaf color index to tree species
+      const type = (treePos as any).treeType;
+      if (type === 'MapleTree_1') {
+        colorIndex = Math.random() < 0.5 ? 2 : 3; // Red or Orange
+      } else if (type === 'BirchTree_2') {
+        colorIndex = Math.random() < 0.7 ? 1 : 0; // Yellow or Green
+      }
     } else {
-      x = center.x + (Math.random() - 0.5) * 220;
-      z = center.z + (Math.random() - 0.5) * 220;
-      y = getTerrainHeight(x, z) + 1.5 + Math.random() * 4.0;
+      x = center.x + (Math.random() - 0.5) * 120;
+      z = center.z + (Math.random() - 0.5) * 120;
+      y = getTerrainHeight(x, z) + 2.0 + Math.random() * 5.0;
     }
     const lifetime = 6.0 + Math.random() * 8.0;
+    const scale = 0.6 + Math.random() * 0.8;
     return {
       position: new THREE.Vector3(x, y, z),
-      velocity: new THREE.Vector3((Math.random() - 0.5) * 0.4 + 0.15, -0.06 - Math.random() * 0.08, (Math.random() - 0.5) * 0.25),
+      // ponytail: slower base fall velocity and horizontal drift for a gentler, slower leaf drop
+      velocity: new THREE.Vector3((Math.random() - 0.5) * 0.15 + 0.03, -0.03 - Math.random() * 0.04, (Math.random() - 0.5) * 0.1),
       rotation: new THREE.Euler(Math.random() * Math.PI * 2, Math.random() * Math.PI * 2, Math.random() * Math.PI * 2),
-      rotationSpeed: new THREE.Vector3((Math.random() - 0.5) * 1.8, (Math.random() - 0.5) * 2.2, (Math.random() - 0.5) * 1.5),
+      rotationSpeed: new THREE.Vector3((Math.random() - 0.5) * 1.2, (Math.random() - 0.5) * 1.5, (Math.random() - 0.5) * 0.9),
+      scale,
       lifetime: Math.random() * lifetime,
       maxLifetime: lifetime,
-      colorIndex: Math.floor(Math.random() * LEAF_COLORS.length),
+      colorIndex,
     };
   }
 
@@ -87,18 +150,19 @@ export class Leaves {
       const dz = p.position.z - center.z;
       const distSq = dx * dx + dz * dz;
 
-      if (p.lifetime >= p.maxLifetime || distSq > 150.0 * 150.0) {
+      if (p.lifetime >= p.maxLifetime || distSq > 80.0 * 80.0) {
         this.particles[i] = this.spawnParticle(center);
         this.particles[i].lifetime = 0;
         continue;
       }
 
-      p.velocity.y -= 0.008 * delta;
+      p.velocity.y -= 0.003 * delta; // ponytail: gravity/downward acceleration halved
       const groundY = getTerrainHeight(p.position.x, p.position.z);
-      const windSway = Math.sin(elapsed * 2.5 + i * 0.7) * 0.15 * delta;
-      p.position.x += (p.velocity.x + globalWind.direction.x * globalWind.strength * 0.25) * delta * 60 + windSway;
+      const windSway = Math.sin(elapsed * 2.0 + i * 0.7) * 0.07 * delta; // ponytail: softer sinusoidal flutter
+      // ponytail: wind multiplier reduced from 0.25 to 0.08 for gentler breeze effect
+      p.position.x += (p.velocity.x + globalWind.direction.x * globalWind.strength * 0.08) * delta * 60 + windSway;
       p.position.y += p.velocity.y * delta * 60;
-      p.position.z += (p.velocity.z + globalWind.direction.y * globalWind.strength * 0.25) * delta * 60;
+      p.position.z += (p.velocity.z + globalWind.direction.y * globalWind.strength * 0.08) * delta * 60;
 
       // ponytail: Fluttering rotation/sway mimicking the WebGPU/TSL implementation
       const rotationMultiplier = Math.max((p.position.y - groundY) * 0.5, 0.2); // stronger flutter in the air, settles as it approaches ground
@@ -123,6 +187,7 @@ export class Leaves {
       if (slot < this.count) {
         this.dummy.position.copy(p.position);
         this.dummy.rotation.copy(p.rotation);
+        this.dummy.scale.setScalar(p.scale);
         this.dummy.updateMatrix();
         this.meshes[p.colorIndex].setMatrixAt(slot, this.dummy.matrix);
         colorCounters[p.colorIndex]++;

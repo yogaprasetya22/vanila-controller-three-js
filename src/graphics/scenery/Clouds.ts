@@ -1,113 +1,370 @@
 import * as THREE from 'three';
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { getTerrainHeight } from '../../simulation/constants';
+import { globalWind } from './Wind';
+
+export type WeatherType = 'fair' | 'storm';
+
+interface CloudPuff {
+  localOffset: THREE.Vector3;
+  baseScale: THREE.Vector3;
+  scale: THREE.Vector3;
+  rotation: THREE.Quaternion;
+  instanceIndex: number;
+}
+
+interface CloudCluster {
+  type: WeatherType;
+  center: THREE.Vector3;
+  baseHeight: number;
+  radius: number;
+  speed: number;
+  puffs: CloudPuff[];
+}
+
+interface SplashRipple {
+  pos: THREE.Vector3;
+  age: number;
+  maxAge: number;
+  scale: number;
+}
 
 export class Clouds {
-  private instancedMesh: THREE.InstancedMesh;
-  private count = 80;
-  private positions: THREE.Vector3[] = [];
-  private speeds: number[] = [];
-  private scales: THREE.Vector3[] = [];
-  private heightOffsets: number[] = [];
-  private worldSize = 860; // Match the world dimensions
+  private fairMesh: THREE.InstancedMesh;
+  private stormMesh: THREE.InstancedMesh;
+
+  private clusters: CloudCluster[] = [];
+  private totalFairPuffs = 0;
+  private totalStormPuffs = 0;
+
+  private worldSize = 2400; // Match the 2400x2400 world dimensions
+  private halfSize = 1200;
+
+  // Ultra-Lightweight Rain System
+  private rainMesh: THREE.InstancedMesh;
+  private rainCount = 350;
+  private rainPositions: THREE.Vector3[] = [];
+  private rainSpeeds: number[] = [];
+  private isRainActive = false;
+
+  // Ground Splash Ripple System
+  private splashMesh: THREE.InstancedMesh;
+  private splashCount = 90;
+  private splashes: SplashRipple[] = [];
+
+  private lastCamPos = new THREE.Vector3(9999, 9999, 9999);
 
   constructor(scene: THREE.Scene) {
     const cloudGeometry = createLowPolyCloudGeometry();
 
-    const material = createCartoonCloudMaterial('#ffffff', '#b9d3e6', 0.95);
+    // Dual materials for Fair (bright/fluffy) and Storm (dark/heavy/volumetric)
+    const fairMaterial = createCartoonCloudMaterial('#ffffff', '#b5d0e8', 0.95);
+    const stormMaterial = createCartoonCloudMaterial('#4e5564', '#20242e', 0.98);
 
-    this.instancedMesh = new THREE.InstancedMesh(cloudGeometry, material, this.count);
-    this.instancedMesh.castShadow = false;
-    this.instancedMesh.receiveShadow = false;
+    // Build 6 structured cloud clusters across the 2400x2400 map
+    // 2 Storm Clusters (North-West & South-East) and 4 Fair Clusters
+    const clusterConfigs: Array<{ type: WeatherType; x: number; z: number; radius: number; puffCount: number; speed: number }> = [
+      { type: 'storm', x: -350, z: -400, radius: 150, puffCount: 32, speed: 1.2 },
+      { type: 'storm', x: 480,  z: 360,  radius: 160, puffCount: 36, speed: 1.0 },
+      { type: 'fair',  x: -550, z: 350,  radius: 130, puffCount: 26, speed: 1.8 },
+      { type: 'fair',  x: 350,  z: -480, radius: 140, puffCount: 28, speed: 2.0 },
+      { type: 'fair',  x: -40,  z: -200, radius: 120, puffCount: 24, speed: 2.2 },
+      { type: 'fair',  x: 180,  z: 520,  radius: 150, puffCount: 30, speed: 1.6 },
+    ];
 
-    // Initialize instances scattered in the sky
-    const halfSize = this.worldSize / 2;
-    const rotation = new THREE.Quaternion();
+    let fairIdx = 0;
+    let stormIdx = 0;
 
-    for (let i = 0; i < this.count; i++) {
-      const x = (Math.random() - 0.5) * this.worldSize;
-      const z = (Math.random() - 0.5) * this.worldSize;
+    for (const conf of clusterConfigs) {
+      const isStorm = conf.type === 'storm';
+      const baseHeight = isStorm ? 36.0 : 42.0;
+      const groundY = Math.max(getTerrainHeight(conf.x, conf.z), -3.0);
+      const center = new THREE.Vector3(conf.x, groundY + baseHeight, conf.z);
 
-      // Group types: 50% Small, 35% Large, 15% Extra Large
-      const rand = Math.random();
-      const groundY = Math.max(getTerrainHeight(x, z), -3.0);
-      let heightOffset = 35.0;
-      let sc = 1.0;
-      let speed = 2.0;
+      const puffs: CloudPuff[] = [];
 
-      if (rand < 0.50) {
-        // Small clouds (drift fast, sit lower)
-        sc = 0.6 + Math.random() * 0.5;
-        speed = 3.5 + Math.random() * 2.5;
-        heightOffset = 35.0 + Math.random() * 4.0;
-      } else if (rand < 0.85) {
-        // Large clouds (drift medium, sit middle)
-        sc = 1.6 + Math.random() * 1.0;
-        speed = 1.8 + Math.random() * 1.4;
-        heightOffset = 39.0 + Math.random() * 5.0;
-      } else {
-        // Extra Large clouds (drift slowly, sit high up)
-        sc = 3.2 + Math.random() * 1.8;
-        speed = 0.6 + Math.random() * 0.8;
-        heightOffset = 44.0 + Math.random() * 6.0;
+      for (let p = 0; p < conf.puffCount; p++) {
+        const angle = Math.random() * Math.PI * 2;
+        const distFromCenter = Math.pow(Math.random(), 0.7) * conf.radius;
+        const lx = Math.cos(angle) * distFromCenter;
+        const lz = Math.sin(angle) * distFromCenter;
+        const ly = (Math.random() - 0.4) * (isStorm ? 12.0 : 7.0);
+
+        const edgeRatio = 1.0 - (distFromCenter / conf.radius);
+        const sizeBase = (isStorm ? 2.8 : 2.2) + edgeRatio * 1.8 + Math.random() * 1.2;
+        const scale = new THREE.Vector3(
+          sizeBase * (1.6 + Math.random() * 0.4),
+          sizeBase * (0.8 + Math.random() * 0.3),
+          sizeBase * (1.4 + Math.random() * 0.4)
+        );
+
+        const rot = new THREE.Quaternion().setFromEuler(
+          new THREE.Euler(0, Math.random() * Math.PI * 2, 0)
+        );
+
+        puffs.push({
+          localOffset: new THREE.Vector3(lx, ly, lz),
+          baseScale: scale.clone(),
+          scale: scale.clone(),
+          rotation: rot,
+          instanceIndex: isStorm ? stormIdx++ : fairIdx++
+        });
       }
 
-      const y = groundY + heightOffset;
-      this.heightOffsets.push(heightOffset);
-      this.positions.push(new THREE.Vector3(x, y, z));
-      this.speeds.push(speed);
-      
-      this.scales.push(new THREE.Vector3(sc * 1.6, sc * 0.7, sc * 1.2)); // Cartoon scale ratio
-
-      const matrix = new THREE.Matrix4();
-      const scale = this.scales[i];
-      matrix.compose(this.positions[i], rotation, scale);
-      this.instancedMesh.setMatrixAt(i, matrix);
+      this.clusters.push({
+        type: conf.type,
+        center,
+        baseHeight,
+        radius: conf.radius,
+        speed: conf.speed,
+        puffs
+      });
     }
 
-    this.instancedMesh.instanceMatrix.needsUpdate = true;
-    scene.add(this.instancedMesh);
+    this.totalFairPuffs = fairIdx;
+    this.totalStormPuffs = stormIdx;
+
+    this.fairMesh = new THREE.InstancedMesh(cloudGeometry, fairMaterial, this.totalFairPuffs);
+    this.fairMesh.castShadow = false;
+    this.fairMesh.receiveShadow = false;
+
+    this.stormMesh = new THREE.InstancedMesh(cloudGeometry, stormMaterial, this.totalStormPuffs);
+    this.stormMesh.castShadow = false;
+    this.stormMesh.receiveShadow = false;
+
+    scene.add(this.fairMesh);
+    scene.add(this.stormMesh);
+
+    // ── Ultra-Thin Vertical Rain Streaks ──
+    // Vertical thin ribbon quad (0.015m wide, 0.85m tall)
+    const rainGeo = new THREE.PlaneGeometry(0.018, 0.9);
+    // Center alignment
+    rainGeo.translate(0, 0.45, 0);
+
+    const rainMat = new THREE.MeshBasicMaterial({
+      color: 0xcde5ff,
+      transparent: true,
+      opacity: 0.50,
+      blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide,
+      depthWrite: false
+    });
+
+    this.rainMesh = new THREE.InstancedMesh(rainGeo, rainMat, this.rainCount);
+    this.rainMesh.frustumCulled = false;
+    this.rainMesh.visible = false;
+
+    for (let i = 0; i < this.rainCount; i++) {
+      this.rainPositions.push(new THREE.Vector3(0, -9999, 0));
+      this.rainSpeeds.push(32.0 + Math.random() * 14.0);
+    }
+
+    scene.add(this.rainMesh);
+
+    // ── Ground Splash Ripple System ──
+    // Flat circular ring geometry on XZ plane
+    const splashGeo = new THREE.RingGeometry(0.04, 0.22, 10);
+    splashGeo.rotateX(-Math.PI / 2); // Lay flat on ground
+
+    const splashMat = new THREE.MeshBasicMaterial({
+      color: 0xdff0ff,
+      transparent: true,
+      opacity: 0.65,
+      blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide,
+      depthWrite: false
+    });
+
+    this.splashMesh = new THREE.InstancedMesh(splashGeo, splashMat, this.splashCount);
+    this.splashMesh.frustumCulled = false;
+    this.splashMesh.visible = false;
+
+    for (let i = 0; i < this.splashCount; i++) {
+      this.splashes.push({
+        pos: new THREE.Vector3(0, -9999, 0),
+        age: 1.0,
+        maxAge: 0.22 + Math.random() * 0.12,
+        scale: 0.1
+      });
+    }
+
+    scene.add(this.splashMesh);
   }
 
   public update(delta: number, camPos: THREE.Vector3) {
-    const halfSize = this.worldSize / 2;
-    const matrix = new THREE.Matrix4();
-    const rotation = new THREE.Quaternion();
+    const scratchMatrix = new THREE.Matrix4();
+    const windX = globalWind.direction.x * globalWind.strength;
+    const windZ = globalWind.direction.y * globalWind.strength;
 
-    for (let i = 0; i < this.count; i++) {
-      const pos = this.positions[i];
-      const speed = this.speeds[i];
-      const scale = this.scales[i];
+    let nearestStormDist = 99999;
+    let activeStormCluster: CloudCluster | null = null;
 
-      // Drift along the X axis
-      pos.x += speed * delta;
+    for (const cluster of this.clusters) {
+      // Drift cluster along wind direction
+      cluster.center.x += windX * cluster.speed * delta * 4;
+      cluster.center.z += windZ * cluster.speed * delta * 4;
 
-      // Wrap around bounds
-      if (pos.x > halfSize) {
-        pos.x = -halfSize;
-        pos.z = (Math.random() - 0.5) * this.worldSize; // randomize Z on wrap
+      // Wrap around world bounds seamlessly
+      if (cluster.center.x > this.halfSize) {
+        cluster.center.x = -this.halfSize;
+        cluster.center.z = (Math.random() - 0.5) * this.worldSize;
+      } else if (cluster.center.x < -this.halfSize) {
+        cluster.center.x = this.halfSize;
+        cluster.center.z = (Math.random() - 0.5) * this.worldSize;
       }
 
-      // ponytail: update height dynamically to stay 35+ meters above ground/water surface
-      const groundY = Math.max(getTerrainHeight(pos.x, pos.z), -3.0);
-      pos.y = groundY + this.heightOffsets[i];
-
-      // ponytail: collapse cloud scale to 0.0 if further than 100 meters from camera to save render cost
-      const distSq = pos.distanceToSquared(camPos);
-      let finalScale = scale;
-      if (distSq > 10000) {
-        finalScale = new THREE.Vector3(0, 0, 0);
-      } else if (distSq > 6400) { // Smooth scale fade-out between 80m and 100m
-        const dist = Math.sqrt(distSq);
-        const fade = 1.0 - (dist - 80) / 20;
-        finalScale = scale.clone().multiplyScalar(fade);
+      if (cluster.center.z > this.halfSize) {
+        cluster.center.z = -this.halfSize;
+        cluster.center.x = (Math.random() - 0.5) * this.worldSize;
+      } else if (cluster.center.z < -this.halfSize) {
+        cluster.center.z = this.halfSize;
+        cluster.center.x = (Math.random() - 0.5) * this.worldSize;
       }
 
-      matrix.compose(pos, rotation, finalScale);
-      this.instancedMesh.setMatrixAt(i, matrix);
+      const groundY = Math.max(getTerrainHeight(cluster.center.x, cluster.center.z), -3.0);
+      cluster.center.y = THREE.MathUtils.lerp(cluster.center.y, groundY + cluster.baseHeight, 1.2 * delta);
+
+      const dx = cluster.center.x - camPos.x;
+      const dz = cluster.center.z - camPos.z;
+      const distFromCam = Math.sqrt(dx * dx + dz * dz);
+
+      if (cluster.type === 'storm') {
+        const stormProximity = distFromCam - cluster.radius;
+        if (stormProximity < nearestStormDist) {
+          nearestStormDist = stormProximity;
+          activeStormCluster = cluster;
+        }
+      }
+
+      // ── 3-Tier LOD for Cloud Puffs (Tightly synced with 330m fog horizon) ──
+      let lodFade = 1.0;
+      if (distFromCam > 360) {
+        lodFade = 0.0;
+      } else if (distFromCam > 260) {
+        lodFade = 1.0 - (distFromCam - 260) / 100;
+      }
+
+      const targetMesh = cluster.type === 'storm' ? this.stormMesh : this.fairMesh;
+
+      for (const puff of cluster.puffs) {
+        if (lodFade <= 0.0) {
+          scratchMatrix.makeScale(0, 0, 0);
+          targetMesh.setMatrixAt(puff.instanceIndex, scratchMatrix);
+          continue;
+        }
+
+        const worldPuffPos = new THREE.Vector3(
+          cluster.center.x + puff.localOffset.x,
+          cluster.center.y + puff.localOffset.y,
+          cluster.center.z + puff.localOffset.z
+        );
+
+        const finalScale = puff.baseScale.clone().multiplyScalar(lodFade);
+        scratchMatrix.compose(worldPuffPos, puff.rotation, finalScale);
+        targetMesh.setMatrixAt(puff.instanceIndex, scratchMatrix);
+      }
     }
 
-    this.instancedMesh.instanceMatrix.needsUpdate = true;
+    this.fairMesh.instanceMatrix.needsUpdate = true;
+    this.stormMesh.instanceMatrix.needsUpdate = true;
+
+    // ── Localized Rain & Splash System Update ──
+    if (activeStormCluster && nearestStormDist < 60) {
+      this.rainMesh.visible = true;
+      this.splashMesh.visible = true;
+      this.isRainActive = true;
+      this.updateRainAndSplashes(delta, camPos, activeStormCluster);
+    } else {
+      if (this.isRainActive) {
+        this.rainMesh.visible = false;
+        this.splashMesh.visible = false;
+        this.isRainActive = false;
+      }
+    }
+  }
+
+  private updateRainAndSplashes(delta: number, camPos: THREE.Vector3, stormCluster: CloudCluster) {
+    const scratchMatrix = new THREE.Matrix4();
+    const rainRadius = Math.min(stormCluster.radius * 0.85, 60.0);
+    const cloudBaseY = stormCluster.center.y - 3.0;
+
+    // Rain tilt facing camera view direction with slight wind slant
+    const windAngle = Math.atan2(globalWind.direction.y, globalWind.direction.x);
+    const tiltZ = -globalWind.direction.x * 0.18;
+    const tiltX = globalWind.direction.y * 0.18;
+    const rainRot = new THREE.Quaternion().setFromEuler(new THREE.Euler(tiltX, windAngle, tiltZ));
+    const rainScale = new THREE.Vector3(1, 1, 1);
+
+    let nextSplashIdx = 0;
+
+    for (let i = 0; i < this.rainCount; i++) {
+      const pos = this.rainPositions[i];
+      const speed = this.rainSpeeds[i];
+
+      // Fall downwards vertically with slight wind drift
+      pos.y -= speed * delta;
+      pos.x += globalWind.direction.x * globalWind.strength * delta * 5.0;
+      pos.z += globalWind.direction.y * globalWind.strength * delta * 5.0;
+
+      const groundY = Math.max(getTerrainHeight(pos.x, pos.z), -3.0);
+
+      // Trigger splash when hitting ground/water
+      if (pos.y <= groundY + 0.1) {
+        // Spawn ground splash ripple at point of impact
+        if (nextSplashIdx < this.splashCount) {
+          const splash = this.splashes[nextSplashIdx++];
+          splash.pos.set(pos.x, groundY + 0.04, pos.z);
+          splash.age = 0.0;
+          splash.scale = 0.1 + Math.random() * 0.1;
+        }
+
+        // Respawn rain at top
+        const angle = Math.random() * Math.PI * 2;
+        const r = Math.sqrt(Math.random()) * rainRadius;
+        pos.x = camPos.x + Math.cos(angle) * r;
+        pos.z = camPos.z + Math.sin(angle) * r;
+        pos.y = cloudBaseY - Math.random() * 6.0;
+      } else {
+        const dx = pos.x - camPos.x;
+        const dz = pos.z - camPos.z;
+        if (dx * dx + dz * dz > rainRadius * rainRadius || pos.y < groundY - 2.0) {
+          const angle = Math.random() * Math.PI * 2;
+          const r = Math.sqrt(Math.random()) * rainRadius;
+          pos.x = camPos.x + Math.cos(angle) * r;
+          pos.z = camPos.z + Math.sin(angle) * r;
+          pos.y = cloudBaseY - Math.random() * 6.0;
+        }
+      }
+
+      scratchMatrix.compose(pos, rainRot, rainScale);
+      this.rainMesh.setMatrixAt(i, scratchMatrix);
+    }
+
+    this.rainMesh.instanceMatrix.needsUpdate = true;
+
+    // ── Update Expanding Splash Rings ──
+    const splashRot = new THREE.Quaternion();
+    const splashScaleVec = new THREE.Vector3();
+
+    for (let s = 0; s < this.splashCount; s++) {
+      const splash = this.splashes[s];
+      splash.age += delta;
+
+      if (splash.age < splash.maxAge) {
+        const progress = splash.age / splash.maxAge;
+        // Expand ring from 0.2 to 1.8x scale
+        const currentScale = splash.scale * (1.0 + progress * 2.5);
+        splashScaleVec.set(currentScale, currentScale, currentScale);
+
+        scratchMatrix.compose(splash.pos, splashRot, splashScaleVec);
+        this.splashMesh.setMatrixAt(s, scratchMatrix);
+      } else {
+        scratchMatrix.makeScale(0, 0, 0);
+        this.splashMesh.setMatrixAt(s, scratchMatrix);
+      }
+    }
+
+    this.splashMesh.instanceMatrix.needsUpdate = true;
   }
 }
 
@@ -115,36 +372,41 @@ export function createLowPolyCloudGeometry(): THREE.BufferGeometry {
   const geometries: THREE.BufferGeometry[] = [];
   
   // Core center sphere
-  const sphere1 = new THREE.SphereGeometry(3, 8, 8);
+  const sphere1 = new THREE.SphereGeometry(3.5, 8, 8);
   sphere1.translate(0, 0, 0);
   geometries.push(sphere1);
   
   // Left sphere
-  const sphere2 = new THREE.SphereGeometry(2, 8, 8);
-  sphere2.translate(-2.5, -0.5, 0);
+  const sphere2 = new THREE.SphereGeometry(2.6, 8, 8);
+  sphere2.translate(-3.0, -0.4, 0);
   geometries.push(sphere2);
   
   // Right sphere
-  const sphere3 = new THREE.SphereGeometry(2, 8, 8);
-  sphere3.translate(2.5, -0.5, 0);
+  const sphere3 = new THREE.SphereGeometry(2.6, 8, 8);
+  sphere3.translate(3.0, -0.4, 0);
   geometries.push(sphere3);
   
   // Front sphere
-  const sphere4 = new THREE.SphereGeometry(1.8, 8, 8);
-  sphere4.translate(0, -0.6, 2.0);
+  const sphere4 = new THREE.SphereGeometry(2.2, 8, 8);
+  sphere4.translate(0, -0.5, 2.4);
   geometries.push(sphere4);
   
   // Back sphere
-  const sphere5 = new THREE.SphereGeometry(1.8, 8, 8);
-  sphere5.translate(0, -0.6, -2.0);
+  const sphere5 = new THREE.SphereGeometry(2.2, 8, 8);
+  sphere5.translate(0, -0.5, -2.4);
   geometries.push(sphere5);
+
+  // Top bulge for puffy volumetric cumulus look
+  const sphere6 = new THREE.SphereGeometry(2.5, 8, 8);
+  sphere6.translate(0, 1.8, 0);
+  geometries.push(sphere6);
 
   const cloudGeometry = BufferGeometryUtils.mergeGeometries(geometries);
   cloudGeometry.computeVertexNormals();
   return cloudGeometry;
 }
 
-export function createCartoonCloudMaterial(topColorHex: string, bottomColorHex: string, opacity = 0.9): THREE.Material {
+export function createCartoonCloudMaterial(topColorHex: string, bottomColorHex: string, opacity = 0.95): THREE.Material {
   const material = new THREE.MeshPhongMaterial({
     color: 0xffffff,
     flatShading: true,
@@ -157,7 +419,6 @@ export function createCartoonCloudMaterial(topColorHex: string, bottomColorHex: 
     shader.uniforms.uTopColor = { value: new THREE.Color(topColorHex) };
     shader.uniforms.uBottomColor = { value: new THREE.Color(bottomColorHex) };
 
-    // Inject custom varying normal in both shaders to guarantee compatibility
     shader.vertexShader = `
       varying vec3 myNormal;
     ` + shader.vertexShader;
@@ -168,7 +429,6 @@ export function createCartoonCloudMaterial(topColorHex: string, bottomColorHex: 
       uniform vec3 uBottomColor;
     ` + shader.fragmentShader;
 
-    // Compute the normal in view space in the vertex shader
     shader.vertexShader = shader.vertexShader.replace(
       '#include <beginnormal_vertex>',
       `
@@ -177,13 +437,12 @@ export function createCartoonCloudMaterial(topColorHex: string, bottomColorHex: 
       `
     );
 
-    // Apply toon shading using our custom normal in the fragment shader
     shader.fragmentShader = shader.fragmentShader.replace(
       '#include <color_fragment>',
       `
       #include <color_fragment>
       float intensity = normalize(myNormal).y * 0.5 + 0.5;
-      diffuseColor.rgb = mix(uBottomColor, uTopColor, step(0.48, intensity));
+      diffuseColor.rgb = mix(uBottomColor, uTopColor, step(0.46, intensity));
       `
     );
   };

@@ -16,6 +16,15 @@ const texLoader = new THREE.TextureLoader();
 const blueEmbersTex = texLoader.load('/vfx/cartoon-blue-flamethrower/tex_2.png');
 const blueExplosionTex = texLoader.load('/vfx/cartoon-blue-gas-explosion/tex_3.png');
 
+const _flipbookMatCache = new Map<string, THREE.ShaderMaterial>();
+function getFlipbookMat(tex: THREE.Texture, uTiles: number, vTiles: number, colorOverride?: THREE.Color): THREE.ShaderMaterial {
+    const key = `${tex.uuid}_${uTiles}_${vTiles}_${colorOverride?.getHexString() || 'fff'}`;
+    if (!_flipbookMatCache.has(key)) {
+        _flipbookMatCache.set(key, makeFlipbookMat(tex, uTiles, vTiles, colorOverride));
+    }
+    return _flipbookMatCache.get(key)!.clone();
+}
+
 function makeFlipbookMat(tex: THREE.Texture, uTiles: number, vTiles: number, colorOverride?: THREE.Color): THREE.ShaderMaterial {
     return new THREE.ShaderMaterial({
         uniforms: {
@@ -188,7 +197,7 @@ export function spawnDoubleShotFX(
 
             // Cartoon impact flipbook
             const expGeo = new THREE.PlaneGeometry(1.8 * scale, 1.8 * scale);
-            const expMat = makeFlipbookMat(blueExplosionTex, 3, 3, isBlue ? new THREE.Color(1.0, 1.2, 1.5) : new THREE.Color(1.8, 1.3, 0.8));
+            const expMat = getFlipbookMat(blueExplosionTex, 3, 3, isBlue ? new THREE.Color(1.0, 1.2, 1.5) : new THREE.Color(1.8, 1.3, 0.8));
             const expMesh = new THREE.InstancedMesh(expGeo, expMat, 1);
             const aFrame = new Float32Array(1);
             const aOpacity = new Float32Array(1);

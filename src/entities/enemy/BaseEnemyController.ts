@@ -14,6 +14,16 @@ import type { IAttackBehavior } from './behaviors/IAttackBehavior';
 const gltfLoader = new GLTFLoader();
 gltfLoader.setMeshoptDecoder(MeshoptDecoder);
 
+const gltfCache = new Map<string, Promise<any>>();
+function loadGLTFWithCache(url: string): Promise<any> {
+    let p = gltfCache.get(url);
+    if (!p) {
+        p = gltfLoader.loadAsync(url);
+        gltfCache.set(url, p);
+    }
+    return p;
+}
+
 export class BaseEnemyController {
     public playerGroup: THREE.Group;
     public playerMesh: THREE.Object3D | null = null;
@@ -51,16 +61,21 @@ export class BaseEnemyController {
         }
         this.lodLevel = level;
 
+        if (this.hp <= 0) {
+            this.playerGroup.visible = false;
+            return;
+        }
+
         switch (level) {
             case 'full':
-                this.playerGroup.visible = this.hp > 0;
+                this.playerGroup.visible = true;
                 if (this.playerMesh) this.playerMesh.visible = true;
                 if (this.placeholderMesh) this.placeholderMesh.visible = !this.playerMesh;
                 if (this.nameTagSprite) this.nameTagSprite.visible = true;
                 if (this.rangeIndicator) this.rangeIndicator.visible = true;
                 break;
             case 'name-only':
-                this.playerGroup.visible = this.hp > 0;
+                this.playerGroup.visible = true;
                 if (this.playerMesh) this.playerMesh.visible = false;
                 if (this.placeholderMesh) this.placeholderMesh.visible = false;
                 if (this.nameTagSprite) this.nameTagSprite.visible = true;
@@ -86,11 +101,15 @@ export class BaseEnemyController {
     protected flashTime = 0;
     protected flashColor = new THREE.Color(1, 0, 0);
     protected hasDamagedThisLoop = false;
+    // ponytail: cache material list on flash() call — avoids traverse() per frame
+    private _flashMaterials: THREE.Material[] = [];
 
     // Hit batching variables
     private pendingDamage = 0;
     private lastHitPoint = new THREE.Vector3();
     private hitFlushTimeout: any = null;
+    // ponytail: pre-alloc scratch quaternion — avoids new Quaternion() per enemy per frame
+    private _scratchQuat = new THREE.Quaternion();
 
     constructor(scene: THREE.Scene, npcId: string, npcType: string, npcName: string, maxHp: number, hp: number) {
         this.scene = scene;
@@ -152,25 +171,16 @@ export class BaseEnemyController {
         this.playerGroup.add(minimapNameSprite);
 
         // Register dynamic enemy entity in Centralized TargetingManager
-        const self = this;
-        TargetingManager.registerEntity({
-            id: this.npcId,
-            type: 'enemy',
-            position: this.playerGroup.position,
-            playerGroup: this.playerGroup,
-            radius: 0.6 * scaleVal,
-            get hp() { return self.hp; },
-            controller: self
-        });
+        this.registerTargeting();
 
-        // Add max attack/skill range indicator ring
-        let maxRange = 2.5;
+        // Active aggro area indicator ring (radius aktif saat musuh mendeteksi dan menyerang player)
+        let maxRange = 15.0;
         let ringColor = 0x10b981; // Green for mob
         if (npcType === 'raid_boss') {
-            maxRange = 8.0;
+            maxRange = 18.0;
             ringColor = 0xf59e0b; // Orange for Raid Boss
         } else if (npcType === 'world_boss') {
-            maxRange = 12.0;
+            maxRange = 24.0;
             ringColor = 0xef4444; // Red for World Boss
         }
 
@@ -218,11 +228,11 @@ export class BaseEnemyController {
         try {
             const [charGLTF, generalAnim, advancedAnim, combatAnim, basicAnim] =
                 await Promise.all([
-                    gltfLoader.loadAsync(modelPath),
-                    gltfLoader.loadAsync("/character/animation/Rig_Medium_General.glb"),
-                    gltfLoader.loadAsync("/character/animation/Rig_Medium_MovementAdvanced.glb"),
-                    gltfLoader.loadAsync(combatAnimPath),
-                    gltfLoader.loadAsync("/character/animation/Rig_Medium_MovementBasic.glb"),
+                    loadGLTFWithCache(modelPath),
+                    loadGLTFWithCache("/character/animation/Rig_Medium_General.glb"),
+                    loadGLTFWithCache("/character/animation/Rig_Medium_MovementAdvanced.glb"),
+                    loadGLTFWithCache(combatAnimPath),
+                    loadGLTFWithCache("/character/animation/Rig_Medium_MovementBasic.glb"),
                 ]);
 
             if (this.placeholderMesh.parent) {
@@ -238,9 +248,19 @@ export class BaseEnemyController {
 
             this.playerMesh.traverse((child) => {
                 if ((child as THREE.Mesh).isMesh) {
-                    child.castShadow = false;
-                    child.receiveShadow = false;
-                    child.layers.enable(1);
+                    const mesh = child as THREE.Mesh;
+                    mesh.castShadow = false;
+                    mesh.receiveShadow = false;
+                    mesh.layers.enable(1);
+                    
+                    // Clone material so hit flash (emissive) doesn't affect other enemies of the same type
+                    if (mesh.material) {
+                        if (Array.isArray(mesh.material)) {
+                            mesh.material = mesh.material.map(m => m.clone());
+                        } else {
+                            mesh.material = mesh.material.clone();
+                        }
+                    }
                 }
             });
 
@@ -389,32 +409,59 @@ export class BaseEnemyController {
         this.nameTagTexture.needsUpdate = true;
     }
 
+    private lastHitAnimTime = 0;
+
     public playHit() {
+        // Super Armor / Poise: World Bosses and Raid Bosses ignore flinch hitstun animations
+        // so their attack, walk, skill cast, and slam animations remain 100% fluid and uninterrupted.
+        if (this.npcType === 'world_boss' || this.npcType === 'raid_boss') {
+            return;
+        }
+
+        // For regular mobs, throttle hit flinch animation (max once every 800ms) to prevent multi-player stunlock
+        const now = performance.now();
+        if (now - this.lastHitAnimTime < 800) {
+            return;
+        }
+        this.lastHitAnimTime = now;
         this.playAnimationState("hit", 0.05);
     }
 
     public flash(duration = 0.12, colorHex = 0xff3333) {
         this.flashTime = duration;
+        // ponytail: collect materials once here, not in traverse() every frame
+        this._flashMaterials.length = 0;
+        this.playerGroup.traverse((child) => {
+            if ((child as THREE.Mesh).isMesh) {
+                const mesh = child as THREE.Mesh;
+                if (Array.isArray(mesh.material)) {
+                    for (const mat of mesh.material) {
+                        if ('emissive' in mat) this._flashMaterials.push(mat);
+                    }
+                } else if (mesh.material && 'emissive' in mesh.material) {
+                    this._flashMaterials.push(mesh.material);
+                }
+            }
+        });
     }
 
     protected updateFlash() {
         if (this.flashTime <= 0) return;
         this.flashTime -= 0.016;
         const ratio = Math.max(0, this.flashTime / 0.15);
-        this.playerGroup.traverse((child) => {
-            if ((child as THREE.Mesh).isMesh) {
-                const mesh = child as THREE.Mesh;
-                if (Array.isArray(mesh.material)) {
-                    mesh.material.forEach((mat) => {
-                        if ('emissive' in mat) {
-                            (mat as any).emissive.setRGB(ratio, 0, 0);
-                        }
-                    });
-                } else if (mesh.material && 'emissive' in mesh.material) {
-                    (mesh.material as any).emissive.setRGB(ratio, 0, 0);
-                }
+
+        // ponytail: iterate cached list, no traverse() per frame
+        for (const mat of this._flashMaterials) {
+            (mat as any).emissive.setRGB(ratio, 0, 0);
+        }
+
+        if (this.flashTime <= 0) {
+            // Reset all cached emissives to black
+            for (const mat of this._flashMaterials) {
+                (mat as any).emissive.setRGB(0, 0, 0);
             }
-        });
+            this._flashMaterials.length = 0;
+        }
     }
 
     public update(delta: number) {
@@ -434,23 +481,14 @@ export class BaseEnemyController {
         this.playerGroup.visible = true;
 
         let animTimeScale = 1.0;
-        const state = this.interpolator.update(delta, this.position, this.playerMesh ? this.playerMesh.quaternion : new THREE.Quaternion());
+        // ponytail: reuse _scratchQuat — was: new THREE.Quaternion() per enemy per frame
+        const state = this.interpolator.update(delta, this.position, this.playerMesh ? this.playerMesh.quaternion : this._scratchQuat);
         
         // ── Smooth Client-Side Terrain Clamping (Always enforce, ignore server Y) ──
         const config = CHARACTER_CONFIG.npcs[this.npcType as 'mob' | 'raid_boss' | 'world_boss'] || CHARACTER_CONFIG.npcs.mob;
         const yOffset = config.scale * 0.1; // offset so feet sit flush
 
-        let clampedY = getTerrainHeight(this.position.x, this.position.z);
-
-        // Raycast geometry logic if environmentMesh exists
-        if (this.environmentMesh) {
-            this.rayOrigin.set(this.position.x, this.position.y + 12, this.position.z);
-            this.raycaster.set(this.rayOrigin, this.rayDir);
-            const hits = this.raycaster.intersectObject(this.environmentMesh);
-            if (hits.length > 0) {
-                clampedY = hits[0].point.y;
-            }
-        }
+        const clampedY = getTerrainHeight(this.position.x, this.position.z);
 
         // Snap Y position to prevent interpolator override from causing ground penetration.
         this.position.y = clampedY + yOffset;
@@ -486,28 +524,65 @@ export class BaseEnemyController {
             this.attackBehavior.update(delta, null);
         }
 
-
+        this.updateRangeIndicator();
         this.updateNameTag(this.hp / this.maxHp);
         this.updateFlash();
     }
 
-    public takeDamage(dmg: number, x = 0, y = 0, z = 0) {
-        this.pendingDamage += dmg;
-        this.lastHitPoint.set(x, y, z);
+    private updateRangeIndicator() {
+        if (!this.rangeIndicator || !this.rangeIndicator.visible || this.lodLevel !== 'full') return;
+        
+        // Only recompute if enemy position shifted significantly (ponytail optimization)
+        const dx = this.position.x - this.lastX;
+        const dz = this.position.z - this.lastZ;
+        if (dx * dx + dz * dz < 0.001) return;
+        this.lastX = this.position.x;
+        this.lastZ = this.position.z;
 
-        if (!this.hitFlushTimeout) {
-            this.hitFlushTimeout = setTimeout(() => {
-                send({
-                    type: "boss_hit",
-                    value: { npcId: this.npcId, dmg: this.pendingDamage },
-                    x: this.lastHitPoint.x,
-                    y: this.lastHitPoint.y,
-                    z: this.lastHitPoint.z
-                });
-                this.pendingDamage = 0;
-                this.hitFlushTimeout = null;
-            }, 100); // 100ms window to batch multi-hits
+        const posAttr = this.rangeIndicator.geometry.attributes.position as THREE.BufferAttribute;
+        if (!posAttr) return;
+
+        const count = posAttr.count;
+        const px = this.position.x;
+        const py = this.position.y;
+        const pz = this.position.z;
+        const array = posAttr.array as Float32Array;
+
+        for (let i = 0; i < count; i++) {
+            const idx = i * 3;
+            const lx = array[idx];
+            const lz = array[idx + 2];
+            const worldGroundY = getTerrainHeight(px + lx, pz + lz);
+            array[idx + 1] = (worldGroundY - py) + 0.08;
         }
+        posAttr.needsUpdate = true;
+    }
+
+    public takeDamage(dmg: number, x = 0, y = 0, z = 0) {
+        this.lastHitPoint.set(x, y, z);
+        send({
+            type: "boss_hit",
+            value: { npcId: this.npcId, dmg },
+            x,
+            y,
+            z
+        });
+    }
+
+    public registerTargeting() {
+        const self = this;
+        const config = CHARACTER_CONFIG.npcs[this.npcType as 'mob' | 'raid_boss' | 'world_boss'] || CHARACTER_CONFIG.npcs.mob;
+        const scaleVal = config.scale;
+        TargetingManager.registerEntity({
+            id: this.npcId,
+            type: 'enemy',
+            position: this.playerGroup.position,
+            playerGroup: this.playerGroup,
+            radius: 0.6 * scaleVal,
+            torsoHeight: 1.1 * scaleVal,
+            get hp() { return self.hp; },
+            controller: self
+        });
     }
 
     public dispose() {

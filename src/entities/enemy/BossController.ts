@@ -100,7 +100,7 @@ export class BossController extends BaseEnemyController {
 
                 // Distance-based VFX throttling
                 const distToLocal = local.position.distanceTo(new THREE.Vector3(targetX, local.position.y, targetZ));
-                const shouldSpawnVFX = localHit || distToLocal < 30.0;
+                const shouldSpawnVFX = localHit || distToLocal < 35.0;
 
                 // Spawn VFX
                 if (data.skill === "shieldBash" && shouldSpawnVFX) {
@@ -118,37 +118,10 @@ export class BossController extends BaseEnemyController {
                     _lightningPoints[1].set(vfxTargetX, 1, vfxTargetZ);
                     spawnLightningFX(this.scene, _lightningPoints, 0, 2.5);
                 }
-
-                // Apply damage & spawn HUD for all players hit by the skill
-                for (const playerEntity of players) {
-                    const isHit = this.checkPlayerInArea(playerEntity, spawnX, spawnZ, data.radius, shapeMode, rotationY);
-                    if (isHit) {
-                        if (playerEntity.id === localId) {
-                            let dmgVal = 35;
-                            let skillName = 'bossSlam';
-                            if (data.skill === 'shieldBash') { dmgVal = 30; skillName = 'bossShieldBash'; }
-                            else if (data.skill === 'doubleShot') { dmgVal = 25; skillName = 'bossDoubleShot'; }
-                            else if (data.skill === 'lightning') { dmgVal = 40; skillName = 'bossLightning'; }
-                            this.applyDamage(playerEntity, dmgVal, skillName);
-                        } else {
-                            let dmgVal = 35;
-                            let skillName = 'bossSlam';
-                            if (data.skill === 'shieldBash') { dmgVal = 30; skillName = 'bossShieldBash'; }
-                            else if (data.skill === 'doubleShot') { dmgVal = 25; skillName = 'bossDoubleShot'; }
-                            else if (data.skill === 'lightning') { dmgVal = 40; skillName = 'bossLightning'; }
-                            damageHUDBatcher.spawn({
-                                skill: skillName,
-                                value: dmgVal,
-                                position: [playerEntity.position.x, playerEntity.position.y + 1.0, playerEntity.position.z],
-                                isCrit: Math.random() > 0.8,
-                                isMagic: false,
-                            });
-                        }
-                    }
-                }
             };
 
-            this.groundSlamFX.spawn(spawnX, spawnZ, data.radius, data.telegraph, onBoom, shapeMode, outlineOnly, rotationY, colorHex);
+            const fxRadius = data.skill === 'lightning' ? 4.0 : data.radius;
+            this.groundSlamFX.spawn(spawnX, spawnZ, fxRadius, data.telegraph, onBoom, shapeMode, outlineOnly, rotationY, colorHex);
         });
     }
 
@@ -211,71 +184,9 @@ export class BossController extends BaseEnemyController {
         return d <= 0.0;
     }
 
-    private applyDamage(localCtrl: any, damage: number, skillName: string) {
-        const px = localCtrl.playerGroup.position.x;
-        const pz = localCtrl.playerGroup.position.z;
-        damageHUDBatcher.spawn({
-            skill: skillName,
-            value: damage,
-            position: [px, localCtrl.playerGroup.position.y + 1, pz],
-            isCrit: Math.random() > 0.8,
-            isMagic: false,
-        });
-        const localHp = myPlayer().getState('hp') ?? 100;
-        const nextHp = Math.max(0, localHp - damage);
-        myPlayer().setState('hp', nextHp === 0 ? 100 : nextHp);
-    }
-
     public override update(delta: number) {
         super.update(delta);
         this.groundSlamFX.update(delta);
-
-        // Synchronize damage with kick animation impact
-        const attackAction = this.actions["attack"];
-        if (attackAction && this.targetAction === "attack" && this.hp > 0) {
-            const time = attackAction.time;
-            const duration = 0.93333;
-            const relativeTime = time % duration;
-
-            if (relativeTime < 0.2) {
-                this.hasDamagedThisLoop = false;
-            }
-
-            if (relativeTime >= 0.4 && relativeTime <= 0.6) {
-                if (!this.hasDamagedThisLoop) {
-                    this.hasDamagedThisLoop = true;
-                    
-                    const localId = myPlayer().id;
-                    const players = TargetingManager.getAllEntities().filter(e => e.type === 'player');
-                    
-                    for (const playerEntity of players) {
-                        const distSq = playerEntity.position.distanceToSquared(this.playerGroup.position);
-                        if (distSq < 20.25) { // 4.5 * 4.5 range
-                            if (playerEntity.id === localId) {
-                                damageHUDBatcher.spawn({
-                                    skill: 'boss',
-                                    value: 20,
-                                    position: [playerEntity.position.x, playerEntity.position.y + 1, playerEntity.position.z],
-                                    isCrit: Math.random() > 0.8,
-                                    isMagic: false
-                                });
-                                const localHp = myPlayer().getState('hp') ?? 100;
-                                const nextHp = Math.max(0, localHp - 20);
-                                myPlayer().setState('hp', nextHp === 0 ? 100 : nextHp);
-                            } else {
-                                damageHUDBatcher.spawn({
-                                    skill: 'boss',
-                                    value: 20,
-                                    position: [playerEntity.position.x, playerEntity.position.y + 1, playerEntity.position.z],
-                                    isCrit: Math.random() > 0.8,
-                                    isMagic: false
-                                });
-                            }
-                        }
-                    }
-                }
-            }
-        }
     }
 
     public override dispose() {

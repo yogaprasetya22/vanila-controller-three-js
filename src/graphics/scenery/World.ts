@@ -94,15 +94,16 @@ export class World {
     this.leaves.update(delta, this.elapsed, camPos);
     this.waterSurface?.update(camPos);
     
-    // ponytail: Dynamic LOD culling for trees, rocks, and vegetation
+    // ponytail: Dynamic LOD and Camera Frustum Culling for trees, rocks, and vegetation
+    const camTarget = camera || camPos;
     if (this.trees) {
-      this.trees.update(camPos);
+      this.trees.update(camTarget);
     }
     if (this.rocks) {
-      this.rocks.update(camPos);
+      this.rocks.update(camTarget);
     }
     if (this.vegetation) {
-      this.vegetation.update(camPos);
+      this.vegetation.update(camTarget);
     }
     if (this.grass) {
       this.grass.update(camPos);
@@ -137,27 +138,13 @@ export class World {
         
         group.instances.forEach((data: any) => {
           const position = new THREE.Vector3();
-          const rotation = new THREE.Euler();
           const quaternion = new THREE.Quaternion();
           const scale = new THREE.Vector3();
           const instanceMatrix = new THREE.Matrix4();
           const finalMatrix = new THREE.Matrix4();
 
-          const groundY = getTerrainHeight(data.x, data.z);
-          const groundX = getTerrainHeight(data.x + 1.0, data.z);
-          const groundZ = getTerrainHeight(data.x, data.z + 1.0);
-          const dx = groundX - groundY;
-          const dz = groundZ - groundY;
-          const len = Math.sqrt(dx * dx + 1.0 + dz * dz);
-          const normal = new THREE.Vector3(-dx / len, 1.0 / len, -dz / len);
-
-          const sink = 0.25 * data.scale;
-          position.set(data.x, groundY - sink, data.z);
-
-          quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), normal);
-          const yaw = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), data.rotation);
-          quaternion.multiply(yaw);
-
+          position.set(data.x, data.groundY - data.sink, data.z);
+          quaternion.set(data.qx, data.qy, data.qz, data.qw);
           scale.set(data.scale, data.scale, data.scale);
 
           instanceMatrix.compose(position, quaternion, scale);
@@ -181,31 +168,13 @@ export class World {
         
         group.instances.forEach((data: any) => {
           const position = new THREE.Vector3();
-          const rotation = new THREE.Euler();
           const quaternion = new THREE.Quaternion();
           const scale = new THREE.Vector3();
           const instanceMatrix = new THREE.Matrix4();
           const finalMatrix = new THREE.Matrix4();
 
-          const groundY = getTerrainHeight(data.x, data.z);
-          
-          // Calculate terrain slope steepness at tree position to match visual sink offset
-          const hL = getTerrainHeight(data.x - 1, data.z);
-          const hR = getTerrainHeight(data.x + 1, data.z);
-          const hD = getTerrainHeight(data.x, data.z - 1);
-          const hU = getTerrainHeight(data.x, data.z + 1);
-          const slopeX = hR - hL;
-          const slopeZ = hU - hD;
-          const steepness = Math.sqrt(slopeX * slopeX + slopeZ * slopeZ);
-
-          let sink = 0.0;
-          if (steepness > 0.4) {
-            sink = Math.min(2.0, (steepness - 0.4) * 2.0);
-          }
-
-          position.set(data.x, groundY - sink, data.z);
-          rotation.set(0, data.rotation, 0);
-          quaternion.setFromEuler(rotation);
+          position.set(data.x, data.groundY - data.sink, data.z);
+          quaternion.set(data.qx, data.qy, data.qz, data.qw);
           scale.set(data.scale, data.scale, data.scale);
 
           instanceMatrix.compose(position, quaternion, scale);

@@ -15,6 +15,15 @@ import {
 const texLoader = new THREE.TextureLoader();
 const subSmokeTex = texLoader.load('/vfx/subemitter2/tex_0.png');
 
+const _flipbookMatCache = new Map<string, THREE.ShaderMaterial>();
+function getFlipbookMat(tex: THREE.Texture, uTiles: number, vTiles: number, colorOverride?: THREE.Color): THREE.ShaderMaterial {
+    const key = `${tex.uuid}_${uTiles}_${vTiles}_${colorOverride?.getHexString() || 'fff'}`;
+    if (!_flipbookMatCache.has(key)) {
+        _flipbookMatCache.set(key, makeFlipbookMat(tex, uTiles, vTiles, colorOverride));
+    }
+    return _flipbookMatCache.get(key)!.clone();
+}
+
 function makeFlipbookMat(tex: THREE.Texture, uTiles: number, vTiles: number, colorOverride?: THREE.Color): THREE.ShaderMaterial {
     return new THREE.ShaderMaterial({
         uniforms: {
@@ -173,7 +182,7 @@ export function spawnArrowVolleyFX(
 
     // Ground impact smoke flipbook particles (2x2 layout from subemitter2/tex_0.png)
     const impactGeo = new THREE.PlaneGeometry(1.6, 1.6);
-    const impactMat = makeFlipbookMat(subSmokeTex, 2, 2, isBlue ? new THREE.Color(0.3, 0.8, 1.0) : new THREE.Color(1.0, 0.5, 0.2));
+    const impactMat = getFlipbookMat(subSmokeTex, 2, 2, isBlue ? new THREE.Color(0.3, 0.8, 1.0) : new THREE.Color(1.0, 0.5, 0.2));
     const impacts = new THREE.InstancedMesh(impactGeo, impactMat, COUNT);
     impacts.frustumCulled = false;
     const aFrame = new Float32Array(COUNT);

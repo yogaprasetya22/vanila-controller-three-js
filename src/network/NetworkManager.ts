@@ -24,16 +24,16 @@ export class Player {
 
     public setState(key: string, value: any) {
         const prev = this.state[key];
-        // ponytail: avoid JSON.stringify (string alloc + GC) every frame.
-        // Fast path for primitives, then for {x,y,z} pos objects.
-        // Ceiling: if new state shapes are added, extend the fast-compare below.
-        if (prev === value) return;
-        if (prev !== null && prev !== undefined && typeof prev === 'object' &&
-            value !== null && typeof value === 'object') {
-            if (prev.x === value.x && prev.y === value.y && prev.z === value.z) return;
+        if (typeof value === 'object' && value !== null) {
+            if (prev && prev.x === value.x && prev.y === value.y && prev.z === value.z) return;
+            const cloned = { ...value };
+            this.state[key]        = cloned;
+            this.pendingBatch[key] = cloned;
+        } else {
+            if (prev === value) return;
+            this.state[key]        = value;
+            this.pendingBatch[key] = value;
         }
-        this.state[key]        = value;
-        this.pendingBatch[key] = value;
     }
 
 
@@ -86,6 +86,8 @@ export class NetworkManager {
     private static rpcHandlers: Map<string, (data: any, senderId: string) => void> = new Map();
     private static bossDamagedCallbacks: Array<(data: any) => void> = [];
     private static bossSkillCallbacks: Array<(data: any) => void> = [];
+    private static playerDamagedCallbacks: Array<(data: any) => void> = [];
+    private static playerRespawnedCallbacks: Array<(data: any) => void> = [];
     private static npcConfig: any = null;
     private static resolveInitPromise: (() => void) | null = null;
     private static heartbeatInterval: any = null;
@@ -214,6 +216,15 @@ export class NetworkManager {
                         CHARACTER_CONFIG.projectiles.maxDistance = configData.config.projectileMaxDist;
                     }
                     console.log("[REST] Authoritative combat config loaded:", CHARACTER_CONFIG.combat);
+                }
+                if (configData.skills) {
+                    for (const [skillName, skillDef] of Object.entries(configData.skills)) {
+                        const targetSkill = (CHARACTER_CONFIG.skills as Record<string, any>)[skillName];
+                        if (targetSkill) {
+                            Object.assign(targetSkill, skillDef);
+                        }
+                    }
+                    console.log("[REST] Authoritative skills config loaded:", CHARACTER_CONFIG.skills);
                 }
                 if (configData.npcConfig) {
                     this.npcConfig = configData.npcConfig;
@@ -449,8 +460,38 @@ export class NetworkManager {
                 this.bossDamagedCallbacks.forEach(cb => cb(msg));
                 break;
 
+            case "player_damaged": {
+                const targetPlayer = this.playersMap.get(msg.playerId);
+                if (targetPlayer) {
+                    targetPlayer.setInternalState('hp', msg.hp);
+                    if (msg.isDead) {
+                        targetPlayer.setInternalState('action', 'die');
+                    }
+                }
+                this.playerDamagedCallbacks.forEach(cb => cb(msg));
+                break;
+            }
+
+            case "player_respawned": {
+                const respawnPlayer = this.playersMap.get(msg.playerId);
+                if (respawnPlayer) {
+                    respawnPlayer.setInternalState('hp', msg.hp);
+                    respawnPlayer.setInternalState('action', 'idle');
+                    if (msg.x !== undefined && msg.z !== undefined) {
+                        respawnPlayer.setInternalState('pos', { x: msg.x, y: msg.y || 0, z: msg.z });
+                    }
+                }
+                this.playerRespawnedCallbacks.forEach(cb => cb(msg));
+                break;
+            }
+
             case "npc_respawned":
-                // Notify clients or handle locally
+                if (msg.npc && msg.npc.id) {
+                    if (!this.roomState['npcs']) {
+                        this.roomState['npcs'] = {};
+                    }
+                    this.roomState['npcs'][msg.npc.id] = msg.npc;
+                }
                 break;
 
             case "boss_skill":
@@ -576,6 +617,14 @@ export class NetworkManager {
         this.bossSkillCallbacks.push(callback);
     }
 
+    public static onPlayerDamaged(callback: (data: any) => void) {
+        this.playerDamagedCallbacks.push(callback);
+    }
+
+    public static onPlayerRespawned(callback: (data: any) => void) {
+        this.playerRespawnedCallbacks.push(callback);
+    }
+
     public static getNPCConfig(): any {
         return this.npcConfig;
     }
@@ -591,6 +640,8 @@ export const getState = (k: string) => NetworkManager.getState(k);
 export const send = (msg: any) => NetworkManager.send(msg);
 export const onBossDamaged = (cb: (data: any) => void) => NetworkManager.onBossDamaged(cb);
 export const onBossSkill = (cb: (data: any) => void) => NetworkManager.onBossSkill(cb);
+export const onPlayerDamaged = (cb: (data: any) => void) => NetworkManager.onPlayerDamaged(cb);
+export const onPlayerRespawned = (cb: (data: any) => void) => NetworkManager.onPlayerRespawned(cb);
 export const getNPCConfig = () => NetworkManager.getNPCConfig();
 
 // RPC API to mirror PlayroomKit
