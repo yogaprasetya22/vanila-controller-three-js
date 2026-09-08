@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { activeFX, getPooledMaterial, releasePooledMaterial, pooledRing, easeOutQuad } from "./FXCore";
+import { activeFX, getPooledMaterial, releasePooledMaterial, pooledRing, easeOutQuad, alignGroundDecal } from "./FXCore";
 
 export function spawnArcaneNovaFX(
     scene: THREE.Scene,
@@ -69,8 +69,7 @@ export function spawnArcaneNovaFX(
         side: THREE.DoubleSide
     });
     const outerRing = new THREE.Mesh(outerRingGeo, outerRingMat);
-    outerRing.rotation.x = -Math.PI / 2;
-    outerRing.position.set(x, y + 0.03, z);
+    alignGroundDecal(outerRing, x, z, 0.04);
     outerRing.frustumCulled = false;
     scene.add(outerRing);
 
@@ -84,8 +83,7 @@ export function spawnArcaneNovaFX(
         side: THREE.DoubleSide
     });
     const innerRing = new THREE.Mesh(innerRingGeo, innerRingMat);
-    innerRing.rotation.x = -Math.PI / 2;
-    innerRing.position.set(x, y + 0.05, z);
+    alignGroundDecal(innerRing, x, z, 0.06);
     innerRing.frustumCulled = false;
     scene.add(innerRing);
 

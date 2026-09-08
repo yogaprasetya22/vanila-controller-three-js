@@ -4,6 +4,7 @@ import {
     pooledPlane,
     starTex,
     activeFX,
+    alignGroundDecal,
     getPooledMaterial,
     releasePooledMaterial,
 } from "./FXCore";
@@ -55,8 +56,7 @@ export function spawnHolySanctuaryFX(
         side: THREE.DoubleSide,
     });
     const ring = new THREE.Mesh(ringGeo, ringMat);
-    ring.rotation.x = -Math.PI / 2;
-    ring.position.set(centerPos.x, centerPos.y + 0.02, centerPos.z);
+    alignGroundDecal(ring, centerPos.x, centerPos.z, 0.04);
     scene.add(ring);
 
     // Glowing Hemispherical Sanctuary Dome shell

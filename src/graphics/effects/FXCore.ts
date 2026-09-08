@@ -6,6 +6,32 @@
 
 import * as THREE from "three";
 import { camera } from "../core/scene";
+import { getTerrainHeight } from "../../simulation/constants";
+
+// ═══════════════════════════════════════════════════════════════
+// Terrain Ground Normal & Alignment Helpers (Ponytail: 0 GC)
+// ═══════════════════════════════════════════════════════════════
+const _tempNormal = new THREE.Vector3();
+const _planeDefaultNormal = new THREE.Vector3(0, 0, 1);
+
+export function getTerrainNormal(x: number, z: number, out = _tempNormal): THREE.Vector3 {
+    const eps = 0.5;
+    const hL = getTerrainHeight(x - eps, z);
+    const hR = getTerrainHeight(x + eps, z);
+    const hD = getTerrainHeight(x, z - eps);
+    const hU = getTerrainHeight(x, z + eps);
+    const dx = (hR - hL) / (2 * eps);
+    const dz = (hU - hD) / (2 * eps);
+    out.set(-dx, 1.0, -dz).normalize();
+    return out;
+}
+
+export function alignGroundDecal(mesh: THREE.Object3D, x: number, z: number, yOffset = 0.08): void {
+    const groundY = getTerrainHeight(x, z);
+    mesh.position.set(x, groundY + yOffset, z);
+    const normal = getTerrainNormal(x, z);
+    mesh.quaternion.setFromUnitVectors(_planeDefaultNormal, normal);
+}
 
 // ═══════════════════════════════════════════════════════════════
 // Easing curves
@@ -646,8 +672,7 @@ export function spawnGasExplosionFX(scene: THREE.Scene, pos: THREE.Vector3, team
         side: THREE.DoubleSide
     });
     const glowMesh = new THREE.Mesh(glowGeo, glowMat);
-    glowMesh.position.copy(pos).y += 0.1;
-    glowMesh.rotation.x = -Math.PI / 2;
+    alignGroundDecal(glowMesh, pos.x, pos.z, 0.05);
     scene.add(glowMesh);
 
     // 2. Cloud Burst (2x2 sprite animation, count 14)

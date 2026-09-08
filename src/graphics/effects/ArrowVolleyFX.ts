@@ -10,6 +10,7 @@ import {
     getPooledMaterial,
     releasePooledMaterial,
     _tempObj,
+    alignGroundDecal,
 } from "./FXCore";
 
 const texLoader = new THREE.TextureLoader();
@@ -115,8 +116,7 @@ export function spawnArrowVolleyFX(
         side: THREE.DoubleSide,
     });
     const ring = new THREE.Mesh(ringGeo, ringMat);
-    ring.rotation.x = -Math.PI / 2;
-    ring.position.set(centerX, groundY + 0.03, centerZ);
+    alignGroundDecal(ring, centerX, centerZ, 0.05);
     scene.add(ring);
 
     const COUNT = 60;

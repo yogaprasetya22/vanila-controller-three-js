@@ -7,12 +7,12 @@ export class Rocks {
   constructor(scene: THREE.Scene, gltfLoader: GLTFLoader) {
     const activeRocksData = rocksData.filter((data, idx) => {
       // Sub-sample to keep triangle count down
-      if (idx % 2 !== 0) return false;
+      if (idx % 3 !== 0) return false;
       const h = getTerrainHeight(data.x, data.z);
       return h >= 0.2; // Dry land only
     });
 
-    // ponytail: procedurally generate rocks on the outskirt mountains/forests to populate the 2400x2400 world
+    // ponytail: procedurally generate rocks and towering cliff formations on the outskirt mountains
     let seed = 54321;
     const prng = () => {
       const x = Math.sin(seed++) * 10000;
@@ -21,10 +21,11 @@ export class Rocks {
 
     const rockTypes = Array.from(new Set(rocksData.map(r => r.type)));
     if (rockTypes.length > 0) {
-      for (let i = 0; i < 250; i++) {
+      // 1. Scatter natural landscape boulders
+      for (let i = 0; i < 60; i++) {
         const rx = (prng() - 0.5) * 2300;
         const rz = (prng() - 0.5) * 2300;
-        if (Math.abs(rx) < 100 && Math.abs(rz) < 100) continue; // Skip battlefield area
+        if (Math.abs(rx) < 95 && Math.abs(rz) < 85) continue; // Skip battlefield area
 
         const h = getTerrainHeight(rx, rz);
         if (h < 0.2) continue; // Dry land only
@@ -33,17 +34,46 @@ export class Rocks {
           x: rx,
           z: rz,
           type: rockTypes[Math.floor(prng() * rockTypes.length)],
-          scale: 0.8 + prng() * 1.4,
+          scale: 1.0 + prng() * 1.5,
           rotation: prng() * Math.PI * 2
         });
+      }
+
+      // 2. Form massive 3D cliff rock walls along steep mountain ridges & plateaus
+      for (let i = 0; i < 75; i++) {
+        const rx = (prng() - 0.5) * 2300;
+        const rz = (prng() - 0.5) * 2300;
+        if (Math.abs(rx) < 95 && Math.abs(rz) < 85) continue;
+
+        const h = getTerrainHeight(rx, rz);
+        if (h < 3.0) continue; // Elevated ridges only
+
+        // Check slope magnitude
+        const dhx = getTerrainHeight(rx + 1.5, rz) - getTerrainHeight(rx - 1.5, rz);
+        const dhz = getTerrainHeight(rx, rz + 1.5) - getTerrainHeight(rx, rz - 1.5);
+        const slopeMag = Math.sqrt(dhx * dhx + dhz * dhz);
+
+        if (slopeMag > 0.30) {
+          const slopeAngle = Math.atan2(dhz, dhx);
+          activeRocksData.push({
+            x: rx,
+            z: rz,
+            type: rockTypes[Math.floor(prng() * rockTypes.length)],
+            scale: 2.8 + prng() * 3.8, // Grand towering cliff scale
+            rotation: slopeAngle + (prng() - 0.5) * 0.4
+          });
+        }
       }
     }
 
     const uniqueTypes = Array.from(new Set(activeRocksData.map(r => r.type)));
+    const baseUrl = import.meta.env.BASE_URL;
+    const texLoader = new THREE.TextureLoader();
+    const rockBaseTex = texLoader.load(`${baseUrl}textures/rocks/Stylized_Rocks_003_basecolor.png`);
+    rockBaseTex.colorSpace = THREE.SRGBColorSpace;
 
     const promises = uniqueTypes.map(name => {
       return new Promise<THREE.Group>((resolve) => {
-        const baseUrl = import.meta.env.BASE_URL;
         gltfLoader.load(`${baseUrl}environment/rocks/${name}.glb`, (gltf) => {
           gltf.scene.traverse((child) => {
             if ((child as THREE.Mesh).isMesh) {
@@ -52,8 +82,10 @@ export class Rocks {
               mesh.receiveShadow = false;
               if (mesh.material) {
                 const mat = mesh.material as THREE.MeshStandardMaterial;
-                mat.roughness = 0.9;
-                mat.flatShading = true;
+                mat.map = rockBaseTex;
+                mat.roughness = 0.88;
+                mat.metalness = 0.02;
+                mat.needsUpdate = true;
               }
             }
           });
@@ -217,7 +249,7 @@ export class Rocks {
       Rocks._frustum.setFromProjectionMatrix(Rocks._projScreenMatrix);
     }
 
-    const MAX_DIST_SQ = 180 * 180; // Rocks cull at 180m
+    const MAX_DIST_SQ = 130 * 130; // Rocks cull at 130m to eliminate unnecessary draw calls
 
     const pos = Rocks._scratchPos;
     const quat = Rocks._scratchQuat;

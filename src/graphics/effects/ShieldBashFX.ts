@@ -6,6 +6,7 @@ import {
     releasePooledMaterial,
     sparkTex,
     activeFX,
+    alignGroundDecal,
     fxQualityScale,
     _tempObj,
 } from "./FXCore";
@@ -103,8 +104,7 @@ export function spawnShieldBashFX(
         side: THREE.DoubleSide,
     });
     const shock = new THREE.Mesh(shockGeo, shockMat);
-    shock.rotation.x = -Math.PI / 2;
-    shock.position.set(tx, y + 0.05, tz);
+    alignGroundDecal(shock, tx, tz, 0.05);
     scene.add(shock);
 
     const sparkGeo = pooledPlane(0.35 * scale, 0.35 * scale);

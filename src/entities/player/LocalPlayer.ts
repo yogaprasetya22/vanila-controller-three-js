@@ -66,11 +66,22 @@ export class LocalPlayer {
   public position = new THREE.Vector3(0, getTerrainHeight(0, 0), 0);
   public isGrounded = false;
 
-  // Movement parameters (Ecctrl inspired)
   public speed = CHARACTER_CONFIG.physics.speed;
   public sprintMultiplier = CHARACTER_CONFIG.physics.sprintMultiplier;
   public jumpForce = CHARACTER_CONFIG.physics.jumpForce;
   public gravity = CHARACTER_CONFIG.physics.gravity;
+
+  // Gliding (Wind Glider) parameters
+  public isGliding = false;
+  public glideSpeed = 14.0;
+  public sprintGlideSpeed = 19.5;
+  public glideDescentRate = -1.8;
+  private glideWingsGroup: THREE.Group | null = null;
+  private glideWingScale = 0;
+  private glideRollAngle = 0;
+  private leftWingGroup: THREE.Group | null = null;
+  private rightWingGroup: THREE.Group | null = null;
+  private glideTrailMesh: THREE.LineSegments | null = null;
 
   // Camera Settings (Spring arm / Orbit style)
   public cameraOffset = new THREE.Vector3(0, 2.5, 5);
@@ -359,6 +370,7 @@ export class LocalPlayer {
       // 2. Add Character Mesh to the player group
       this.playerMesh = SkeletonUtils.clone(charGLTF.scene);
       this.playerMesh.scale.setScalar(0.42); // Proporsional scale for Archer
+      this.playerMesh.position.set(0, -0.06, 0); // Flush foot ground contact
       this.playerMesh.visible = (this.lodLevel === 'full');
       this.playerGroup.add(this.playerMesh);
 
@@ -383,6 +395,17 @@ export class LocalPlayer {
         rot: [0, 0, 0],
         scale: [0.8, 0.8, 0.8]
       });
+
+      // 3.5. Attach Luminous Wind Glider Wings
+      this.glideWingsGroup = this.createGliderWings();
+      const spineBone = this.findBone(this.playerMesh, 'spine');
+      if (spineBone) {
+        this.glideWingsGroup.position.set(0, 0.35, -0.25);
+        spineBone.add(this.glideWingsGroup);
+      } else {
+        this.glideWingsGroup.position.set(0, 0.9, -0.15);
+        this.playerMesh.add(this.glideWingsGroup);
+      }
 
       // 4. Setup Skeletal Animation
       this.mixer = new THREE.AnimationMixer(this.playerMesh);
@@ -583,6 +606,196 @@ export class LocalPlayer {
     return weaponClone;
   }
 
+  private leftFeathers: Array<{ mesh: THREE.Mesh; baseRotZ: number; phaseOffset: number; basePosZ: number }> = [];
+  private rightFeathers: Array<{ mesh: THREE.Mesh; baseRotZ: number; phaseOffset: number; basePosZ: number }> = [];
+
+  private createGliderWings(): THREE.Group {
+    const group = new THREE.Group();
+    group.name = "luminous-wind-glider";
+
+    // 1. Aerodynamic Primary Soar Blade (Long & sleek)
+    const longShape = new THREE.Shape();
+    longShape.moveTo(0, 0);
+    longShape.quadraticCurveTo(0.35, 0.22, 1.2, 0.16);
+    longShape.quadraticCurveTo(2.1, 0.02, 2.75, -0.38);
+    longShape.quadraticCurveTo(1.7, -0.54, 0.8, -0.32);
+    longShape.quadraticCurveTo(0.2, -0.12, 0, 0);
+    const longGeo = new THREE.ShapeGeometry(longShape);
+
+    // 2. Broad Secondary Feather (High surface area for lift)
+    const broadShape = new THREE.Shape();
+    broadShape.moveTo(0, 0);
+    broadShape.quadraticCurveTo(0.3, 0.26, 1.0, 0.22);
+    broadShape.quadraticCurveTo(1.65, 0.08, 2.1, -0.30);
+    broadShape.quadraticCurveTo(1.3, -0.46, 0.65, -0.26);
+    broadShape.quadraticCurveTo(0.15, -0.10, 0, 0);
+    const broadGeo = new THREE.ShapeGeometry(broadShape);
+
+    // 3. Radiant Celestial Quill / Spine
+    const quillShape = new THREE.Shape();
+    quillShape.moveTo(0, -0.04);
+    quillShape.lineTo(0, 0.04);
+    quillShape.quadraticCurveTo(0.8, 0.10, 2.0, -0.16);
+    quillShape.quadraticCurveTo(0.8, -0.02, 0, -0.04);
+    const quillGeo = new THREE.ShapeGeometry(quillShape);
+
+    // Multi-Tone Glowing Celestial Wind Materials
+    const cyanOuterMat = new THREE.MeshBasicMaterial({
+      color: 0x00f0ff,
+      transparent: true,
+      opacity: 0.88,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending
+    });
+
+    const aquaMidMat = new THREE.MeshBasicMaterial({
+      color: 0x48f5ff,
+      transparent: true,
+      opacity: 0.78,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending
+    });
+
+    const azureLowerMat = new THREE.MeshBasicMaterial({
+      color: 0x00aaff,
+      transparent: true,
+      opacity: 0.70,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending
+    });
+
+    const coreWhiteMat = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.98,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending
+    });
+
+    this.leftFeathers = [];
+    this.rightFeathers = [];
+
+    const createWingSide = (isRight: boolean, featherStore: Array<{ mesh: THREE.Mesh; baseRotZ: number; phaseOffset: number; basePosZ: number }>) => {
+      const sideGroup = new THREE.Group();
+      const sign = isRight ? 1 : -1;
+
+      // Feather definitions: [Geometry, Material, Scale, BaseRotZ, PosOffset(X,Y,Z), PhaseOffset]
+      const featherDefs = [
+        // 1. Upper Crest Feather (Top flare)
+        { geo: broadGeo, mat: aquaMidMat, scl: [1.1 * sign, 1.0, 1.0], rotZ: 0.32, pos: [0.12 * sign, 0.14, 0.04], phase: 0.0 },
+        // 2. Primary Outer Soar Blade (Longest tip blade)
+        { geo: longGeo,  mat: cyanOuterMat, scl: [1.35 * sign, 1.2, 1.0], rotZ: 0.12, pos: [0.18 * sign, 0.04, 0.0], phase: 0.4 },
+        // 3. Mid Secondary Feather
+        { geo: broadGeo, mat: cyanOuterMat, scl: [1.25 * sign, 1.1, 1.0], rotZ: -0.08, pos: [0.15 * sign, -0.08, -0.03], phase: 0.8 },
+        // 4. Lower Tertial Feather (Underwing skirt)
+        { geo: broadGeo, mat: azureLowerMat, scl: [1.05 * sign, 0.95, 1.0], rotZ: -0.28, pos: [0.10 * sign, -0.20, -0.06], phase: 1.2 },
+        // 5. Celestial Energy Quill Spine (Core radiant bone)
+        { geo: quillGeo, mat: coreWhiteMat, scl: [1.2 * sign, 1.1, 1.0], rotZ: 0.10, pos: [0.05 * sign, 0.05, 0.06], phase: 0.2 }
+      ];
+
+      featherDefs.forEach((def) => {
+        const mesh = new THREE.Mesh(def.geo, def.mat);
+        mesh.scale.set(def.scl[0], def.scl[1], def.scl[2]);
+        const actualRotZ = isRight ? def.rotZ : -def.rotZ;
+        mesh.rotation.z = actualRotZ;
+        mesh.position.set(def.pos[0], def.pos[1], def.pos[2]);
+
+        sideGroup.add(mesh);
+        featherStore.push({
+          mesh,
+          baseRotZ: actualRotZ,
+          phaseOffset: def.phase,
+          basePosZ: def.pos[2]
+        });
+      });
+
+      return sideGroup;
+    };
+
+    this.leftWingGroup = createWingSide(false, this.leftFeathers);
+    this.leftWingGroup.name = "left-wing";
+    group.add(this.leftWingGroup);
+
+    this.rightWingGroup = createWingSide(true, this.rightFeathers);
+    this.rightWingGroup.name = "right-wing";
+    group.add(this.rightWingGroup);
+
+    // Initial scale: 0
+    group.scale.set(0, 0, 0);
+    group.visible = false;
+    return group;
+  }
+
+  private updateGliderWings(delta: number) {
+    if (!this.glideWingsGroup) return;
+
+    const time = performance.now() * 0.001;
+
+    if (this.isGliding) {
+      this.glideWingScale = THREE.MathUtils.lerp(this.glideWingScale, 1.0, delta * 12.0);
+      this.glideWingsGroup.visible = true;
+
+      // 1. Wing Flap & Soaring Aerodynamic Wave
+      const flapSpeed = this.keys.ShiftLeft ? 7.5 : 4.8;
+      const flapAmount = this.keys.ShiftLeft ? 0.22 : 0.12;
+      const mainFlap = Math.sin(time * flapSpeed) * flapAmount;
+
+      // 2. Banking Flare & Sweep Dynamics during turns
+      const turnLeft = this.keys.KeyA ? 1.0 : 0.0;
+      const turnRight = this.keys.KeyD ? 1.0 : 0.0;
+      const turnSteer = turnRight - turnLeft; // -1 for Left, +1 for Right
+
+      if (this.leftWingGroup) {
+        // Left wing dips during left turn, extends upward during right turn
+        const leftBankRoll = mainFlap - turnSteer * 0.25;
+        const leftBankPitch = -0.18 + (turnLeft ? 0.15 : -0.08);
+        const leftBankYaw = turnLeft ? 0.12 : -0.05;
+
+        this.leftWingGroup.rotation.z = THREE.MathUtils.lerp(this.leftWingGroup.rotation.z, leftBankRoll, delta * 10.0);
+        this.leftWingGroup.rotation.x = THREE.MathUtils.lerp(this.leftWingGroup.rotation.x, leftBankPitch, delta * 10.0);
+        this.leftWingGroup.rotation.y = THREE.MathUtils.lerp(this.leftWingGroup.rotation.y, leftBankYaw, delta * 10.0);
+      }
+
+      if (this.rightWingGroup) {
+        // Right wing dips during right turn, extends upward during left turn
+        const rightBankRoll = -mainFlap - turnSteer * 0.25;
+        const rightBankPitch = -0.18 + (turnRight ? 0.15 : -0.08);
+        const rightBankYaw = turnRight ? -0.12 : 0.05;
+
+        this.rightWingGroup.rotation.z = THREE.MathUtils.lerp(this.rightWingGroup.rotation.z, rightBankRoll, delta * 10.0);
+        this.rightWingGroup.rotation.x = THREE.MathUtils.lerp(this.rightWingGroup.rotation.x, rightBankPitch, delta * 10.0);
+        this.rightWingGroup.rotation.y = THREE.MathUtils.lerp(this.rightWingGroup.rotation.y, rightBankYaw, delta * 10.0);
+      }
+
+      // 3. Articulated Individual Feather Wave / Tip Undulation
+      const animateFeathers = (feathers: typeof this.leftFeathers, isRight: boolean) => {
+        const sign = isRight ? 1 : -1;
+        feathers.forEach((f) => {
+          // Harmonic wave lagging behind root wing motion
+          const wave = Math.sin(time * flapSpeed - f.phaseOffset) * (0.06 + f.phaseOffset * 0.04);
+          f.mesh.rotation.z = f.baseRotZ + wave * sign;
+          f.mesh.position.z = f.basePosZ + Math.cos(time * flapSpeed - f.phaseOffset) * 0.02;
+        });
+      };
+
+      animateFeathers(this.leftFeathers, false);
+      animateFeathers(this.rightFeathers, true);
+
+    } else {
+      this.glideWingScale = THREE.MathUtils.lerp(this.glideWingScale, 0.0, delta * 16.0);
+      if (this.glideWingScale < 0.02) {
+        this.glideWingScale = 0;
+        this.glideWingsGroup.visible = false;
+      }
+    }
+
+    this.glideWingsGroup.scale.set(this.glideWingScale, this.glideWingScale, this.glideWingScale);
+  }
+
   public playAnimationState(name: string, crossfadeDuration = 0.15, timeScale = 1.0) {
     // Dynamically scale down crossfade duration at high attack speeds to prevent muddy animation transitions
     if (name === 'attack' && timeScale > 2.0) {
@@ -760,18 +973,27 @@ export class LocalPlayer {
     // Coyote time tolerance: allow first jump if grounded or if in the air for less than 0.15s (fixes micro-floats at high speed)
     if (this.isGrounded || (this.jumpCount === 0 && this.airTime < 0.15)) {
       // First Jump
+      this.isGliding = false;
       this.velocity.y = this.jumpForce;
       this.isGrounded = false;
       this.airTime = 0.01;
       this.jumpCount = 1;
       this.animationLockTime = 0; // Clear landing animation lock instantly to allow instant consecutive jumps
       this.playAnimationState('jump_start');
-    } else if (this.jumpCount === 1) {
+    } else if (this.jumpCount === 1 && !this.isGliding) {
       // Double Jump Flip!
       this.velocity.y = this.jumpForce * 1.1; // slightly higher impulse
       this.jumpCount = 2;
       this.playAnimationState('double_jump');
       this.animationLockTime = 0.65; // Lock state for flip duration (0.65s)
+    } else if (!this.isGrounded && this.airTime > 0.12) {
+      // Toggle Glider in mid-air (Zelda / Genshin style)
+      this.isGliding = !this.isGliding;
+      if (this.isGliding) {
+        this.velocity.y = this.glideDescentRate;
+        this.animationLockTime = 0;
+        this.playAnimationState('jump_idle', 0.2);
+      }
     }
   }
 
@@ -914,6 +1136,7 @@ export class LocalPlayer {
     }
 
     if (this.isDodging) {
+      this.isGliding = false;
       this.dodgeTimeLeft -= delta;
       this.ghostSpawnTimer -= delta;
       if (this.ghostSpawnTimer <= 0) {
@@ -938,6 +1161,23 @@ export class LocalPlayer {
       if (this.dodgeTimeLeft <= 0) {
         this.isDodging = false;
       }
+    } else if (this.isGliding) {
+      // Gliding Flight Vector: smooth forward drift along camera heading with gentle strafe
+      const forwardX = -Math.sin(camRotationY);
+      const forwardZ = -Math.cos(camRotationY);
+      const rightX = Math.cos(camRotationY);
+      const rightZ = -Math.sin(camRotationY);
+
+      let steerFwd = this.keys.KeyS ? -0.3 : 1.0;
+      let steerR = (this.keys.KeyD ? 0.45 : 0) - (this.keys.KeyA ? 0.45 : 0);
+
+      const gX = forwardX * steerFwd + rightX * steerR;
+      const gZ = forwardZ * steerFwd + rightZ * steerR;
+      const gLen = Math.sqrt(gX * gX + gZ * gZ) || 1.0;
+
+      const curGlideSpeed = (this.keys.ShiftLeft ? this.sprintGlideSpeed : this.glideSpeed) * this.speedBuff;
+      this.velocity.x = THREE.MathUtils.lerp(this.velocity.x, (gX / gLen) * curGlideSpeed, delta * 7.0);
+      this.velocity.z = THREE.MathUtils.lerp(this.velocity.z, (gZ / gLen) * curGlideSpeed, delta * 7.0);
     } else {
       // ponytail: 30% speed penalty when wading in water (< -3.0m). Avoids complex 3D swim state machine while staying immersive.
       const rawTerrain = getTerrainHeight(this.position.x, this.position.z);
@@ -955,6 +1195,12 @@ export class LocalPlayer {
       this.airTime = 0;
       this.jumpCount = 0;
       this.velocity.y = 0;
+      this.isGliding = false;
+    } else if (this.isGliding) {
+      // Smooth constant glide descent
+      this.velocity.y = THREE.MathUtils.lerp(this.velocity.y, this.glideDescentRate, delta * 8.0);
+      this.airTime += delta;
+      this.position.y += this.velocity.y * delta;
     } else {
       // Airborne: gravity accumulates, integrate Y
       this.velocity.y += this.gravity * delta;
@@ -970,9 +1216,32 @@ export class LocalPlayer {
     // 4. Rotate Character Mesh towards movement direction
     if (this.isDodging) {
       if (this.playerMesh) {
+        this.playerMesh.rotation.order = 'YXZ';
         this.playerMesh.rotation.y = Math.atan2(this.dodgeDirection.x, this.dodgeDirection.z);
+        this.playerMesh.rotation.z = 0;
+        this.playerMesh.rotation.x = 0;
+      }
+    } else if (this.isGliding) {
+      if (this.playerMesh) {
+        this.playerMesh.rotation.order = 'YXZ';
+        // Always face forward along the gliding path (away from camera, looking ahead)
+        const forwardYaw = Math.atan2(this.velocity.x, this.velocity.z);
+        let diffYaw = forwardYaw - this.playerMesh.rotation.y;
+        diffYaw = Math.atan2(Math.sin(diffYaw), Math.cos(diffYaw));
+        this.playerMesh.rotation.y += diffYaw * 12.0 * delta;
+
+        // Smooth subtle bank tilt (Roll) when turning left/right
+        const targetRoll = (this.keys.KeyA ? 0.20 : 0) - (this.keys.KeyD ? 0.20 : 0);
+        this.glideRollAngle = THREE.MathUtils.lerp(this.glideRollAngle, targetRoll, delta * 8.0);
+        this.playerMesh.rotation.z = this.glideRollAngle;
+        this.playerMesh.rotation.x = 0.12; // Natural subtle aerodynamic pitch
       }
     } else if (this.playerMesh) {
+      this.playerMesh.rotation.order = 'YXZ';
+      this.glideRollAngle = THREE.MathUtils.lerp(this.glideRollAngle, 0, delta * 12.0);
+      this.playerMesh.rotation.z = this.glideRollAngle;
+      this.playerMesh.rotation.x = 0;
+
       const nowSec = performance.now() / 1000;
       const isShootingState = (nowSec - this.lastAttackTime < 0.8);
       
@@ -1008,6 +1277,7 @@ export class LocalPlayer {
 
     // Trigger land animation if player just hit the ground from mid-air
     if (this.isGrounded && wasInAir) {
+      this.isGliding = false;
       this.playAnimationState('jump_land');
       this.animationLockTime = 0.35; // Lock state briefly to play landing animation
     }
@@ -1024,6 +1294,8 @@ export class LocalPlayer {
       const isLocked = this.animationLockTime > 0 || (isShootingRecent && this.currentActionName === 'attack');
       if (isLocked) {
         // Keep playing locked animations (attack, double_jump, jump_land)
+      } else if (this.isGliding) {
+        this.playAnimationState('jump_idle', 0.2);
       } else if (!this.isGrounded && this.airTime > 0.1) {
         // Multi-phase jump based on gravity vertical velocity
         if (this.velocity.y > 0.5) {
@@ -1041,9 +1313,10 @@ export class LocalPlayer {
         this.playAnimationState('idle');
       }
 
-      // Ensure mesh is always upright
-      if (this.playerMesh) {
+      // Ensure mesh upright if not gliding
+      if (this.playerMesh && !this.isGliding) {
         this.playerMesh.rotation.x = 0;
+        this.playerMesh.rotation.z = 0;
       }
 
       // Weapon (bow) is always visible
@@ -1053,6 +1326,9 @@ export class LocalPlayer {
 
       this.mixer.update(delta);
     }
+
+    // Update Luminous Wind Glider wings animation and scales
+    this.updateGliderWings(delta);
 
     // Tick attack cooldown down (allow negative values for frame-rate compensation, capped to prevent multi-shot bug when idle)
     const rateOfFire = CHARACTER_CONFIG.combat.rateOfFire || 0.07;
@@ -1308,18 +1584,23 @@ export class LocalPlayer {
       }
     }
 
-    // 2. Base Terrain Floor Collision (ALWAYS active across entire world — prevents falling through ground)
+    // 2. Base Terrain Floor Collision (Fallback safety net when BVH is loading or if player drops below floor)
     const rawTerrainY = getTerrainHeight(this.position.x, this.position.z);
     // ponytail: clamp wading floor at -3.40 so character's head and chest stay visible above water surface (-3.0)
     const floorY = Math.max(rawTerrainY, -3.40);
 
-    const t = Math.min(1, delta * 20);
-    this._smoothTerrainY = this._smoothTerrainY === 0 ? floorY : (this._smoothTerrainY + (floorY - this._smoothTerrainY) * t);
-
-    if (this.position.y <= this._smoothTerrainY + 0.05) {
-      this.position.y = this._smoothTerrainY;
+    if (!groundedThisFrame) {
+      if (this.position.y <= floorY + 0.05) {
+        this.position.y = floorY;
+        this.velocity.y = 0;
+        groundedThisFrame = true;
+      }
+    } else {
+      // Already grounded on BVH polygon (floor mesh or rock) with 100% surface precision
+      if (this.position.y < floorY - 0.2) {
+        this.position.y = floorY;
+      }
       this.velocity.y = 0;
-      groundedThisFrame = true;
     }
 
     this.isGrounded = groundedThisFrame;

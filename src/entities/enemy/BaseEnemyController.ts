@@ -54,6 +54,13 @@ export class BaseEnemyController {
     protected rayOrigin = new THREE.Vector3();
     protected rayDir = new THREE.Vector3(0, -1, 0);
 
+    // Preallocated collision math variables (Ponytail: zero GC)
+    private _tempSegment = new THREE.Line3();
+    private _tempBox = new THREE.Box3();
+    private _tempTriPoint = new THREE.Vector3();
+    private _capsulePoint = new THREE.Vector3();
+    private _tempVector = new THREE.Vector3();
+
     public setLODLevel(level: 'full' | 'name-only' | 'culled') {
         if (this.lodLevel === level) return;
         if (this.lodLevel === 'culled') {
@@ -484,14 +491,52 @@ export class BaseEnemyController {
         // ponytail: reuse _scratchQuat — was: new THREE.Quaternion() per enemy per frame
         const state = this.interpolator.update(delta, this.position, this.playerMesh ? this.playerMesh.quaternion : this._scratchQuat);
         
-        // ── Smooth Client-Side Terrain Clamping (Always enforce, ignore server Y) ──
+        // ── Precise Terrain & Rock Collision Resolution (Ponytail standard) ──
         const config = CHARACTER_CONFIG.npcs[this.npcType as 'mob' | 'raid_boss' | 'world_boss'] || CHARACTER_CONFIG.npcs.mob;
-        const yOffset = config.scale * 0.1; // offset so feet sit flush
+        const yOffset = config.scale * 0.05; // offset so feet sit flush on floor/rock
 
-        const clampedY = getTerrainHeight(this.position.x, this.position.z);
+        let exactGroundY = getTerrainHeight(this.position.x, this.position.z);
+        if (this.environmentMesh && (this.environmentMesh.geometry as any).boundsTree) {
+            this.rayOrigin.set(this.position.x, exactGroundY + 8.0, this.position.z);
+            this.raycaster.set(this.rayOrigin, this.rayDir);
+            this.raycaster.far = 16.0;
+            const hit = this.raycaster.intersectObject(this.environmentMesh, false)[0];
+            if (hit && hit.point) {
+                exactGroundY = hit.point.y;
+            }
+        }
+        this.position.y = exactGroundY + yOffset;
 
-        // Snap Y position to prevent interpolator override from causing ground penetration.
-        this.position.y = clampedY + yOffset;
+        // Obstacle Push-Out (Anti-Tembus Batu)
+        if (this.environmentMesh && (this.environmentMesh.geometry as any).boundsTree) {
+            const bvh = (this.environmentMesh.geometry as any).boundsTree;
+            const radius = 0.50 * config.scale;
+            const height = 1.8 * config.scale;
+
+            this._tempSegment.start.set(this.position.x, this.position.y + radius, this.position.z);
+            this._tempSegment.end.set(this.position.x, this.position.y + height - radius, this.position.z);
+
+            this._tempBox.makeEmpty();
+            this._tempBox.expandByPoint(this._tempSegment.start);
+            this._tempBox.expandByPoint(this._tempSegment.end);
+            this._tempBox.min.subScalar(radius);
+            this._tempBox.max.addScalar(radius);
+
+            bvh.shapecast({
+                intersectsBounds: (box: THREE.Box3) => box.intersectsBox(this._tempBox),
+                intersectsTriangle: (tri: any) => {
+                    const distance = tri.closestPointToSegment(this._tempSegment, this._tempTriPoint, this._capsulePoint);
+                    if (distance < radius) {
+                        const depth = radius - distance;
+                        const normal = this._tempVector.copy(this._capsulePoint).sub(this._tempTriPoint).normalize();
+                        this.position.addScaledVector(normal, depth);
+
+                        this._tempSegment.start.set(this.position.x, this.position.y + radius, this.position.z);
+                        this._tempSegment.end.set(this.position.x, this.position.y + height - radius, this.position.z);
+                    }
+                }
+            });
+        }
 
         if (state) {
             this.playerGroup.position.copy(this.position);

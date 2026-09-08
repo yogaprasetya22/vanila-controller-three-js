@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { activeFX, getPooledMaterial, releasePooledMaterial, pooledRing, easeOutQuad } from "./FXCore";
+import { activeFX, getPooledMaterial, releasePooledMaterial, pooledRing, easeOutQuad, alignGroundDecal } from "./FXCore";
 
 export function spawnSoulHarvestFX(
     scene: THREE.Scene,
@@ -75,8 +75,7 @@ export function spawnSoulHarvestFX(
         side: THREE.DoubleSide
     });
     const runeRing = new THREE.Mesh(runeGeo, runeMat);
-    runeRing.rotation.x = -Math.PI / 2;
-    runeRing.position.set(x, y + 0.03, z);
+    alignGroundDecal(runeRing, x, z, 0.04);
     scene.add(runeRing);
 
     let age = 0;

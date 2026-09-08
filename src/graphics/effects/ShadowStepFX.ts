@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { activeFX, getPooledMaterial, releasePooledMaterial, pooledRing } from "./FXCore";
+import { activeFX, getPooledMaterial, releasePooledMaterial, pooledRing, alignGroundDecal } from "./FXCore";
 
 // ponytail: inline state — ceiling: could pool the shard geometries
 export function spawnShadowStepFX(
@@ -50,8 +50,7 @@ export function spawnShadowStepFX(
     const srcRingGeo = pooledRing(0.2, 0.9, 24);
     const srcRingMat = getPooledMaterial({ color: trailColor, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
     const srcRing = new THREE.Mesh(srcRingGeo, srcRingMat);
-    srcRing.rotation.x = -Math.PI / 2;
-    srcRing.position.set(fx, fy + 0.03, fz);
+    alignGroundDecal(srcRing, fx, fz, 0.04);
     srcRing.frustumCulled = false;
     scene.add(srcRing);
 
@@ -59,8 +58,7 @@ export function spawnShadowStepFX(
     const arrRingGeo = pooledRing(0.15, 1.2, 32);
     const arrRingMat = getPooledMaterial({ color: bloomColor, transparent: true, opacity: 0.0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
     const arrRing = new THREE.Mesh(arrRingGeo, arrRingMat);
-    arrRing.rotation.x = -Math.PI / 2;
-    arrRing.position.set(tx, ty + 0.03, tz);
+    alignGroundDecal(arrRing, tx, tz, 0.04);
     arrRing.frustumCulled = false;
     scene.add(arrRing);
 

@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { activeFX, pooledRing, getPooledMaterial, releasePooledMaterial } from "./FXCore";
+import { activeFX, pooledRing, getPooledMaterial, releasePooledMaterial, alignGroundDecal } from "./FXCore";
 import { spawnLightningFX } from "./LightningFX";
 
 export function spawnThunderClapFX(
@@ -45,8 +45,7 @@ export function spawnThunderClapFX(
             side: THREE.DoubleSide
         });
         const ring = new THREE.Mesh(rGeo, rMat);
-        ring.rotation.x = -Math.PI / 2;
-        ring.position.set(x, y + 0.05 + i * 0.02, z);
+        alignGroundDecal(ring, x, z, 0.05 + i * 0.02);
         ring.frustumCulled = false;
         scene.add(ring);
         rings.push(ring);
@@ -74,8 +73,7 @@ export function spawnThunderClapFX(
         side: THREE.DoubleSide
     });
     const disk = new THREE.Mesh(diskGeo, diskMat);
-    disk.rotation.x = -Math.PI / 2;
-    disk.position.set(x, y + 0.02, z);
+    alignGroundDecal(disk, x, z, 0.03);
     disk.frustumCulled = false;
     scene.add(disk);
 

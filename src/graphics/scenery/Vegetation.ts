@@ -9,7 +9,7 @@ export class Vegetation {
       // Sub-sample to keep triangle count down
       if (idx % 2 !== 0) return false;
       const h = getTerrainHeight(data.x, data.z);
-      return h >= 0.2; // Dry land only
+      return h >= 0.8; // Dry land only (above lakes & shores)
     });
 
     // ponytail: procedurally generate vegetation on the outskirts to populate the 2400x2400 world
@@ -21,13 +21,13 @@ export class Vegetation {
 
     const vegTypes = Array.from(new Set(vegetationData.map(v => v.type)));
     if (vegTypes.length > 0) {
-      for (let i = 0; i < 500; i++) {
+      for (let i = 0; i < 400; i++) {
         const rx = (prng() - 0.5) * 2300;
         const rz = (prng() - 0.5) * 2300;
         if (Math.abs(rx) < 100 && Math.abs(rz) < 100) continue; // Skip battlefield area
 
         const h = getTerrainHeight(rx, rz);
-        if (h < 0.2) continue; // Dry land only
+        if (h < 0.8) continue; // Dry land only
 
         activeVegetationData.push({
           x: rx,

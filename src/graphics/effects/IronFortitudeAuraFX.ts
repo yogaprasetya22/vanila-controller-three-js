@@ -7,6 +7,7 @@ import {
     releasePooledMaterial,
     star2Tex,
     activeFX,
+    alignGroundDecal,
     fxQualityScale,
     _tempObj,
 } from "./FXCore";
@@ -73,8 +74,7 @@ export function spawnIronFortitudeAuraFX(
         side: THREE.DoubleSide,
     });
     const runeMesh = new THREE.Mesh(runeGeo, runeMat);
-    runeMesh.rotation.x = -Math.PI / 2;
-    runeMesh.position.set(x, y + 0.02, z);
+    alignGroundDecal(runeMesh, x, z, 0.04);
     scene.add(runeMesh);
 
     // Glowing rising column mesh

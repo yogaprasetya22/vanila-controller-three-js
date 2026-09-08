@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { activeFX, getPooledMaterial, releasePooledMaterial, pooledPlane, pooledRing } from "./FXCore";
+import { activeFX, getPooledMaterial, releasePooledMaterial, pooledPlane, pooledRing, alignGroundDecal } from "./FXCore";
 
 // ponytail: inline all state, no helper classes — ceiling: shared geo pool per particle would save more GC
 export function spawnPoisonBladeFX(
@@ -71,8 +71,7 @@ export function spawnPoisonBladeFX(
         blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide
     });
     const ring = new THREE.Mesh(ringGeo, ringMat);
-    ring.rotation.x = -Math.PI / 2;
-    ring.position.set(tx, ty + 0.02, tz);
+    alignGroundDecal(ring, tx, tz, 0.03);
     ring.frustumCulled = false;
     scene.add(ring);
 

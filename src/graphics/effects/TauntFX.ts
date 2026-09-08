@@ -7,6 +7,7 @@ import {
     releasePooledMaterial,
     sparkTex,
     activeFX,
+    alignGroundDecal,
     fxQualityScale,
     _tempObj,
 } from "./FXCore";
@@ -78,8 +79,7 @@ export function spawnTauntFX(
         side: THREE.DoubleSide,
     });
     const wave = new THREE.Mesh(waveGeo, waveMat);
-    wave.rotation.x = -Math.PI / 2;
-    wave.position.set(x, y + 0.05, z);
+    alignGroundDecal(wave, x, z, 0.05);
     scene.add(wave);
 
     const ringGeo = pooledRing(0.5, 0.7, 16);
@@ -92,8 +92,7 @@ export function spawnTauntFX(
         depthWrite: false,
     });
     const ring = new THREE.Mesh(ringGeo, ringMat);
-    ring.rotation.x = -Math.PI / 2;
-    ring.position.set(x, y + 0.05, z);
+    alignGroundDecal(ring, x, z, 0.06);
     scene.add(ring);
 
     // Glowing Billboard Red anger Emoji

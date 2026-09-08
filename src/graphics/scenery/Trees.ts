@@ -308,8 +308,8 @@ export class Trees {
       Trees._frustum.setFromProjectionMatrix(Trees._projScreenMatrix);
     }
 
-    // ponytail: Tighter Dynamic LOD tree distance (220m)
-    const MAX_DIST_SQ = 220 * 220; // 220 meters
+    // ponytail: Tighter Dynamic LOD tree distance (160m matches horizon fog)
+    const MAX_DIST_SQ = 160 * 160; // 160 meters
 
     const pos = Trees._scratchPos;
     const quat = Trees._scratchQuat;

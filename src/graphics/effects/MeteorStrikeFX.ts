@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { activeFX, pooledRing, spawnExplosion, getPooledMaterial, releasePooledMaterial } from "./FXCore";
+import { activeFX, pooledRing, spawnExplosion, getPooledMaterial, releasePooledMaterial, alignGroundDecal } from "./FXCore";
 import { spawnLightningFX } from "./LightningFX";
 
 export function spawnMeteorStrikeFX(
@@ -47,8 +47,7 @@ export function spawnMeteorStrikeFX(
             side: THREE.DoubleSide
         });
         const ring = new THREE.Mesh(rGeo, rMat);
-        ring.rotation.x = -Math.PI / 2;
-        ring.position.set(x, y + 0.03, z);
+        alignGroundDecal(ring, x, z, 0.04);
         ring.frustumCulled = false;
         scene.add(ring);
         rings.push(ring);
@@ -65,8 +64,7 @@ export function spawnMeteorStrikeFX(
         side: THREE.DoubleSide
     });
     const scar = new THREE.Mesh(scarGeo, scarMat);
-    scar.rotation.x = -Math.PI / 2;
-    scar.position.set(x, y + 0.01, z);
+    alignGroundDecal(scar, x, z, 0.02);
     scene.add(scar);
 
     let age = 0;

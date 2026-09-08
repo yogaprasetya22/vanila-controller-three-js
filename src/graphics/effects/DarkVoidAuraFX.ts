@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { activeFX, pooledRing, getPooledMaterial, releasePooledMaterial } from "./FXCore";
+import { activeFX, pooledRing, getPooledMaterial, releasePooledMaterial, alignGroundDecal } from "./FXCore";
 
 export function spawnDarkVoidAuraFX(
     scene: THREE.Scene,
@@ -21,8 +21,7 @@ export function spawnDarkVoidAuraFX(
     });
 
     const ringMesh = new THREE.Mesh(ringGeo, ringMat);
-    ringMesh.rotation.x = -Math.PI / 2;
-    ringMesh.position.set(x, y + 0.02, z);
+    alignGroundDecal(ringMesh, x, z, 0.05);
     scene.add(ringMesh);
 
     // Swirling inner particles represent soul drain fields

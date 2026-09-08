@@ -6,6 +6,7 @@ import {
     releasePooledMaterial,
     smokeTex,
     activeFX,
+    alignGroundDecal,
     _tempObj,
 } from "./FXCore";
 
@@ -58,8 +59,7 @@ export function spawnFrostNovaBurstFX(
         side: THREE.DoubleSide,
     });
     const waveMesh = new THREE.Mesh(waveGeo, waveMat);
-    waveMesh.rotation.x = -Math.PI / 2;
-    waveMesh.position.set(x, y + 0.04, z);
+    alignGroundDecal(waveMesh, x, z, 0.04);
     scene.add(waveMesh);
 
     // High-density sharp ice shards (Instanced mesh, Dodecahedrons)

@@ -94,14 +94,15 @@ export function getTerrainHeight(x: number, z: number): number {
     const edgeDist = Math.sqrt(dxEdge * dxEdge + dzEdge * dzEdge);
     const forestFactor = smoothstep(0, BF_BLEND, edgeDist);
 
-    // Primary mountain ridges (low frequency, high amplitude)
+    // Primary smooth flowing mountain ridges
     const mountainH = Math.sin(x * 0.010) * Math.cos(z * 0.012 + 0.3) * 32.0 +
                       Math.cos(x * 0.025) * Math.sin(z * 0.022) * 14.0;
-    // Secondary plateau layers for more plains variety
-    const h1 = Math.sin(x * 0.12 + 0.5) * Math.cos(z * 0.12) * 3.5;
-    const h2 = Math.sin(x * 0.28) * Math.sin(z * 0.22 + 1.2) * 1.2;
-    const h3 = Math.sin(x * 0.06 + 1.1) * Math.cos(z * 0.055 + 0.8) * 9.0;
-    const h4 = Math.cos(x * 0.09) * Math.sin(z * 0.075 + 2.0) * 5.5;
+
+    // Secondary smooth hill harmonics
+    const h1 = Math.sin(x * 0.12 + 0.5) * Math.cos(z * 0.12) * 3.0;
+    const h2 = Math.sin(x * 0.28) * Math.sin(z * 0.22 + 1.2) * 1.0;
+    const h3 = Math.sin(x * 0.06 + 1.1) * Math.cos(z * 0.055 + 0.8) * 7.5;
+    const h4 = Math.cos(x * 0.09) * Math.sin(z * 0.075 + 2.0) * 4.5;
 
     // Winding River Bed: wider and deeper for 2x map
     const riverPath = Math.sin(x * 0.013) * 75;

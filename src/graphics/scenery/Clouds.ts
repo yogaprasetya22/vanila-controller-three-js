@@ -127,10 +127,12 @@ export class Clouds {
     this.fairMesh = new THREE.InstancedMesh(cloudGeometry, fairMaterial, this.totalFairPuffs);
     this.fairMesh.castShadow = false;
     this.fairMesh.receiveShadow = false;
+    this.fairMesh.frustumCulled = false;
 
     this.stormMesh = new THREE.InstancedMesh(cloudGeometry, stormMaterial, this.totalStormPuffs);
     this.stormMesh.castShadow = false;
     this.stormMesh.receiveShadow = false;
+    this.stormMesh.frustumCulled = false;
 
     scene.add(this.fairMesh);
     scene.add(this.stormMesh);
@@ -236,12 +238,12 @@ export class Clouds {
         }
       }
 
-      // ── 3-Tier LOD for Cloud Puffs (Tightly synced with 330m fog horizon) ──
+      // ── Smooth panoramic LOD for Cloud Puffs across sky ──
       let lodFade = 1.0;
-      if (distFromCam > 360) {
+      if (distFromCam > 950) {
         lodFade = 0.0;
-      } else if (distFromCam > 260) {
-        lodFade = 1.0 - (distFromCam - 260) / 100;
+      } else if (distFromCam > 750) {
+        lodFade = 1.0 - (distFromCam - 750) / 200;
       }
 
       const targetMesh = cluster.type === 'storm' ? this.stormMesh : this.fairMesh;
@@ -403,6 +405,7 @@ export function createLowPolyCloudGeometry(): THREE.BufferGeometry {
 
   const cloudGeometry = BufferGeometryUtils.mergeGeometries(geometries);
   cloudGeometry.computeVertexNormals();
+  cloudGeometry.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 45, 0), 2500);
   return cloudGeometry;
 }
 
@@ -412,6 +415,7 @@ export function createCartoonCloudMaterial(topColorHex: string, bottomColorHex: 
     flatShading: true,
     transparent: true,
     opacity: opacity,
+    side: THREE.DoubleSide,
     depthWrite: true
   });
 
@@ -420,20 +424,25 @@ export function createCartoonCloudMaterial(topColorHex: string, bottomColorHex: 
     shader.uniforms.uBottomColor = { value: new THREE.Color(bottomColorHex) };
 
     shader.vertexShader = `
-      varying vec3 myNormal;
+      varying vec3 vWorldNormal;
     ` + shader.vertexShader;
 
     shader.fragmentShader = `
-      varying vec3 myNormal;
+      varying vec3 vWorldNormal;
       uniform vec3 uTopColor;
       uniform vec3 uBottomColor;
     ` + shader.fragmentShader;
 
     shader.vertexShader = shader.vertexShader.replace(
-      '#include <beginnormal_vertex>',
+      '#include <defaultnormal_vertex>',
       `
-      #include <beginnormal_vertex>
-      myNormal = normalize(normalMatrix * objectNormal);
+      #include <defaultnormal_vertex>
+      #ifdef USE_INSTANCING
+        mat3 instMat = mat3(instanceMatrix);
+        vWorldNormal = normalize((modelMatrix * vec4(instMat * objectNormal, 0.0)).xyz);
+      #else
+        vWorldNormal = normalize((modelMatrix * vec4(objectNormal, 0.0)).xyz);
+      #endif
       `
     );
 
@@ -441,8 +450,8 @@ export function createCartoonCloudMaterial(topColorHex: string, bottomColorHex: 
       '#include <color_fragment>',
       `
       #include <color_fragment>
-      float intensity = normalize(myNormal).y * 0.5 + 0.5;
-      diffuseColor.rgb = mix(uBottomColor, uTopColor, step(0.46, intensity));
+      float intensity = clamp(vWorldNormal.y * 0.5 + 0.5, 0.0, 1.0);
+      diffuseColor.rgb = mix(uBottomColor, uTopColor, smoothstep(0.40, 0.58, intensity));
       `
     );
   };

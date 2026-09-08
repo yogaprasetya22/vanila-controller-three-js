@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { CHARACTER_CONFIG } from "../../entities/player/PlayerConfig";
+import { alignGroundDecal } from "./FXCore";
 
 interface SmokeParticle {
     x: number;
@@ -387,8 +388,7 @@ export class CartoonTornadoNativeVFX {
         outerMesh1.position.set(x, y + 2.0, z);
         outerMesh2.position.set(x, y + 2.0, z);
         flameMesh.position.set(x, y + 2.0, z);
-        ringMesh.position.set(x, y + 0.03, z); // Positioned slightly above ground floor
-        ringMesh.rotation.x = -Math.PI / 2;
+        alignGroundDecal(ringMesh, x, z, 0.04);
         smokeMesh.position.set(x, y, z);
 
         outerMesh1.scale.set(0.01, 0.01, 0.01);

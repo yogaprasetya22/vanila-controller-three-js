@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { activeFX, getPooledMaterial, releasePooledMaterial, pooledRing } from "./FXCore";
+import { activeFX, getPooledMaterial, releasePooledMaterial, pooledRing, alignGroundDecal } from "./FXCore";
 
 // ponytail: all inline — ceiling: smoke puff geo could be pooled
 export function spawnSmokeBombFX(
@@ -34,8 +34,7 @@ export function spawnSmokeBombFX(
             side: THREE.DoubleSide
         });
         const ring = new THREE.Mesh(rGeo, rMat);
-        ring.rotation.x = -Math.PI / 2;
-        ring.position.set(x, y + 0.02 + i * 0.01, z);
+        alignGroundDecal(ring, x, z, 0.03 + i * 0.01);
         ring.frustumCulled = false;
         scene.add(ring);
         groundRings.push(ring);

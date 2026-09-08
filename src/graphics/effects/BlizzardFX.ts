@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { activeFX, getPooledMaterial, releasePooledMaterial, pooledRing, easeOutQuad } from "./FXCore";
+import { activeFX, getPooledMaterial, releasePooledMaterial, pooledRing, easeOutQuad, alignGroundDecal } from "./FXCore";
 
 export function spawnBlizzardFX(
     scene: THREE.Scene,
@@ -65,8 +65,7 @@ export function spawnBlizzardFX(
         side: THREE.DoubleSide
     });
     const lowerRing = new THREE.Mesh(lowerRingGeo, lowerRingMat);
-    lowerRing.rotation.x = -Math.PI / 2;
-    lowerRing.position.set(x, y + 0.1, z);
+    alignGroundDecal(lowerRing, x, z, 0.08);
     lowerRing.frustumCulled = false;
     scene.add(lowerRing);
 

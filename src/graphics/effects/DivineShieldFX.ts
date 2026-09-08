@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { activeFX } from "./FXCore";
+import { activeFX, alignGroundDecal } from "./FXCore";
 
 export function spawnDivineShieldFX(
     scene: THREE.Scene,
@@ -79,8 +79,7 @@ export function spawnDivineShieldFX(
         side: THREE.DoubleSide,
     });
     const groundRing = new THREE.Mesh(groundGeo, groundMat);
-    groundRing.rotation.x = -Math.PI / 2;
-    groundRing.position.set(targetPos.x, targetPos.y + 0.04, targetPos.z);
+    alignGroundDecal(groundRing, targetPos.x, targetPos.z, 0.04);
     scene.add(groundRing);
 
     let age = 0;
